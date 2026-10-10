@@ -6,10 +6,10 @@ import { num, str } from './worldUtil';
 
 /** Default tint of the decor (background) tile layer per theme, so facades read as "behind". */
 export const BG_TINT: Record<LevelTheme, number> = {
-  day: 0x9ba7c6,
-  rooftop: 0x8c93b6,
-  river: 0x93a2bc,
-  sunset: 0xb88f8f,
+  day: 0x7a86a8,
+  rooftop: 0x747b9e,
+  river: 0x7888a4,
+  sunset: 0x9a7480,
 };
 
 const hex = (v: string, def: number): number => {
