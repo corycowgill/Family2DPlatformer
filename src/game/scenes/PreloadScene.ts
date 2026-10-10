@@ -67,6 +67,9 @@ export class PreloadScene extends Phaser.Scene {
       this.scene.start(screen);
       return;
     }
-    this.scene.start('Menu');
+    // Let the Hallucinated Games ident finish (or be skipped) before revealing the title,
+    // so the key/tap that skips it can't also activate the menu.
+    const intro = (window as unknown as { __studioIntro?: Promise<void> }).__studioIntro ?? Promise.resolve();
+    void intro.then(() => this.scene.start('Menu'));
   }
 }
