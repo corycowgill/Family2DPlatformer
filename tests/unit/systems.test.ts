@@ -60,9 +60,12 @@ describe('CombatSystem.isStomp', () => {
     expect(isStomp({ bottom: 112, prevBottom: 108, vy: 50 }, enemy)).toBe(true);
     expect(isStomp({ bottom: 112, prevBottom: 108.1, vy: 50 }, enemy)).toBe(false);
   });
-  it('rising or standing still is not a stomp', () => {
+  it('rising is not a stomp; standing still is only a stomp at the jump apex on top', () => {
     expect(isStomp({ bottom: 104, prevBottom: 99, vy: -100 }, enemy)).toBe(false);
-    expect(isStomp({ bottom: 104, prevBottom: 99, vy: 0 }, enemy)).toBe(false);
+    // Hovering at the apex with feet at the enemy's top counts (forgiving stomps)…
+    expect(isStomp({ bottom: 104, prevBottom: 99, vy: 0 }, enemy)).toBe(true);
+    // …but standing still beside it (feet below its top) does not.
+    expect(isStomp({ bottom: 112, prevBottom: 112, vy: 0 }, enemy)).toBe(false);
   });
   it('side contact (feet well below enemy top) is not a stomp', () => {
     expect(isStomp({ bottom: 130, prevBottom: 128, vy: 300 }, enemy)).toBe(false);
