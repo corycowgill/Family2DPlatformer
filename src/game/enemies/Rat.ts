@@ -11,7 +11,7 @@ import { isInFront, propNum } from './ai';
 export class Rat extends Enemy {
   speed: number;
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'rat', hp: 1, contactDamage: 1, stompable: true, body: { width: 18, height: 10 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.rat });
+    super(ctx, spawn, { kind: 'rat', hp: 1, contactDamage: 1, stompable: true, body: { width: 20, height: 12 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.rat });
     this.speed = propNum(spawn.props, 'speed', 70);
     this.setAI('scurry');
   }

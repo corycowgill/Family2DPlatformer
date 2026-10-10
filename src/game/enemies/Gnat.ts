@@ -20,7 +20,7 @@ export class Gnat extends Enemy {
   home: { x: number; y: number };
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'gnat', hp: 1, contactDamage: 1, stompable: true, body: { width: 10, height: 8 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.gnat });
+    super(ctx, spawn, { kind: 'gnat', hp: 1, contactDamage: 1, stompable: true, body: { width: 12, height: 10 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.gnat });
     this.radius = propNum(spawn.props, 'range', 28);
     this.sight = propNum(spawn.props, 'sight', 110);
     this.home = { x: spawn.x, y: spawn.y - 8 };

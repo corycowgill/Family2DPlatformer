@@ -18,19 +18,19 @@ const eye = (c: Ctx, x: number, y: number, col = '#000') => R(c, x, y, 2, 2, col
 const hitTint = (anim: string, col: string) => (anim === 'hit' ? '#ffffff' : col);
 
 export const ENEMY_FRAME_SIZE: Record<EnemyKind, { w: number; h: number }> = {
-  pigeon: { w: 24, h: 20 },
-  rat: { w: 28, h: 16 },
-  raccoon: { w: 30, h: 26 },
-  coneGuy: { w: 22, h: 28 },
-  turnstileBot: { w: 32, h: 32 },
-  securityDrone: { w: 26, h: 20 },
-  windowWasher: { w: 24, h: 30 },
-  gnat: { w: 14, h: 12 },
-  skirmisher: { w: 24, h: 32 },
-  wasp: { w: 28, h: 22 },
-  warlord: { w: 44, h: 48 },
-  juggernaut: { w: 52, h: 48 },
-  overseer: { w: 52, h: 40 },
+  pigeon: { w: 24, h: 24 },
+  rat: { w: 32, h: 20 },
+  raccoon: { w: 44, h: 28 },
+  coneGuy: { w: 28, h: 32 },
+  turnstileBot: { w: 36, h: 32 },
+  securityDrone: { w: 36, h: 24 },
+  windowWasher: { w: 44, h: 40 },
+  gnat: { w: 28, h: 24 },
+  skirmisher: { w: 60, h: 48 },
+  wasp: { w: 32, h: 28 },
+  warlord: { w: 68, h: 56 },
+  juggernaut: { w: 88, h: 72 },
+  overseer: { w: 80, h: 96 },
   eliminator: { w: 128, h: 112 },
 };
 
@@ -191,47 +191,46 @@ const DRAW: Record<EnemyKind, Draw> = {
   },
   overseer: (c, a, i, w, h) => {
     const col = hitTint(a, '#2d3a55');
+    const cx = w / 2;
+    const cy = h - 62;
+    c.strokeStyle = '#3a2440';
+    c.lineWidth = 2;
+    for (let k = -2; k <= 2; k++) {
+      c.beginPath();
+      c.moveTo(cx + k * 6, cy + 12);
+      c.lineTo(cx + k * 8 + (i % 2 ? 2 : -2), h - 6);
+      c.stroke();
+    }
     c.fillStyle = col;
     c.beginPath();
-    c.ellipse(26, h - 20, 24, 12, 0, 0, Math.PI * 2);
+    c.ellipse(cx, cy, 24, 20, 0, 0, Math.PI * 2);
     c.fill();
-    R(c, 14, h - 30, 24, 8, '#7be0d8');
-    R(c, 22, h - 14, 8, 6, a === 'attack' ? '#ff3030' : '#8a1a1a');
-    R(c, 4 + (i % 2) * 2, h - 20, 4, 3, '#ffd23a');
-    R(c, 44 - (i % 2) * 2, h - 20, 4, 3, '#ffd23a');
+    R(c, cx - 12, cy - 14, 24, 8, '#7be0d8');
+    R(c, cx - 4, cy + 4, 8, 8, a === 'attack' ? '#ff3030' : '#8a1a1a');
+    R(c, cx - 3, h - 6, 6, 6, '#c8102e');
   },
   eliminator: (c, a, i, w, h) => {
-    const kneel = a === 'kneel';
-    const dy = kneel ? 40 : a === 'die' ? 30 + i * 6 : 0;
+    const dy = a === 'die' ? 10 + i * 6 : 0;
     const hull = hitTint(a, '#b9c0c8');
     // girder legs
-    if (!kneel) {
-      R(c, 30, h - 40, 10, 40, '#8a3b22');
-      R(c, 88, h - 40, 10, 40, '#8a3b22');
-      for (let k = 0; k < 4; k++) {
-        R(c, 30, h - 38 + k * 10, 10, 2, '#5a2614');
-        R(c, 88, h - 38 + k * 10, 10, 2, '#5a2614');
-      }
-    } else {
-      R(c, 22, h - 10, 84, 10, '#8a3b22');
+    for (const lx of [30, 88]) {
+      R(c, lx, h - 28, 10, 28, '#8a3b22');
+      for (let k = 0; k < 3; k++) R(c, lx, h - 26 + k * 9, 10, 2, '#5a2614');
     }
     // train-car torso
-    R(c, 14, h - 100 + dy, 100, 62, hull);
-    R(c, 14, h - 62 + dy, 100, 6, '#c8102e'); // CTA red stripe
-    R(c, 14, h - 56 + dy, 100, 3, '#00a1de'); // CTA blue stripe
+    R(c, 14, h - 74 + dy, 100, 46, hull);
+    R(c, 14, h - 40 + dy, 100, 5, '#c8102e'); // CTA red stripe
+    R(c, 14, h - 35 + dy, 100, 3, '#00a1de'); // CTA blue stripe
     // windshield / face
-    R(c, 60, h - 94 + dy, 46, 22, '#1d2733');
-    R(c, 66, h - 88 + dy, 10, 5, a === 'attack' ? '#ff2020' : '#ff8a00');
-    R(c, 88, h - 88 + dy, 10, 5, a === 'attack' ? '#ff2020' : '#ff8a00');
-    R(c, 70, h - 78 + dy, 28, 3, '#9aa3ad');
+    R(c, 62, h - 70 + dy, 44, 18, '#1d2733');
+    R(c, 68, h - 65 + dy, 10, 5, a === 'attack' ? '#ff2020' : '#ff8a00');
+    R(c, 90, h - 65 + dy, 10, 5, a === 'attack' ? '#ff2020' : '#ff8a00');
+    R(c, 72, h - 57 + dy, 26, 3, '#9aa3ad');
     // route sign
-    R(c, 20, h - 96 + dy, 34, 10, '#111');
-    R(c, 23, h - 93 + dy, 28, 4, '#f5a623');
-    // rivets
-    for (let k = 0; k < 6; k++) R(c, 20 + k * 16, h - 44 + dy, 2, 2, '#666');
-    // shoulder & arm stub
-    R(c, 0, h - 86 + dy, 16, 14, '#6b7684');
-    if (a === 'hit') R(c, 14, h - 100 + dy, 100, 62, 'rgba(255,255,255,0.6)');
+    R(c, 20, h - 70 + dy, 34, 9, '#111');
+    R(c, 23, h - 67 + dy, 28, 4, '#f5a623');
+    for (let k = 0; k < 6; k++) R(c, 20 + k * 16, h - 46 + dy, 2, 2, '#666');
+    R(c, 0, h - 66 + dy, 16, 12, '#6b7684');
     void w;
   },
 };
@@ -242,7 +241,6 @@ export function ensureEnemyArt(scene: Phaser.Scene, kind: EnemyKind): void {
   const { w, h } = ENEMY_FRAME_SIZE[kind];
   const anims = ['idle', 'move', 'attack', 'hit', 'die'];
   if (kind === 'coneGuy') anims.push('shell');
-  if (kind === 'eliminator') anims.push('kneel');
   const frames = anims.flatMap((a) => [0, 1].map((i) => ({ a, i, name: `${a}_${i}` })));
   const cols = Math.min(8, frames.length);
   const rows = Math.ceil(frames.length / cols);

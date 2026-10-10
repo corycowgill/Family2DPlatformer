@@ -16,7 +16,7 @@ export class Skirmisher extends Enemy {
   private cooldownUntil = 0;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'skirmisher', hp: 2, contactDamage: 1, stompable: true, body: { width: 14, height: 26 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.skirmisher });
+    super(ctx, spawn, { kind: 'skirmisher', hp: 2, contactDamage: 1, stompable: true, body: { width: 18, height: 30 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.skirmisher });
     this.speed = propNum(spawn.props, 'speed', 50);
     this.sight = propNum(spawn.props, 'range', 150);
     this.setAI('patrol');

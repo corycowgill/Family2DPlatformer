@@ -26,6 +26,8 @@ export interface EnemyConfig {
   atlas?: string;
   /** Placeholder frame size if atlas missing. */
   frameSize?: { w: number; h: number };
+  /** Distance (px) from the frame bottom up to the body bottom (flyers whose art hangs below the hitbox). */
+  bodyLift?: number;
 }
 
 /**
@@ -102,7 +104,8 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   /** Keep the body anchored to the bottom-centre of the frame. */
   protected syncBodyOffset(): void {
     const b = this.body;
-    b.setOffset((this.width - b.width) / 2, this.height - b.height);
+    // Offsets are in unscaled frame space, so use the body's source size (scale-safe).
+    b.setOffset((this.width - b.sourceWidth) / 2, this.height - b.sourceHeight - (this.cfg?.bodyLift ?? 0));
   }
 
   /** Resize the body keeping it bottom-centre anchored. */

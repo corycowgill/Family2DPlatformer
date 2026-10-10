@@ -19,7 +19,7 @@ export class Wasp extends Enemy {
   private readonly line: Phaser.GameObjects.Graphics;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'wasp', hp: 2, contactDamage: 1, stompable: true, body: { width: 18, height: 12 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.wasp });
+    super(ctx, spawn, { kind: 'wasp', hp: 2, contactDamage: 1, stompable: true, body: { width: 20, height: 14 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.wasp });
     this.sight = propNum(spawn.props, 'sight', 200);
     this.t = (spawn.id * 577) % 4000;
     this.nextShotAt = ctx.now() + 1000;

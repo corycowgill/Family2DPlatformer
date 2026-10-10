@@ -11,8 +11,10 @@ import { applyStatOverrides, eliminatorTiming, pickEliminatorAttack, propNum, te
 import { ring, shadowMarker } from './fx';
 import { SecurityDrone } from './SecurityDrone';
 
-const STAND = { width: 80, height: 96 };
-const KNEEL = { width: 80, height: 40 };
+const STAND = { width: 84, height: 70 };
+/** While vulnerable the robot slumps (sprite + body squash) so its cab top is ~40 px above the floor. */
+const KNEEL_HEIGHT = 40;
+const KNEEL_SCALE_Y = KNEEL_HEIGHT / STAND.height;
 /** Low sweep: fist hugs the floor — jump over it. High sweep: head height — duck or stay away. */
 const LOW_Y = 7;
 const HIGH_Y = 27;
@@ -23,7 +25,7 @@ const HIGH_REACH = 300;
  * a mechanical arm). 12 hp, phases at 8 and 4 hp.
  *
  * Fight loop: idle (shuffles toward the player) → telegraphed attack → VULNERABLE window
- * (the robot kneels, its cab drops to 40 px and a glowing hatch opens on top: stomp it or
+ * (the robot slumps, its cab drops to 40 px and a glowing hatch opens on top: stomp it or
  * hit it with projectiles/abilities) → rise → repeat. A stomp closes the window early.
  *
  * Attacks (each telegraphed):
@@ -209,6 +211,7 @@ export class Eliminator extends Boss {
       lifetimeMs: 20000,
       clampX: { min: a.x - 64, max: a.right + 64 },
       body: { width: 20, height: 12 },
+      duckable: this.sweepHigh,
     });
     f.harmful = false;
     f.setFlipX(this.facing < 0);
@@ -219,9 +222,11 @@ export class Eliminator extends Boss {
     this.vulnMs = this.timing().vulnerableMs * scale;
     this.setAI('vulnerable');
     this.endTelegraph();
-    this.resizeBody(KNEEL.width, KNEEL.height);
+    this.scene.tweens.killTweensOf(this);
+    this.scene.tweens.add({ targets: this, scaleX: 1.08, scaleY: KNEEL_SCALE_Y, duration: 160, ease: 'Quad.easeIn' });
+    this.ctx.shake(0.004, 120);
     this.ctx.sfx('boss-vulnerable');
-    this.ctx.effect('smoke', this.x, this.floorY - KNEEL.height);
+    this.ctx.effect('smoke', this.x, this.floorY - KNEEL_HEIGHT);
   }
 
   private startRise(fromPhase = false): void {
@@ -245,6 +250,7 @@ export class Eliminator extends Boss {
     switch (this.aiState) {
       case 'idle': {
         playAnim(this, 'move', 'idle');
+        if (this.scaleY !== 1 && !this.scene.tweens.isTweening(this)) this.setScale(1, 1);
         this.facePlayer();
         // Shuffle to stay ~110 px from the player, inside the right part of the arena.
         const a = this.arena;
@@ -355,13 +361,15 @@ export class Eliminator extends Boss {
         }
         break;
       case 'vulnerable':
-        playAnim(this, 'kneel', 'idle');
+        playAnim(this, 'idle');
         if (this.stateTime >= this.vulnMs) this.startRise();
         break;
       case 'rise':
       case 'rage':
         playAnim(this, this.aiState === 'rage' ? 'attack' : 'idle', 'idle');
-        if (this.body.height !== STAND.height && this.stateTime >= 250) this.resizeBody(STAND.width, STAND.height);
+        if (this.scaleY < 1 && this.stateTime >= 250 && !this.scene.tweens.isTweening(this)) {
+          this.scene.tweens.add({ targets: this, scaleX: 1, scaleY: 1, duration: 200, ease: 'Back.easeOut' });
+        }
         if (this.stateTime >= (this.aiState === 'rage' ? 1000 : 450)) this.setAI('idle');
         break;
       default:
@@ -431,9 +439,8 @@ export class Eliminator extends Boss {
     const g = this.arm;
     g.clear();
     if (this.dead) return;
-    const kneel = this.body.height < STAND.height;
-    const sx = this.x + this.facing * (STAND.width / 2 - 4);
-    const sy = this.y - (kneel ? 30 : 76);
+    const sx = this.x + this.facing * (STAND.width / 2 - 6);
+    const sy = this.body.top + 14;
     const ex = fist ? fist.x - this.facing * 8 : sx + this.facing * 10;
     const ey = fist ? fist.y : sy + 30;
     const mx = (sx + ex) / 2;

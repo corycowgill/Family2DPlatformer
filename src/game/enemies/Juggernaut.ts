@@ -16,7 +16,7 @@ export class Juggernaut extends Enemy {
   private cooldownUntil = 0;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'juggernaut', hp: 5, contactDamage: 1, stompable: true, body: { width: 34, height: 38 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.juggernaut });
+    super(ctx, spawn, { kind: 'juggernaut', hp: 5, contactDamage: 1, stompable: true, body: { width: 44, height: 48 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.juggernaut });
     this.sight = propNum(spawn.props, 'range', 150);
     this.cullMargin = 240;
     this.setAI('walk');

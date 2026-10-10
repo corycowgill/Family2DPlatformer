@@ -31,6 +31,8 @@ export interface EnemyProjectileOptions {
   groundOnly?: boolean;
   /** Destroyed when leaving this horizontal range (boss arenas). */
   clampX?: { min: number; max: number };
+  /** High attack that a ducking player avoids (checked against the crouch height). */
+  duckable?: boolean;
   /** Override hitbox size. */
   body?: { width: number; height: number };
 }
@@ -68,6 +70,7 @@ export class EnemyProjectile extends Phaser.Physics.Arcade.Sprite {
   damage: number;
   readonly ignoreTerrain: boolean;
   readonly persistent: boolean;
+  readonly duckable: boolean;
   private expiresAt: number;
   /** Set false to make it harmless (e.g. while fading out). */
   harmful = true;
@@ -92,6 +95,7 @@ export class EnemyProjectile extends Phaser.Physics.Arcade.Sprite {
     this.damage = opts.damage ?? 1;
     this.ignoreTerrain = !!opts.ignoreTerrain;
     this.persistent = !!opts.persistent;
+    this.duckable = !!opts.duckable;
     this.expiresAt = ctx.now() + (opts.lifetimeMs ?? 4000);
     scene.add.existing(this);
     scene.physics.add.existing(this);

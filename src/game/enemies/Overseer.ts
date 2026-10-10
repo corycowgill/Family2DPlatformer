@@ -29,7 +29,7 @@ export class Overseer extends Enemy {
   private beamBottom = 0;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'overseer', hp: 6, contactDamage: 1, stompable: true, body: { width: 40, height: 20 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.overseer });
+    super(ctx, spawn, { kind: 'overseer', hp: 6, contactDamage: 1, stompable: true, body: { width: 44, height: 36 }, bodyLift: 40, gravity: false, frameSize: ENEMY_FRAME_SIZE.overseer });
     this.range = propNum(spawn.props, 'range', 120);
     this.nextSummonAt = ctx.now() + 2000;
     this.nextBeamAt = ctx.now() + 3500;
@@ -73,7 +73,7 @@ export class Overseer extends Enemy {
           this.setAI('summon');
         } else if (near && now >= this.nextBeamAt && Math.abs(p.x - this.x) < 40) {
           this.telegraph(800, 0xff3030, true);
-          this.beamBottom = this.floorBelow(this.x, this.y + 2);
+          this.beamBottom = this.floorBelow(this.x, this.body.bottom + 2);
           this.setAI('beamCharge');
         }
         break;
@@ -82,7 +82,7 @@ export class Overseer extends Enemy {
         b.setVelocity(0, (ty - this.y) * 4);
         if (this.stateTime >= 500) {
           const gx = this.x + (Math.random() < 0.5 ? -24 : 24);
-          const gy = this.y + 8;
+          const gy = this.body.bottom + 8;
           ring(this.ctx, gx, gy - 4);
           const g = new Gnat(this.ctx, { id: -1, type: 'enemy', name: 'summoned', x: gx, y: gy, width: 16, height: 16, props: { kind: 'gnat', range: 40 } });
           this.gnats.push(g);
@@ -94,10 +94,11 @@ export class Overseer extends Enemy {
         b.setVelocity(0, 0);
         playAnim(this, 'attack', 'idle');
         const on = telegraphBlink(this.stateTime, 800);
-        this.line.lineStyle(2, 0xff3030, on ? 0.9 : 0.3).lineBetween(this.x, this.y, this.x, this.beamBottom);
+        this.line.lineStyle(2, 0xff3030, on ? 0.9 : 0.3).lineBetween(this.x, this.body.bottom, this.x, this.beamBottom);
         if (this.stateTime >= 800) {
-          const h = Math.max(8, this.beamBottom - this.y);
-          this.beam = new EnemyProjectile(this.ctx, this.x, this.y + h / 2, { style: 'beam', persistent: true, ignoreTerrain: true, lifetimeMs: 600, body: { width: 8, height: 8 } });
+          const top = this.body.bottom;
+          const h = Math.max(8, this.beamBottom - top);
+          this.beam = new EnemyProjectile(this.ctx, this.x, top + h / 2, { style: 'beam', persistent: true, ignoreTerrain: true, lifetimeMs: 600, body: { width: 8, height: 8 } });
           this.beam.setDisplaySize(12, h);
           this.ctx.sfx('beam');
           this.ctx.shake(0.003, 600);

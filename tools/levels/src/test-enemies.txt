@@ -33,5 +33,5 @@ enemy 100 11 kind=gnat
 enemy 112 14 kind=skirmisher
 enemy 124 10 kind=wasp
 enemy 136 14 kind=juggernaut
-enemy 150 7 kind=overseer
+enemy 150 9 kind=overseer
 enemy 172 14 kind=warlord

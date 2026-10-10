@@ -22,7 +22,7 @@ export class WindowWasher extends Enemy {
   private t = 0;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'windowWasher', hp: 1, contactDamage: 1, stompable: true, body: { width: 14, height: 22 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.windowWasher });
+    super(ctx, spawn, { kind: 'windowWasher', hp: 1, contactDamage: 1, stompable: true, body: { width: 18, height: 30 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.windowWasher });
     this.triggerDx = propNum(spawn.props, 'dx', 26);
     // Find the anchor: first solid/one-way tile above the spawn (up to 12 tiles).
     let anchor = spawn.y - 6 * TILE_SIZE;

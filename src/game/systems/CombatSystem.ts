@@ -10,6 +10,7 @@ type EnemyShot = Phaser.Physics.Arcade.Sprite & {
   damage?: number;
   harmful?: boolean;
   ignoreTerrain?: boolean;
+  duckable?: boolean;
   onHitPlayer?: () => void;
   onHitWall?: () => void;
 };
@@ -100,6 +101,7 @@ export class CombatSystem {
       if (!s.active || s.harmful === false) return;
       if (!player.isAlive()) return;
       if (player.isInvulnerable()) return;
+      if (s.duckable && this.isDucking(s.body as Phaser.Physics.Arcade.Body)) return;
       player.hurt({ amount: s.damage ?? 1, fromX: s.x, kind: 'projectile' });
       if (s.onHitPlayer) s.onHitPlayer();
       else s.destroy();
@@ -110,6 +112,17 @@ export class CombatSystem {
       if (player.isAlive()) (c as unknown as Collectible).collect(ctx);
     });
     physics.add.overlap(player, groups.triggers, (_p, t) => (t as unknown as Trigger).onPlayerOverlap(ctx));
+  }
+
+  /**
+   * Ducking under a high attack: holding down while (nearly) on the ground counts as crouched,
+   * even on frames where the crouch hitbox hasn't been applied yet.
+   */
+  private isDucking(shot: Phaser.Physics.Arcade.Body): boolean {
+    const p = this.ctx.player;
+    if (!p.lastInput.down || Math.abs(p.body.velocity.y) > 40) return false;
+    const crouchTop = p.body.bottom - p.def.body.crouchHeight;
+    return shot.bottom <= crouchTop + 1;
   }
 
   /** One-way moving platforms: only collide from above. Platforms opt in via `oneWay` data. */

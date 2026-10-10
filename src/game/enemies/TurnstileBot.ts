@@ -16,7 +16,7 @@ export class TurnstileBot extends Enemy {
   private warned = false;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'turnstileBot', hp: 2, contactDamage: 1, stompable: true, body: { width: 18, height: 26 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.turnstileBot });
+    super(ctx, spawn, { kind: 'turnstileBot', hp: 2, contactDamage: 1, stompable: true, body: { width: 20, height: 28 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.turnstileBot });
     this.speed = propNum(spawn.props, 'speed', 22);
     this.cycle = new PhaseCycle(
       [

@@ -4,7 +4,7 @@ import type { HitInfo } from '../types';
 import { Enemy } from '../entities/Enemy';
 import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { playAnim } from '../systems/AnimationSystem';
-import { ENEMY_FRAME_SIZE, ensureSimpleTexture } from './enemyArt';
+import { ENEMY_FRAME_SIZE, ensureSimpleTexture, hasRealAtlas } from './enemyArt';
 import { propNum, shieldBlocks } from './ai';
 
 /**
@@ -16,18 +16,22 @@ import { propNum, shieldBlocks } from './ai';
 export class Raccoon extends Enemy {
   hasLid = true;
   private lid?: Phaser.GameObjects.Image;
+  /** The Art team's raccoon frames already show the lid (we crop it away once knocked off). */
+  private readonly artHasLid: boolean;
   private readonly speed: number;
   private readonly sight: number;
   private cooldownUntil = 0;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'raccoon', hp: 2, contactDamage: 1, stompable: true, body: { width: 20, height: 18 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.raccoon });
+    super(ctx, spawn, { kind: 'raccoon', hp: 2, contactDamage: 1, stompable: true, body: { width: 24, height: 20 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.raccoon });
     this.speed = propNum(spawn.props, 'speed', 28);
     this.sight = propNum(spawn.props, 'range', 96);
     const key = ensureSimpleTexture(ctx.scene, 'raccoon-lid', 6, 16, (g) =>
       g.fillStyle(0x9aa3ad).fillRect(1, 0, 4, 16).fillStyle(0xd7dde3).fillRect(2, 1, 2, 14).fillStyle(0x5a6068).fillRect(0, 6, 1, 4),
     );
     this.lid = ctx.scene.add.image(this.x, this.y, key).setOrigin(0.5, 1).setDepth(DEPTH.enemies + 1);
+    this.artHasLid = hasRealAtlas(ctx.scene, 'raccoon');
+    if (this.artHasLid) this.lid.setVisible(false);
     this.setAI('patrol');
   }
 
@@ -51,6 +55,9 @@ export class Raccoon extends Enemy {
     const lid = this.lid;
     this.lid = undefined;
     if (!lid) return;
+    lid.setVisible(true);
+    // Hide the lid drawn in the atlas frames (it occupies the front ~third of the frame).
+    if (this.artHasLid) this.setCrop(0, 0, Math.round(this.width * 0.68), this.height);
     this.ctx.sfx('clang');
     const dir = Math.sign(this.x - fromX) || 1;
     this.scene.tweens.add({ targets: lid, x: lid.x + dir * 40, y: lid.y - 30, angle: dir * 540, duration: 420, ease: 'Quad.easeOut' });
@@ -108,7 +115,7 @@ export class Raccoon extends Enemy {
     super.preUpdate(time, delta);
     if (this.lid && this.active) {
       this.lid.setPosition(this.x + this.facing * 11, this.y - 2);
-      this.lid.setVisible(this.visible);
+      this.lid.setVisible(this.visible && !this.artHasLid);
     }
   }
 

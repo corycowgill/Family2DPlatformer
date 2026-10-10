@@ -18,7 +18,7 @@ export class SecurityDrone extends Enemy {
   private readonly baseY: number;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'securityDrone', hp: 1, contactDamage: 1, stompable: true, body: { width: 18, height: 12 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.securityDrone });
+    super(ctx, spawn, { kind: 'securityDrone', hp: 1, contactDamage: 1, stompable: true, body: { width: 24, height: 14 }, gravity: false, frameSize: ENEMY_FRAME_SIZE.securityDrone });
     this.range = propNum(spawn.props, 'range', 40);
     this.sight = propNum(spawn.props, 'sight', 220);
     this.interval = propNum(spawn.props, 'interval', 2500);

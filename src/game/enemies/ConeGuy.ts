@@ -1,6 +1,6 @@
 import { Enemy, type StompOutcome } from '../entities/Enemy';
 import type { LevelContext, SpawnObject } from '../world/LevelContext';
-import { playAnim } from '../systems/AnimationSystem';
+import { hasAnim, playAnim } from '../systems/AnimationSystem';
 import { ENEMY_FRAME_SIZE } from './enemyArt';
 import { kickDirection, propNum, shellHurtsPlayer } from './ai';
 
@@ -22,7 +22,7 @@ export class ConeGuy extends Enemy {
   private kickedAt = -1e9;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'coneGuy', hp: 1, contactDamage: 1, stompable: true, body: { width: 14, height: 22 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.coneGuy });
+    super(ctx, spawn, { kind: 'coneGuy', hp: 1, contactDamage: 1, stompable: true, body: { width: 16, height: 24 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.coneGuy });
     this.speed = propNum(spawn.props, 'speed', 30);
     this.setAI('walk');
   }
@@ -66,12 +66,24 @@ export class ConeGuy extends Enemy {
     return this.aiState === 'slide' && Math.abs(this.body.velocity.x) > 40;
   }
 
+  /** Hidden-in-cone pose: 'shell' anim if the atlas has one, else the squashed `die_1` frame. */
+  private showShell(): void {
+    if (hasAnim(this.scene, this.texture.key, 'shell')) {
+      playAnim(this, 'shell');
+      return;
+    }
+    if (this.texture.has('die_1')) {
+      this.anims.stop();
+      if (this.frame.name !== 'die_1') this.setFrame('die_1');
+    }
+  }
+
   private enterShell(): void {
     this.setAI('shell');
     this.body.setVelocityX(0);
     this.resizeBody(16, 12);
     this.playerGraceUntil = this.ctx.now() + 250;
-    playAnim(this, 'shell', 'hit', false);
+    this.showShell();
   }
 
   private kick(dir: 1 | -1): void {
@@ -93,13 +105,13 @@ export class ConeGuy extends Enemy {
         break;
       case 'shell': {
         if (b.blocked.down) b.setVelocityX(0);
-        playAnim(this, 'shell', 'hit');
+        this.showShell();
         const wakeIn = WAKE_MS - this.stateTime;
         // Wobble warning before waking up.
         this.setAngle(wakeIn < WAKE_WARN_MS ? Math.sin(this.stateTime / 40) * 8 : 0);
         if (wakeIn <= 0) {
           this.setAngle(0);
-          this.resizeBody(14, 22);
+          this.resizeBody(16, 24);
           this.body.y -= 1;
           this.setAI('walk');
           this.facePlayer();
@@ -107,7 +119,7 @@ export class ConeGuy extends Enemy {
         break;
       }
       case 'slide':
-        playAnim(this, 'shell', 'hit');
+        this.showShell();
         this.setAngle(0);
         if (this.wallAhead(this.facing)) {
           this.facing = (this.facing * -1) as 1 | -1;

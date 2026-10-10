@@ -24,7 +24,7 @@ export class Warlord extends Enemy {
   private readonly sight: number;
 
   constructor(ctx: LevelContext, spawn: SpawnObject) {
-    super(ctx, spawn, { kind: 'warlord', hp: 6, contactDamage: 1, stompable: true, body: { width: 24, height: 40 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.warlord });
+    super(ctx, spawn, { kind: 'warlord', hp: 6, contactDamage: 1, stompable: true, body: { width: 26, height: 44 }, gravity: true, frameSize: ENEMY_FRAME_SIZE.warlord });
     this.isBoss = spawn.props.boss === true;
     this.bossName = String(spawn.props.name ?? 'Alien Warlord');
     this.sight = propNum(spawn.props, 'range', 220);
