@@ -1,4 +1,226 @@
 {
-  "atlases": [],
-  "images": []
+  "atlases": [
+    {
+      "key": "brennan",
+      "png": "assets/characters/brennan.png",
+      "json": "assets/characters/brennan.json"
+    },
+    {
+      "key": "dad",
+      "png": "assets/characters/dad.png",
+      "json": "assets/characters/dad.json"
+    },
+    {
+      "key": "lupin",
+      "png": "assets/characters/lupin.png",
+      "json": "assets/characters/lupin.json"
+    },
+    {
+      "key": "mom",
+      "png": "assets/characters/mom.png",
+      "json": "assets/characters/mom.json"
+    },
+    {
+      "key": "parker",
+      "png": "assets/characters/parker.png",
+      "json": "assets/characters/parker.json"
+    },
+    {
+      "key": "effects",
+      "png": "assets/effects.png",
+      "json": "assets/effects.json"
+    },
+    {
+      "key": "coneGuy",
+      "png": "assets/enemies/coneGuy.png",
+      "json": "assets/enemies/coneGuy.json"
+    },
+    {
+      "key": "eliminator",
+      "png": "assets/enemies/eliminator.png",
+      "json": "assets/enemies/eliminator.json"
+    },
+    {
+      "key": "gnat",
+      "png": "assets/enemies/gnat.png",
+      "json": "assets/enemies/gnat.json"
+    },
+    {
+      "key": "juggernaut",
+      "png": "assets/enemies/juggernaut.png",
+      "json": "assets/enemies/juggernaut.json"
+    },
+    {
+      "key": "overseer",
+      "png": "assets/enemies/overseer.png",
+      "json": "assets/enemies/overseer.json"
+    },
+    {
+      "key": "pigeon",
+      "png": "assets/enemies/pigeon.png",
+      "json": "assets/enemies/pigeon.json"
+    },
+    {
+      "key": "raccoon",
+      "png": "assets/enemies/raccoon.png",
+      "json": "assets/enemies/raccoon.json"
+    },
+    {
+      "key": "rat",
+      "png": "assets/enemies/rat.png",
+      "json": "assets/enemies/rat.json"
+    },
+    {
+      "key": "securityDrone",
+      "png": "assets/enemies/securityDrone.png",
+      "json": "assets/enemies/securityDrone.json"
+    },
+    {
+      "key": "skirmisher",
+      "png": "assets/enemies/skirmisher.png",
+      "json": "assets/enemies/skirmisher.json"
+    },
+    {
+      "key": "turnstileBot",
+      "png": "assets/enemies/turnstileBot.png",
+      "json": "assets/enemies/turnstileBot.json"
+    },
+    {
+      "key": "warlord",
+      "png": "assets/enemies/warlord.png",
+      "json": "assets/enemies/warlord.json"
+    },
+    {
+      "key": "wasp",
+      "png": "assets/enemies/wasp.png",
+      "json": "assets/enemies/wasp.json"
+    },
+    {
+      "key": "windowWasher",
+      "png": "assets/enemies/windowWasher.png",
+      "json": "assets/enemies/windowWasher.json"
+    },
+    {
+      "key": "items",
+      "png": "assets/items.png",
+      "json": "assets/items.json"
+    },
+    {
+      "key": "platforms",
+      "png": "assets/platforms.png",
+      "json": "assets/platforms.json"
+    },
+    {
+      "key": "props",
+      "png": "assets/props.png",
+      "json": "assets/props.json"
+    },
+    {
+      "key": "ui",
+      "png": "assets/ui.png",
+      "json": "assets/ui.json"
+    }
+  ],
+  "images": [
+    {
+      "key": "bg-day-far",
+      "path": "assets/backgrounds/bg-day-far.png"
+    },
+    {
+      "key": "bg-day-mid",
+      "path": "assets/backgrounds/bg-day-mid.png"
+    },
+    {
+      "key": "bg-day-near",
+      "path": "assets/backgrounds/bg-day-near.png"
+    },
+    {
+      "key": "bg-day-sky",
+      "path": "assets/backgrounds/bg-day-sky.png"
+    },
+    {
+      "key": "bg-river-far",
+      "path": "assets/backgrounds/bg-river-far.png"
+    },
+    {
+      "key": "bg-river-mid",
+      "path": "assets/backgrounds/bg-river-mid.png"
+    },
+    {
+      "key": "bg-river-near",
+      "path": "assets/backgrounds/bg-river-near.png"
+    },
+    {
+      "key": "bg-river-sky",
+      "path": "assets/backgrounds/bg-river-sky.png"
+    },
+    {
+      "key": "bg-rooftop-far",
+      "path": "assets/backgrounds/bg-rooftop-far.png"
+    },
+    {
+      "key": "bg-rooftop-mid",
+      "path": "assets/backgrounds/bg-rooftop-mid.png"
+    },
+    {
+      "key": "bg-rooftop-near",
+      "path": "assets/backgrounds/bg-rooftop-near.png"
+    },
+    {
+      "key": "bg-rooftop-sky",
+      "path": "assets/backgrounds/bg-rooftop-sky.png"
+    },
+    {
+      "key": "bg-sunset-far",
+      "path": "assets/backgrounds/bg-sunset-far.png"
+    },
+    {
+      "key": "bg-sunset-mid",
+      "path": "assets/backgrounds/bg-sunset-mid.png"
+    },
+    {
+      "key": "bg-sunset-near",
+      "path": "assets/backgrounds/bg-sunset-near.png"
+    },
+    {
+      "key": "bg-sunset-sky",
+      "path": "assets/backgrounds/bg-sunset-sky.png"
+    },
+    {
+      "key": "logo",
+      "path": "assets/logo.png"
+    },
+    {
+      "key": "pixel-font",
+      "path": "assets/pixel-font.png"
+    },
+    {
+      "key": "tiles",
+      "path": "assets/tilesets/chicago-tiles.png"
+    },
+    {
+      "key": "portrait-brennan",
+      "path": "assets/ui/portrait-brennan.png"
+    },
+    {
+      "key": "portrait-dad",
+      "path": "assets/ui/portrait-dad.png"
+    },
+    {
+      "key": "portrait-lupin",
+      "path": "assets/ui/portrait-lupin.png"
+    },
+    {
+      "key": "portrait-mom",
+      "path": "assets/ui/portrait-mom.png"
+    },
+    {
+      "key": "portrait-parker",
+      "path": "assets/ui/portrait-parker.png"
+    },
+    {
+      "key": "world-map",
+      "path": "assets/world-map.png"
+    }
+  ]
 }
