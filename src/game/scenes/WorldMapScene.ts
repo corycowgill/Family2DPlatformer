@@ -1,13 +1,12 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { LEVELS } from '../data/levels';
-import { IMAGES } from '../data/assets';
 import { saveSystem } from '../systems/SaveSystem';
 import { gameState } from '../state/GameState';
 import { audio } from '../systems/AudioSystem';
 import { playAnim } from '../systems/AnimationSystem';
 import { px, setPx } from '../ui/PixelFont';
-import { icon, isRealAsset, setIcon } from '../ui/Icons';
+import { icon, setIcon } from '../ui/Icons';
 import { onNav } from '../ui/NavInput';
 import { COLORS, button, drawPanel, type UIButton } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
@@ -113,11 +112,8 @@ export class WorldMapScene extends Phaser.Scene {
   // ------------------------------------------------------------------ drawing
 
   private drawMap(): void {
-    if (isRealAsset(this, IMAGES.worldMap)) {
-      const img = this.add.image(0, 0, IMAGES.worldMap).setOrigin(0);
-      img.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
-      return;
-    }
+    // Always draw procedurally: node/neighbourhood positions are laid out for this drawing
+    // (the 'world-map' image has its own labels and geography, which would double up).
     const g = this.add.graphics();
     // Land + street grid
     g.fillStyle(0x34503f, 1).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
