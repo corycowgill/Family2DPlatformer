@@ -371,28 +371,34 @@ def pack_atlas(frames: dict[str, Image.Image], out_base: str, max_w=512, pad=1):
     return sheet
 
 
-def contact_sheet(frames: dict[str, Image.Image], path: str, scale=3, cols=8, bg=(54, 60, 84, 255), label=True):
-    """Preview: every frame scaled up with its name underneath."""
+def contact_sheet(frames: dict[str, Image.Image], path: str, scale=3, cols=8, bg=(54, 60, 84, 255), label=True, max_w=1500):
+    """Preview: every frame scaled up with its name underneath (row height = tallest in row)."""
     names = list(frames)
-    cell_w = max(max(im.width for im in frames.values()) * scale, 60) + 8
-    cell_h = max(im.height for im in frames.values()) * scale + 16
-    cols = max(1, min(cols, 1600 // cell_w))
-    rows = (len(names) + cols - 1) // cols
-    sheet = Image.new("RGBA", (cols * cell_w, rows * cell_h), bg)
-    cv = Cv(sheet.width, sheet.height)
-    cv.im = sheet
-    cv.px = sheet.load()
-    for i, n in enumerate(names):
+    placed = []
+    x = y = row_h = 0
+    width = 0
+    for n in names:
         im = frames[n]
-        x0 = (i % cols) * cell_w + 4
-        y0 = (i // cols) * cell_h + 2
-        # checker behind
+        cw = max(im.width * scale, 64) + 8
+        ch = im.height * scale + 14
+        if x + cw > max_w and x > 0:
+            x = 0
+            y += row_h
+            row_h = 0
+        placed.append((n, x + 4, y + 2))
+        x += cw
+        width = max(width, x)
+        row_h = max(row_h, ch)
+    sheet = Image.new("RGBA", (width, y + row_h), bg)
+    cv = Cv(1, 1)
+    for n, x0, y0 in placed:
+        im = frames[n]
         big = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
-        chk = Image.new("RGBA", big.size, (74, 82, 110, 255))
-        sheet.alpha_composite(chk, (x0, y0))
+        sheet.alpha_composite(Image.new("RGBA", big.size, (74, 82, 110, 255)), (x0, y0))
         sheet.alpha_composite(big, (x0, y0))
-        cv.px = sheet.load()
         if label:
+            cv.im, cv.w, cv.h = sheet, sheet.width, sheet.height
+            cv.px = sheet.load()
             draw_text(cv, x0, y0 + big.height + 3, n[:16].replace("_", "-"), (255, 255, 255, 255))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     sheet.save(path)
