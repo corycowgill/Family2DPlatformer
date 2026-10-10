@@ -82,6 +82,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private landTimer = 0;
   /** Extra downward velocity we added last tick (ground stick + platform), excluded from motor readback. */
   private appliedExtraVy = 0;
+  /** True when the last step wrote a ground-stick velocity (we were standing). */
+  private stuckToGround = false;
   /** Horizontal platform carry we added last step (excluded from motor readback). */
   private appliedCarryVx = 0;
   /** Timed one-shot animation (attack / ability) overriding the locomotion anim. */
@@ -258,9 +260,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     m.vx = b.velocity.x - this.appliedCarryVx;
     if ((b.blocked.left && m.vx < 0) || (b.blocked.right && m.vx > 0) || (Math.abs(b.velocity.x) < 0.01 && (b.blocked.left || b.blocked.right))) m.vx = 0;
     const readVy = b.velocity.y;
-    // Last step we pushed into the ground; unless something launched us (bounce pad), we're at rest.
-    m.vy = this.appliedExtraVy !== 0 && readVy > -100 ? 0 : readVy;
     const plat = this.currentPlatform();
+    // Last step we pushed into the ground (plus any platform motion); unless something
+    // launched us (bounce pad) we're at rest relative to what we stand on. Compare against
+    // the velocity we applied, so rising platforms (negative applied vy) still count.
+    m.vy = this.stuckToGround && readVy > this.appliedExtraVy - 100 ? 0 : readVy;
+    // Just landed on a moving (e.g. rising) platform: judge rest relative to the platform.
+    if (plat && !this.stuckToGround && readVy - plat.velocity.y > -60) m.vy = 0;
     // NB: only `blocked` — `touching` is also set by mere overlaps (coins, triggers).
     const touchingGround = b.blocked.down || !!plat;
     m.grounded = touchingGround && m.vy >= 0;
@@ -290,6 +296,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (ridden) carryVx = ridden.velocity.x * (1 - Phaser.Math.Clamp(ridden.friction.x, 0, 1));
     }
     this.appliedExtraVy = extraVy;
+    this.stuckToGround = m.grounded && m.vy >= 0;
     this.appliedCarryVx = carryVx;
     b.setVelocity(m.vx + carryVx, m.vy + extraVy);
 
@@ -574,6 +581,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.motor.jumpCut = !held;
     this.groundPlatform = null;
     this.appliedExtraVy = 0;
+    this.stuckToGround = false;
     this.appliedCarryVx = 0;
     this.body.setVelocityY(this.motor.vy);
   }
@@ -601,6 +609,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.motor.jumping = false;
     this.groundPlatform = null;
     this.appliedExtraVy = 0;
+    this.stuckToGround = false;
     this.appliedCarryVx = 0;
     this.body.setVelocity(this.motor.vx, this.motor.vy);
     this.attacking = false;
@@ -648,6 +657,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.actionAnim = null;
     this.groundPlatform = null;
     this.appliedExtraVy = 0;
+    this.stuckToGround = false;
     this.appliedCarryVx = 0;
     this.applyBodySize(false);
     this.invulnUntil = this.ctx.now() + 1500;
