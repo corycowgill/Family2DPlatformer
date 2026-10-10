@@ -32,7 +32,7 @@
       #game { position: fixed; inset: 0; }
       #game canvas { image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; -webkit-touch-callout: none; outline: none; }
       #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; box-sizing: border-box; color: #cfe3ff; font: 16px monospace; text-align: center; }
-      #boot small { max-width: 640px; color: #ffd25a; font-size: 13px; line-height: 1.5; -webkit-user-select: text; user-select: text; }
+      #boot small { max-width: min(640px, 100%); overflow-wrap: anywhere; color: #ffd25a; font-size: 13px; line-height: 1.5; -webkit-user-select: text; user-select: text; }
     </style>
   </head>
   <body>
@@ -53,7 +53,7 @@
         }
         var hint = location.protocol === 'file:'
           ? 'The game must be served by a web server, not opened as a file. Run "npm install && npm run dev" and open the address it prints.'
-          : 'If this is GitHub Pages, set Settings > Pages > Source to "GitHub Actions" (deploying the branch directly serves unbuilt source).';
+          : 'The site is serving unbuilt source code. The host must build it: run "npm ci && npm run build" and publish the "dist" folder (Render: Build Command + Publish Directory = dist; GitHub Pages: Source = GitHub Actions).';
         window.addEventListener('error', function (e) {
           var el = e.target;
           if (el && el.tagName === 'SCRIPT') show('Game script failed to load (' + (el.src || 'module') + '). ' + hint);
