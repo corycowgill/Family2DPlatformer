@@ -2,9 +2,12 @@ import Phaser from 'phaser';
 import { createGameConfig } from './game/main-config';
 import { audio } from './game/systems/AudioSystem';
 import { setInputDevice } from './game/systems/InputDevice';
+import { installPlatform } from './game/platform';
 
 const game = new Phaser.Game(createGameConfig('game'));
 audio.init(game);
+// Mobile / iOS: hardening, audio unlock + background pause, DOM touch controls, home-screen tip.
+installPlatform(game);
 document.getElementById('boot')?.remove();
 
 // Track the active input device for prompts / touch-control visibility (gamepad sets itself).

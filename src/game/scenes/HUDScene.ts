@@ -167,7 +167,9 @@ export class HUDScene extends Phaser.Scene {
       this.events.off(Phaser.Scenes.Events.UPDATE, drawLeftPanel);
     });
 
-    this.touch = new TouchControls(this);
+    // DOM touch overlay (shown only while the level runs on a touch device). It has its own
+    // pause button, so the in-canvas one hides while the overlay is up.
+    this.touch = new TouchControls(this, lv, (shown) => pauseBtn.setVisible(!shown));
   }
 
   // ------------------------------------------------------------------ pieces

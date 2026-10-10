@@ -7,7 +7,6 @@ import { cycle, formatTime, pad, remaining01, stepVolume, volumeBar } from '../.
 import { allGlyphs, CAP_HEIGHT, GLYPH_ROWS, measureLine, sanitizeText, SUPPORTED_CHARS } from '../../src/game/ui/fontGlyphs';
 import { pathBetween, pickDirectional } from '../../src/game/ui/mapNav';
 import { nextEnabled } from '../../src/game/ui/Menus';
-import { hitTest, TOUCH_LAYOUT } from '../../src/game/ui/TouchControls';
 import { stickDirection } from '../../src/game/ui/NavInput';
 import { bandCoverage } from '../../src/game/ui/Transitions';
 import { musicGain, sfxGain } from '../../src/game/systems/AudioSystem';
@@ -103,18 +102,7 @@ describe('menu + map navigation', () => {
   });
 });
 
-describe('touch controls', () => {
-  it('maps touches to buttons', () => {
-    const at = (id: string) => TOUCH_LAYOUT.find((c) => c.id === id)!;
-    for (const id of ['left', 'right', 'down', 'jump', 'attack', 'run']) {
-      expect(hitTest(at(id).x, at(id).y), id).toBe(id);
-    }
-    expect(hitTest(240, 135)).toBeNull(); // middle of the play area
-    expect(hitTest(5, 268)).toBe('left'); // extreme corner still counts
-    expect(hitTest(105, 268)).toBe('right');
-    expect(hitTest(at('jump').x - 25, at('jump').y)).toBe('jump'); // fat-finger tolerance
-  });
-});
+// Touch-control geometry is covered in touch-layout.test.ts.
 
 describe('transitions + audio gain', () => {
   it('blind wipe coverage is monotonic and complete', () => {
