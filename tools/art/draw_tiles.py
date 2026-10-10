@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Draws public/assets/tilesets/chicago-tiles.png (256x64, 16x16 tiles, 16 columns)
-in exactly the order of src/game/data/tiles.ts, plus art/previews/tiles-*.png.
+Draws public/assets/tilesets/chicago-tiles.png (256 wide, 16x16 tiles, 16 columns,
+as many rows as the contract needs) in exactly the order of src/game/data/tiles.ts,
+plus art/previews/tiles-*.png. Rows 4+ (materials + facade decor) come from draw_terrain.py.
 
 Fill tiles are periodic in 16px so they tile with themselves; each *_TOP tile
 re-uses its fill function under a distinct walkable top band.
@@ -13,6 +14,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from pxl import ASSETS, PREVIEWS, ROOT, Cv, P, T, c, lerp, scaled  # noqa: E402
 from PIL import Image  # noqa: E402
+from draw_terrain import terrain_tiles  # noqa: E402
 
 S = 16
 
@@ -1094,14 +1096,16 @@ def contract_order():
     src = open(os.path.join(ROOT, "src/game/data/tiles.ts")).read()
     body = src[src.index("export const TILE = {"):]
     body = body[: body.index("} as const")]
-    pairs = re.findall(r"([A-Z_]+):\s*(\d+)", body)
+    pairs = re.findall(r"^\s+([A-Z_0-9]+):\s*(\d+),", body, re.M)
     return {name: int(i) for name, i in pairs}
 
 
 def build():
     order = contract_order()
+    TILES.update(terrain_tiles())
     assert set(order) == set(TILES), (set(order) ^ set(TILES))
-    sheet = Image.new("RGBA", (256, 64), (0, 0, 0, 0))
+    rows = (max(order.values()) + 16) // 16
+    sheet = Image.new("RGBA", (256, rows * 16), (0, 0, 0, 0))
     ims = {}
     for name, idx in order.items():
         im = TILES[name]().im
@@ -1220,10 +1224,11 @@ def preview_sheet(sheet, order):
     from pxl import draw_text
     s = 4
     names = {v: k for k, v in order.items()}
-    big = Image.new("RGBA", (16 * (16 * s + 4), 4 * (16 * s + 14)), (54, 60, 84, 255))
+    rows = sheet.height // 16
+    big = Image.new("RGBA", (16 * (16 * s + 4), rows * (16 * s + 14)), (54, 60, 84, 255))
     cv = Cv(big.width, big.height)
     cv.im = big
-    for idx in range(64):
+    for idx in sorted(names):
         x0 = (idx % 16) * (16 * s + 4) + 2
         y0 = (idx // 16) * (16 * s + 14) + 2
         t = sheet.crop(((idx % 16) * 16, (idx // 16) * 16, (idx % 16) * 16 + 16, (idx // 16) * 16 + 16))

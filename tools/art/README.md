@@ -106,14 +106,39 @@ parallax), `backgrounds.png` (all four themes composited), `items/ui/props/effec
 `logo.png`, `world-map.png`.
 
 ## Tileset
-`chicago-tiles.png` 256x64, order generated from `src/game/data/tiles.ts` (the script parses
-the contract and asserts every name is drawn). Fill tiles are 16px-periodic; every `*_TOP`
-tile is its fill pattern with a bright walkable top band. Open/partial tiles (GIRDER_X,
-GIRDER_POST, SCAFFOLD_*, CHAIN_FENCE, PIPE_H, WOOD_POST, BRIDGE_TRUSS/RAIL, RAILING, BUSH,
-AWNING_*, WATER_TOP surface, SPIKES, ELECTRIC_RAIL arcs) have transparency.
+`chicago-tiles.png` 256 wide, 16 columns, as many rows as `TILE_COUNT` needs (608 tiles = 38 rows).
+Order is generated from `src/game/data/tiles.ts` (the script parses the contract and asserts every
+name is drawn). Rows 0-3 (indices 0-63) are the original hand-placed tiles and stay stable.
+Fill tiles are 16px-periodic; every `*_TOP` tile is its fill pattern with a bright walkable top band.
+Open/partial tiles (GIRDER_X, GIRDER_POST, SCAFFOLD_*, CHAIN_FENCE, PIPE_H, WOOD_POST, BRIDGE_TRUSS/RAIL,
+RAILING, BUSH, AWNING_*, WATER_TOP surface, SPIKES, ELECTRIC_RAIL arcs) have transparency.
 Notes: RAIL = steel running rail on ties on a girder (walkable track top); RAIL_TIE = ties
 only. WATER is static. BRIDGE_* steel is slate green-grey to read differently from the
 rust-red L steel.
+
+### Materials (rows 4-33, `tools/art/draw_terrain.py`)
+Ten auto-tiled materials — CONC (sidewalk over board-formed concrete), LIME (limestone ashlar,
+cornice cap), BRICK (bold running bond, limestone coping), GIRD (riveted L steel), RWALK (granite
+pavers over big granite blocks, algae deep down), STONE (river rubble wall), ROOF (metal parapet
+coping over a slate precast wall), ASPH (road with lane paint over a gravel road base), DECK (bridge
+plate girder), WACK (Lower Wacker slab with sodium lamps on its underside). Each has the same 48 slots
+(`${MAT}_${SUFFIX}`, 3 rows, see `MATERIAL_SUFFIXES`): caps `T0-T3` + rare `X0/X1`, corners `TL/TR/TLR`,
+inner corners `IL/IR`, one-tile slabs `S*`, side edges `L/R/LR`, near-surface fills `F0-F6` + rare
+`X2/X3`, undersides `B*` (shadowed), and darker depth tiers `D*` (2-3 tiles down) / `E*` (4+, incl.
+`DL/DR/EL/ER` edges). Every walkable top has a bright lit lip; edges have a dark outline + inner
+highlight (left) / shade (right). Variant details (cracks, stains, tie holes, rivets, rust, plaques,
+mooring rings...) stay inside the tile so any variant tiles with any other.
+
+### Facade decor (rows 34-37)
+Background-only, flatter and lower contrast than the solids and never with a lit lip: brick (`FB_*`)
+and limestone (`FL_*`) walls, cornices (`*_CORN_L/_/R`), quoined edges, unlit / lit / blind / AC / TV
+windows, Chicago windows and arches, fire escape (window, rail, stair), belt-course ledges,
+storefront sign band (`BAND_*`), rooftop water tower (2x2 `WT_*`), HVAC / stacks / antenna, a vertical
+"CHICAGO" marquee (`SIGN_V_TOP`, `SIGN_V1-4`), Lower Wacker wall / lamp / guide sign / exit / beam /
+pillar (+ striped base), lit / dark curtain-wall glass and a CTA sign. The level compiler places them
+(see `tools/levels/autotile.mjs`).
+
+Previews: `art/previews/tiles-sheet.png` (all indices), `terrain-before-after-<level>.png`.
 
 ## Backgrounds
 sky 480x270 (opaque, ordered-dither gradient + clouds); far/mid/near 960x270, drawn with

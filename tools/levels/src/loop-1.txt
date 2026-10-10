@@ -26,7 +26,7 @@ l: background RAIL_TIE
 ): oneway AWNING_R
 M: ground MANHOLE
 N: ground GRATE
-Z: ground LOWER_WACKER
+Z: ground @WACK
 O: ground SUBWAY_TILE
 U: ground CURB
 X: ground RIVET_PLATE

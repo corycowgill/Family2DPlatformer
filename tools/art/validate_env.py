@@ -2,7 +2,7 @@
 """Validate environment art (tileset, backgrounds, shared atlases) against
 src/game/data/assets.ts and tiles.ts. Exit 1 on failure.
 
-Checks: tileset size 256x64; every ATLAS.<key>.frames name exists; every anim has
+Checks: tileset size 256 x (rows for TILE_COUNT); every ATLAS.<key>.frames name exists; every anim has
 >= 2 frames `<anim>_0..n` contiguous; frames inside the sheet; hard alpha; sky layers
 opaque 270px tall; far/mid/near 270 tall with width a multiple of 480 and opaque
 pixels only in the lower part; logo / world-map present.
@@ -42,8 +42,10 @@ def check_hard_alpha(im, label):
 
 def main():
     t = Image.open(os.path.join(A, "tilesets", "chicago-tiles.png"))
-    if t.size != (256, 64):
-        errors.append(f"tileset size {t.size}")
+    ts = open(os.path.join(ROOT, "src/game/data/tiles.ts")).read()
+    count = int(re.search(r"TILE_COUNT = (\d+)", ts).group(1))
+    if t.size != (256, ((count + 15) // 16) * 16):
+        errors.append(f"tileset size {t.size} for {count} tiles")
     check_hard_alpha(t.convert("RGBA"), "tileset")
     for key, (frames, anims) in parse_atlas_contract().items():
         jp = os.path.join(A, key + ".json")

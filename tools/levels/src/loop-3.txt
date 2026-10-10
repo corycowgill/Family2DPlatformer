@@ -13,7 +13,8 @@ a: background LIMESTONE_ARCH
 ,: background BUSH
 ;: background RAILING
 /: background CHAIN_FENCE
-I: background PILLAR_CAP
+I: background LW_PILLAR_CAP
+!: background LW_PILLAR
 H: background BRIDGE_TRUSS
 i: background BRIDGE_RAIL
 y: background WOOD_POST
@@ -26,7 +27,7 @@ l: background RAIL_TIE
 ): oneway AWNING_R
 M: ground MANHOLE
 N: ground GRATE
-Z: ground LOWER_WACKER
+Z: ground @WACK
 O: ground SUBWAY_TILE
 U: ground CURB
 X: ground RIVET_PLATE

@@ -82,13 +82,80 @@ describe('level compiler: compile', () => {
     for (const l of r.json.layers.filter((l) => l.type === 'tilelayer')) expect(l.data).toHaveLength(8);
   });
 
-  it('auto-tiles: top tile when the cell above differs, fill tile below', () => {
-    const r = build(lvl('P..F\n####\n####\nBB##'));
-    expect(tileAt(r, 'ground', 0, 1)).toBe(gid('SIDEWALK'));
-    expect(tileAt(r, 'ground', 0, 2)).toBe(gid('CONCRETE'));
-    // B under # starts a new run → top tile
-    expect(tileAt(r, 'ground', 0, 3)).toBe(gid('BRICK_TOP'));
-    expect(tileAt(r, 'ground', 2, 3)).toBe(gid('CONCRETE'));
+  it('auto-tiles materials by neighbourhood: caps, corners, edges, depth tiers', () => {
+    const r = build(lvl('P....F\n.####.\n.####.\n.####.\n.####.\n.####.'));
+    const name = (x: number, y: number) => {
+      const g = tileAt(r, 'ground', x, y) - 1;
+      return (Object.keys(TILE) as (keyof typeof TILE)[]).find((k) => TILE[k] === g);
+    };
+    expect(name(1, 1)).toBe('CONC_TL');
+    expect(name(4, 1)).toBe('CONC_TR');
+    expect(name(2, 1)).toMatch(/^CONC_(T[0-3]|X[01])$/); // walkable cap variant
+    expect(name(1, 2)).toBe('CONC_L');
+    expect(name(4, 3)).toBe('CONC_DR'); // 2 tiles deep → darker tier
+    expect(name(2, 2)).toMatch(/^CONC_(F[0-6]|X[23])$/);
+    expect(name(2, 3)).toMatch(/^CONC_D[0-3]$/);
+    expect(name(2, 5)).toMatch(/^CONC_E[0-2]$/); // map bottom continues → no underside
+  });
+
+  it('auto-tiles undersides, one-tile slabs, inner corners and mixed materials', () => {
+    const r = build(lvl('P.....F\n.......\n..BBB..\n..BBB..\n.......\n.GGG...\n.GGGG..\n#######\n#######'));
+    const name = (x: number, y: number) => {
+      const g = tileAt(r, 'ground', x, y) - 1;
+      return (Object.keys(TILE) as (keyof typeof TILE)[]).find((k) => TILE[k] === g);
+    };
+    expect(name(2, 3)).toBe('BRICK_BL');
+    expect(name(3, 3)).toMatch(/^BRICK_B[0-3]$/);
+    expect(name(4, 6)).toBe('GIRD_TR'); // step down: cap
+    expect(name(3, 6)).toBe('GIRD_IR'); // under the wall next to the step: inner corner
+    // a different solid above: no lip, it continues as fill
+    expect(name(2, 7)).toMatch(/^CONC_(D[0-3]|DL|F[0-6]|X[23])$/);
+    const slab = build(lvl('P...F\n.KKK.\n.....\n#####'));
+    const slabName = (x: number) => (Object.keys(TILE) as (keyof typeof TILE)[]).find((k) => TILE[k] === tileAt(slab, 'ground', x, 1) - 1);
+    expect([slabName(1), slabName(3)]).toEqual(['DECK_SL', 'DECK_SR']);
+    expect(slabName(2)).toMatch(/^DECK_S[01]$/);
+  });
+
+  it('auto-tiling is deterministic and only changes tile choice, never occupancy', () => {
+    const text = lvl('P.......F\n#########\n#########\n#########');
+    const a = build(text);
+    const b = build(text);
+    expect(layer(a, 'ground').data).toEqual(layer(b, 'ground').data);
+    const occupied = layer(a, 'ground').data!.map((g) => g > 0);
+    expect(occupied).toEqual([...'P.......F', ...'#'.repeat(27)].map((c) => c === '#'));
+  });
+
+  it('legacy two-tile auto pairs map to materials; other pairs keep top/fill behaviour', () => {
+    const r = build(lvl('P.F\nMMM\nMMM', '') .replace('@map', '@legend\nM: ground BRICK_TOP BRICK\n@map'));
+    expect(r.errors).toEqual([]);
+    expect(tileAt(r, 'ground', 0, 1)).toBeGreaterThan(gid('BUSH')); // material tile, not BRICK_TOP
+    const w = build(lvl('P~~F\n.~~.\n####'));
+    expect(tileAt(w, 'water', 1, 0)).toBe(gid('WATER_TOP'));
+    expect(tileAt(w, 'water', 1, 1)).toBe(gid('WATER'));
+  });
+
+  it('@MAT legend entries select a material; unknown materials are errors', () => {
+    const ok = build(lvl('P.F\nZZZ').replace('@map', '@legend\nZ: ground @WACK\n@map'));
+    expect(ok.errors).toEqual([]);
+    expect(tileAt(ok, 'ground', 1, 1)).toBeGreaterThanOrEqual(gid('WACK_TL'));
+    const bad = build(lvl('P.F\nZZZ').replace('@map', '@legend\nZ: ground @NOPE\n@map'));
+    expect(bad.errors.some((e) => /unknown material @NOPE/.test(e))).toBe(true);
+  });
+
+  it('dresses background facades: cornice on top, windows varied, edges quoined', () => {
+    const bg = ['........', 'BBBBBBBB', 'BmBmBmBB', 'BBBBBBBB', 'BmBmBmBB', '........'].join('\n');
+    const r = build(lvl('P......F\n........\n........\n........\n........\n########', '@legend\nm: background BRICK_WINDOW\n') + `@background\n${bg}\n`);
+    const name = (x: number, y: number) => {
+      const g = tileAt(r, 'background', x, y) - 1;
+      return (Object.keys(TILE) as (keyof typeof TILE)[]).find((k) => TILE[k] === g);
+    };
+    expect(name(0, 1)).toBe('FB_CORN_L');
+    expect(name(3, 1)).toBe('FB_CORN');
+    expect(name(7, 1)).toBe('FB_CORN_R');
+    expect(name(0, 3)).toBe('FB_EDGE_L');
+    expect(name(1, 2)).toMatch(/^FB_(WIN|WIN_LIT|WIN_BLIND|WIN_AC|WIN_TV|WIN_FE)$/);
+    // no walkable material lips in the background
+    for (let x = 0; x < 8; x++) expect(name(x, 1)).not.toMatch(/BRICK_T/);
   });
 
   it('places one-way, hazard and water tiles on their layers', () => {

@@ -8,13 +8,20 @@
  *   name: Welcome to the Loop
  *   theme: day
  *   @legend            (optional — add/override single-char mappings, see DEFAULT_LEGEND)
- *   Q: ground STEEL_BLOCK
+ *   Q: ground STEEL_BLOCK        (one fixed tile)
+ *   Z: ground @WACK              (auto-tiled material, see MATERIALS in tiles.ts)
+ *   M: ground BRICK_TOP BRICK    (legacy top/fill pair; known pairs map to their material)
  *   @map               (the main grid; every row the same width, '.' or ' ' = empty)
  *   ......
  *   @background        (optional decor grid, same size, background layer)
  *   @foreground        (optional decor grid, same size, drawn in front)
  *   @objects           (optional explicit objects in TILE coordinates, bottom-left tile of the object)
  *   movingPlatform 40 12 dx=6 dy=0 period=3 width=3 style=girder
+ *
+ * Auto-tiling (tools/levels/autotile.mjs) only chooses WHICH tile fills a cell — caps,
+ * corners, edges, undersides, depth-shaded fill variants by a stable (x,y) hash — and
+ * dresses background brick / limestone / Lower Wacker regions as building facades
+ * (plus rooftop clutter in empty cells above them). Collision cells never change.
  *
  * Grid chars map to either a tile (on a layer) or an entity (object). Entities placed
  * in the grid sit on the bottom of their cell.
@@ -24,6 +31,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { decorateBackground, materialOf, materialSuffix } from './autotile.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
@@ -51,7 +59,7 @@ export const DEFAULT_LEGEND = {
   W: { layer: 'ground', auto: ['STONE_WALL_TOP', 'STONE_WALL'] },
   T: { layer: 'ground', auto: ['ROOF_TOP', 'ROOF'] },
   A: { layer: 'ground', auto: ['ASPHALT_TOP', 'ASPHALT'] },
-  K: { layer: 'ground', tile: 'BRIDGE_DECK' },
+  K: { layer: 'ground', tile: 'BRIDGE_DECK', mat: 'DECK' },
   S: { layer: 'ground', tile: 'STEEL_BLOCK' },
   Y: { layer: 'ground', tile: 'WARNING_STRIPE' },
   V: { layer: 'ground', tile: 'PLANTER' },
@@ -129,7 +137,9 @@ export function parseSource(text, file = '<src>') {
     const [, ch, kind, rest] = mm;
     if (['ground', 'oneway', 'hazards', 'water', 'background', 'foreground'].includes(kind)) {
       const parts = rest.trim().split(/\s+/);
-      legend[ch] = parts.length > 1 ? { layer: kind, auto: parts } : { layer: kind, tile: parts[0] };
+      // `X: ground @BRICK` → auto-tiled material (see MATERIALS in tiles.ts)
+      if (parts[0].startsWith('@')) legend[ch] = { layer: kind, mat: parts[0].slice(1) };
+      else legend[ch] = parts.length > 1 ? { layer: kind, auto: parts } : { layer: kind, tile: parts[0] };
     } else {
       const [type, ...kv] = [kind, ...rest.trim().split(/\s+/).filter(Boolean)];
       const props = {};
@@ -190,13 +200,49 @@ export function compile(src, file = '<src>') {
     }
     return TILE_IDS[name] + 1; // gid
   };
+  const entryAt = (g, x, y) => {
+    const ch = charAt(g, x, y);
+    return ch === '.' || ch === ' ' ? undefined : legend[ch];
+  };
+  // What reads as solid for auto-tiling: ground tiles plus foreground material cells (the
+  // foreground is used to hide secret rooms behind "solid" walls, so it must blend in).
+  // Out of bounds: sideways / below continue the solid, above is open sky.
+  const visualSolid = (x, y) => {
+    if (y < 0) return false;
+    if (y >= height || x < 0 || x >= width) return true;
+    if (entryAt(grid, x, y)?.layer === 'ground') return true;
+    return !!(foreground && materialOf(entryAt(foreground, x, y)));
+  };
+  const solidFor = (layerName, g) => {
+    if (layerName === 'ground' || layerName === 'foreground') return visualSolid;
+    return (x, y) => {
+      if (y < 0) return false;
+      if (y >= height || x < 0 || x >= width) return true;
+      return !!materialOf(entryAt(g, x, y));
+    };
+  };
+  const chosen = {};
+  const decor = background ? decorateBackground((x, y) => entryAt(background, x, y), width, height) : new Map();
   const placeTile = (layerName, g, x, y, entry) => {
+    const i = y * width + x;
     let name = entry.tile;
-    if (entry.auto) {
+    const mat = materialOf(entry);
+    if (layerName === 'background' && decor.has(i)) {
+      name = decor.get(i);
+    } else if (mat) {
+      if (!(`${mat}_T0` in TILE_IDS)) {
+        errors.push(`${file}: unknown material @${mat}`);
+        return;
+      }
+      const ch = (chosen[layerName] ??= new Map());
+      const suf = materialSuffix(mat, x, y, solidFor(layerName, g), (cx, cy) => ch.get(cy * width + cx));
+      ch.set(i, suf);
+      name = `${mat}_${suf}`;
+    } else if (entry.auto) {
       const above = charAt(g, x, y - 1);
       name = above === charAt(g, x, y) ? entry.auto[1] : entry.auto[0];
     }
-    layers[layerName][y * width + x] = tileId(name);
+    layers[layerName][i] = tileId(name);
   };
   const objs = [];
   let nextId = 1;
@@ -249,6 +295,8 @@ export function compile(src, file = '<src>') {
       }
     }
   }
+  // decoration that lands in empty background cells (rooftop water towers, HVAC, ...)
+  for (const [i, name] of decor) if (!layers.background[i]) layers.background[i] = tileId(name);
   for (const o of objects) {
     const w = (Number(o.props.width) || 1) * TILE;
     const h = (Number(o.props.height) || 1) * TILE;
