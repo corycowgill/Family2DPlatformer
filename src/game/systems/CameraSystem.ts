@@ -14,8 +14,8 @@ export class CameraSystem {
   constructor(
     private cam: Phaser.Cameras.Scene2D.Camera,
     private player: Player,
-    worldWidth: number,
-    worldHeight: number,
+    private worldWidth: number,
+    private worldHeight: number,
   ) {
     cam.setBounds(0, 0, worldWidth, worldHeight);
     cam.setRoundPixels(true);
@@ -26,12 +26,13 @@ export class CameraSystem {
   /** Restrict the camera to a rectangle (boss arenas). Pass null to release. */
   lock(rect: Phaser.Geom.Rectangle | null): void {
     this.locked = rect;
-    const b = rect ?? null;
-    if (b) this.cam.setBounds(b.x, b.y, b.width, b.height);
+    if (rect) this.cam.setBounds(rect.x, rect.y, rect.width, rect.height);
+    else this.cam.setBounds(0, 0, this.worldWidth, this.worldHeight);
   }
 
-  setWorldBounds(w: number, h: number): void {
-    if (!this.locked) this.cam.setBounds(0, 0, w, h);
+
+  get isLocked(): boolean {
+    return this.locked !== null;
   }
 
   snap(): void {
