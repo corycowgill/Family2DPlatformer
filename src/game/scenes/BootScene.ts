@@ -1,11 +1,17 @@
 import Phaser from 'phaser';
+import { ensurePixelFonts } from '../ui/PixelFont';
+import { ensureIcons } from '../ui/Icons';
+import { installRotateOverlay } from '../ui/RotateOverlay';
 
-/** Minimal boot: nothing to load before the preloader (its bar is drawn with graphics). */
+/** Minimal boot: generates the pixel fonts/icons the preloader needs, then hands over. */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('Boot');
   }
   create(): void {
+    ensurePixelFonts(this);
+    ensureIcons(this);
+    installRotateOverlay(this.game);
     this.scene.start('Preload');
   }
 }
