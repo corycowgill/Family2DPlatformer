@@ -1,57 +1,72 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
-import { createMenu, text, type MenuItem } from '../ui/Menus';
-import { saveSystem } from '../systems/SaveSystem';
+import { createMenu } from '../ui/Menus';
 import { audio } from '../systems/AudioSystem';
 import { gameState } from '../state/GameState';
+import { getLevel } from '../data/levels';
+import { px } from '../ui/PixelFont';
+import { COLORS, panel } from '../ui/Widgets';
+import { transitionTo } from '../ui/Transitions';
+import { clearVirtualButtons } from '../systems/InputSystem';
+import { CHARACTERS } from '../characters';
 
-/** Pause menu (in-level) and settings screen (from main menu). */
+/** In-level pause overlay. (Main-menu settings live in SettingsScene.) */
 export class PauseScene extends Phaser.Scene {
-  private fromMenu = false;
   private levelId = '';
+  private closing = false;
   constructor() {
     super('Pause');
   }
 
   init(data: { fromMenu?: boolean; levelId?: string }): void {
-    this.fromMenu = !!data.fromMenu;
     this.levelId = data.levelId ?? '';
+    this.closing = false;
+    // Legacy entry point: settings from the menu.
+    if (data.fromMenu) this.scene.start('Settings', { from: 'Menu' });
   }
 
   create(): void {
-    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0b1730, this.fromMenu ? 1 : 0.75).setOrigin(0);
-    text(this, GAME_WIDTH / 2, 40, this.fromMenu ? 'SETTINGS' : 'PAUSED', 18, '#ffd25a');
-    this.buildMenu();
+    if (!this.levelId) return;
+    clearVirtualButtons();
+    audio.sfx('pause');
+    audio.duck(true);
+    const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.ink, 0).setOrigin(0);
+    this.tweens.add({ targets: dim, fillAlpha: 0.7, duration: 150 });
+    const cx = GAME_WIDTH / 2;
+    panel(this, cx - 100, 44, 200, 168);
+    px(this, cx, 62, 'PAUSED', { scale: 2, color: COLORS.gold });
+    const lvl = getLevel(this.levelId);
+    if (lvl) px(this, cx, 80, `${lvl.number} ${lvl.name.toUpperCase()}`, { color: COLORS.sub });
+    const def = CHARACTERS[gameState.character];
+    px(this, cx, 200, `${def.name.toUpperCase()} · LIVES x${gameState.lives}`, { color: COLORS.dim });
+    createMenu(
+      this,
+      [
+        { label: 'RESUME', onSelect: () => this.resume(), sound: null },
+        { label: 'RESTART LEVEL', onSelect: () => this.restartLevel() },
+        { label: 'SETTINGS', onSelect: () => this.openSettings() },
+        { label: 'QUIT TO MAP', onSelect: () => this.quit(), sound: 'menu-back' },
+      ],
+      cx,
+      106,
+      20,
+      { width: 160, scale: 1, onBack: () => this.resume() },
+    );
+    this.input.keyboard?.on('keydown-P', (e: KeyboardEvent) => !e.repeat && this.resume());
   }
 
-  private buildMenu(): void {
-    const s = saveSystem.get().settings;
-    const pct = (v: number) => `${Math.round(v * 100)}%`;
-    const cycle = (v: number) => (v >= 1 ? 0 : Math.round((v + 0.2) * 10) / 10);
-    const rebuild = () => this.scene.restart({ fromMenu: this.fromMenu, levelId: this.levelId });
-    const set = (fn: () => void) => () => {
-      saveSystem.update(fn);
-      audio.applySettings();
-      rebuild();
-    };
-    const items: MenuItem[] = [];
-    if (!this.fromMenu) {
-      items.push({ label: 'Resume', onSelect: () => this.resume() });
-      items.push({ label: 'Restart Level', onSelect: () => this.restartLevel() });
-    }
-    items.push(
-      { label: `Music: ${pct(s.musicVolume)}`, onSelect: set(() => (s.musicVolume = cycle(s.musicVolume))) },
-      { label: `Sound FX: ${pct(s.sfxVolume)}`, onSelect: set(() => (s.sfxVolume = cycle(s.sfxVolume))) },
-      { label: `Mute: ${s.muted ? 'On' : 'Off'}`, onSelect: set(() => (s.muted = !s.muted)) },
-      { label: `Reduced Motion: ${s.reducedMotion ? 'On' : 'Off'}`, onSelect: set(() => (s.reducedMotion = !s.reducedMotion)) },
-      { label: `Touch Controls: ${s.showTouchControls}`, onSelect: set(() => (s.showTouchControls = s.showTouchControls === 'auto' ? 'on' : s.showTouchControls === 'on' ? 'off' : 'auto')) },
-    );
-    items.push(this.fromMenu ? { label: 'Back', onSelect: () => this.scene.start('Menu') } : { label: 'Quit to Map', onSelect: () => this.quit() });
-    createMenu(this, items, GAME_WIDTH / 2, 72, 18);
-    this.input.keyboard?.once('keydown-ESC', () => (this.fromMenu ? this.scene.start('Menu') : this.resume()));
+  private openSettings(): void {
+    this.scene.launch('Settings', { from: 'Pause' });
+    this.scene.bringToTop('Settings');
+    this.scene.pause();
   }
 
   private resume(): void {
+    if (this.closing) return;
+    this.closing = true;
+    audio.duck(false);
+    audio.sfx('menu-select');
+    clearVirtualButtons();
     this.scene.stop();
     this.scene.resume('Level');
     const lv = this.scene.get('Level') as unknown as { inputSys?: { resetEdges(): void } };
@@ -59,6 +74,9 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private restartLevel(): void {
+    if (this.closing) return;
+    this.closing = true;
+    audio.duck(false);
     gameState.resetCheckpoint();
     this.scene.stop('HUD');
     this.scene.stop();
@@ -66,10 +84,11 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private quit(): void {
+    if (this.closing) return;
+    this.closing = true;
     gameState.resetCheckpoint();
+    audio.duck(false);
     audio.stopMusic();
-    this.scene.stop('HUD');
-    this.scene.stop('Level');
-    this.scene.start('WorldMap');
+    transitionTo(this, 'WorldMap', undefined, { stop: ['HUD', 'Level'] });
   }
 }
