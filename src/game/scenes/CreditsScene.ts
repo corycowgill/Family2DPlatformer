@@ -9,6 +9,7 @@ import { onNav } from '../ui/NavInput';
 import { Skyline } from '../ui/Skyline';
 import { COLORS } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
+import { prompt } from '../ui/Prompts';
 
 const LINES: [string, 'h' | 't' | 's' | 'gap'][] = [
   ['CHICAGO FAMILY ADVENTURE', 'h'],
@@ -75,9 +76,9 @@ export class CreditsScene extends Phaser.Scene {
     this.roll.setData('height', y + 80);
     if (reducedMotion()) this.speed = 30;
 
-    px(this, GAME_WIDTH - 6, GAME_HEIGHT - 8, 'ESC / TAP: BACK', { origin: [1, 0.5], color: COLORS.dim });
+    prompt(this, GAME_WIDTH - 6, GAME_HEIGHT - 10, (d) => (d === 'touch' ? 'TAP: BACK' : '{BACK} BACK'), { origin: [1, 0.5], color: COLORS.sub });
     onNav(this, (a) => {
-      if (a === 'back' || a === 'confirm') this.leave();
+      if (a === 'back' || a === 'confirm' || a === 'start') this.leave();
       if (a === 'down') this.speed = 60;
     });
     this.input.on('pointerup', () => this.leave());

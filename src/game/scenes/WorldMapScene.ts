@@ -12,7 +12,7 @@ import { COLORS, button, drawPanel, type UIButton } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
 import { formatTime } from '../ui/format';
 import { pathBetween, pickDirectional } from '../ui/mapNav';
-import { shouldShowTouch } from '../ui/TouchControls';
+import { prompt, type PromptText } from '../ui/Prompts';
 import { mulberry32 } from '../systems/audio/notes';
 
 interface MapNode {
@@ -56,7 +56,7 @@ export class WorldMapScene extends Phaser.Scene {
     best: Phaser.GameObjects.BitmapText;
     souv: Phaser.GameObjects.Image[];
     play: UIButton;
-    hint: Phaser.GameObjects.BitmapText;
+    hint: PromptText;
   };
 
   constructor() {
@@ -99,7 +99,8 @@ export class WorldMapScene extends Phaser.Scene {
       if (a === 'back') {
         audio.sfx('menu-back');
         this.leave('Menu');
-      } else if (a === 'confirm') this.confirm();
+      } else if (a === 'confirm' || a === 'start') this.confirm();
+      else if (a === 'alt') this.leave('CharacterSelect', { next: 'WorldMap' });
       else this.moveTo(pickDirectional(this.nodes, this.sel, a));
     });
     this.input.keyboard?.on('keydown-C', () => this.leave('CharacterSelect', { next: 'WorldMap' }));
@@ -235,7 +236,11 @@ export class WorldMapScene extends Phaser.Scene {
     const best = px(this, x + 10, y + 66, '', { origin: [0, 0.5], color: COLORS.sub }).setDepth(d);
     const souv = [0, 1, 2].map((i) => icon(this, x + 124 + i * 16, y + 12, 'souvenir_icon_empty').setDepth(d));
     const play = button(this, x + 150, y + 84, '▶ PLAY', () => this.confirm(), { sound: null, depth: d, w: 56 });
-    const hint = px(this, x + 10, y + 86, shouldShowTouch() ? 'TAP AGAIN: PLAY' : 'ENTER: PLAY', { origin: [0, 0.5], color: COLORS.dim }).setDepth(d);
+    const hint = prompt(this, x + 10, y + 84, (dev) => (dev === 'touch' ? 'TAP AGAIN: PLAY' : '{CONFIRM} PLAY {HERO} HERO'), {
+      origin: [0, 0.5],
+      color: COLORS.sub,
+      depth: d,
+    });
     this.info = { g, title, name, status, best, souv, play, hint };
   }
 

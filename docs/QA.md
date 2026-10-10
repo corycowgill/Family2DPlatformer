@@ -37,6 +37,11 @@ Unit (`tests/unit`):
   unknown tiles, missing/duplicate playerStart, missing goal); every `tools/levels/src/*.txt`
   compiles; every registered level whose JSON exists has ground/entities/playerStart/goal.
 - Movement-motor tests belong to the player team (`tests/unit/motor.test.ts`).
+- `gamepad.test.ts` — controller mapping: radial dead zone, crouch angle threshold, trigger
+  threshold, A/X/B/RT/Menu/View mapping, run + jump together, `resetEdges` (A held from the map
+  doesn't jump), non-standard Xbox remaps (Linux xpad axes d-pad + Firefox untouched-trigger
+  quirk, macOS 360Controller, hat switch), most-recent-pad selection, hot-plug events, menu
+  auto-repeat, rumble feature detection, `settings.rumble` sanitising, prompt templates.
 
 E2E (`tests/e2e`):
 - `smoke.spec.ts` — boots without console errors, test level runs, `?debug` overlay + hotkeys,
@@ -49,6 +54,12 @@ E2E (`tests/e2e`):
   pit death & respawn (HUD lives), checkpoint respawn, game over; hazards; level completion
   ⇒ Results, unlock, save persisted across reload, Continue / world map ✓; corrupted save boot;
   touch controls hidden on desktop; grounded-on-flat-ground regression.
+- `gamepad.spec.ts` — fake standard-mapping Xbox pad (`navigator.getGamepads` stubbed via
+  `addInitScript`): menu → character select → world map → level using only the pad, A held
+  through the level start doesn't jump; stick moves, analog RT run + A jump, diagonal doesn't
+  crouch, X ability, Menu pauses / B resumes / View pauses / Menu resumes; pause → settings →
+  controls → back out; disconnect mid-level pauses with a toast; prompts follow the last
+  device, mouse move restores the cursor; Vibration toggle persists and gates rumble.
 - `touch.spec.ts` (`@touch`, mobile) — touch buttons shown; ▶/◀ move; jump while ▶ held (multi-touch); pause button.
 - `bot.spec.ts` — bot completes the test level with all five characters (damage on); widened
   gap; impassable wall ⇒ stuck report; every existing `LEVELS` map with every character
@@ -60,6 +71,63 @@ New levels are covered automatically: anything listed in `src/game/data/levels.t
 `public/<file>` exists is picked up by the level unit test and the bot spec. Specs that need a
 real `LEVELS` entry (menu flow, unlocks) fall back to `test.json` for maps that don't exist yet
 (`harness.aliasMissingLevels()`), noted as a test annotation.
+
+## Controller (Xbox) support
+
+Browser Gamepad API, W3C "standard" layout (Chrome/Edge/Firefox on Windows/macOS, Safari on
+Mac/iPhone/iPad, Android Chrome). Code: `systems/Gamepads.ts` (pure: normalise/remap, most
+recently used pad, presses, hot-plug, rumble), `systems/InputMapping.ts` (pure mapping),
+`ui/PadOverlay.ts` (per-frame poll, toasts, cursor, pause on disconnect), `ui/NavInput.ts`
+(menus), `ui/Prompts.ts` (device-aware button glyphs), `ui/ControlsScreen.ts` (Settings →
+Controls shows this table in game).
+
+| Action | Xbox controller | Keyboard | Notes |
+|---|---|---|---|
+| Move | Left stick, d-pad | Arrows / WASD | Radial dead zone 0.25 (rescaled). |
+| Crouch / drop through | Stick down, d-pad down | ↓ / S | Stick must be within 30° of straight down — a down-diagonal while running never crouches. Left/right need ≥ 22.5° from vertical. |
+| Jump (hold = higher) | **A** | Space / Z / K | |
+| Run (hold) | **RT**, LT, RB, LB | Shift | Analog triggers count above 0.3. Hold RT + press A to run-jump. |
+| Ability / attack | **X**, B | J / X | |
+| Pause | **Menu**, View | Esc / P | |
+| Menus: move | D-pad / stick (auto-repeat 380 ms, then 140 ms) | Arrows / WASD | |
+| Menus: confirm | A (Menu also confirms; in the pause menu it resumes) | Enter / Space / Z / J / K | |
+| Menus: back | B, View | Esc / Backspace / X | Pause menu: B resumes. |
+| Settings sliders/toggles | D-pad left/right adjust, A toggles | ← → / Enter | |
+| World map: change hero | Y | C | |
+
+Why this layout: A (bottom face) jumping is the universal Xbox platformer convention. The
+ability lives on X — the left face button, where Mario's fireball/run button sits on an Xbox
+pad and the same letter as the keyboard's X/J ability key; B duplicates it so either face
+button works for small hands. Run is a *separate hold* on the shoulders (RT first in prompts):
+abilities have cooldowns and some (dash, ground pound) move the hero, so the SMB "hold the
+fire button to run" overload would fire one every time you start running. An index finger on
+RT leaves the thumb free to roll A ↔ X, so run + jump + ability all work together.
+
+Behaviour:
+- The pad used most recently drives the game (any index; several pads can be connected).
+- Browsers expose a pad only after one of its buttons is pressed; that wake-up press is
+  swallowed (so it doesn't also confirm a menu) but switches prompts to Xbox glyphs. Settings →
+  Controls shows "PRESS ANY BUTTON" while no pad is seen.
+- Any pad button / stick push → `setInputDevice('gamepad')`: prompts switch to Xbox glyphs,
+  the mouse cursor hides over the canvas (until the mouse moves), touch controls hide (touch
+  team). A keypress / touch switches back.
+- Hot-plug: "CONTROLLER CONNECTED / DISCONNECTED" toast on every screen (overlay scene added on
+  demand). A pad that was used disconnecting emits `REQUEST_PAUSE` (LevelScene pauses).
+- Non-standard mappings (`pad.mapping !== 'standard'`, e.g. Firefox on Linux/macOS) are remapped
+  for Xbox ids (`xbox`/`xinput`/`045e`): Linux xpad (d-pad on axes 6/7 or a hat axis, triggers on
+  axes 2/5, ignored until seen at rest — Firefox reports untouched triggers as 0) and macOS
+  360Controller (d-pad buttons 11-14). Unknown pads use the raw indices.
+- Rumble (`vibrationActuator.playEffect('dual-rumble')`, or legacy `hapticActuators`; feature
+  detected): hurt, death, ground-pound landing, boss hit, boss defeated. Only while the pad is
+  the active device; Settings → Vibration (`settings.rumble`, default on).
+- Button prompts: `prompt(scene, x, y, '{JUMP} JUMP')` with tokens JUMP RUN ABILITY MOVE CROUCH
+  PAUSE CONFIRM BACK NAV CHOOSE ADJUST HERO or explicit glyphs (`{pad:A}`, `{key:SPACE}`). Level
+  signs use the same tokens (`sign x y text=Hold_{RUN}_to_jump_farther`).
+
+Needs a real controller to verify: rumble strength/feel (Chrome/Edge; Firefox has no
+dual-rumble; Safari support varies), Safari/iOS pairing and that the Menu/View buttons reach the
+page (iPadOS may reserve them), Firefox non-standard remaps on real hardware, Bluetooth
+reconnect after sleep, and that the Xbox button (16) is left to the OS.
 
 ## Test harness (`window.__harness`)
 

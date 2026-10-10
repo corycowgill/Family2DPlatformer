@@ -8,6 +8,8 @@ import { Skyline } from '../ui/Skyline';
 import { COLORS, drawPanel, panel } from '../ui/Widgets';
 import { transitionIn, transitionTo } from '../ui/Transitions';
 import { cycle, stepVolume, volumeBar } from '../ui/format';
+import { prompt } from '../ui/Prompts';
+import { openControls } from '../ui/ControlsScreen';
 
 /**
  * Settings screen. From the main menu it is a full screen; from the pause menu it is an
@@ -35,8 +37,8 @@ export class SettingsScene extends Phaser.Scene {
       this.sky = new Skyline(this, { train: false });
       this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.ink, 0.35).setOrigin(0);
     }
-    const box = panel(this, GAME_WIDTH / 2 - 130, 24, 260, 222);
-    px(this, GAME_WIDTH / 2, 42, 'SETTINGS', { scale: 2, color: COLORS.gold });
+    const box = panel(this, GAME_WIDTH / 2 - 130, 16, 260, 222);
+    px(this, GAME_WIDTH / 2, 34, 'SETTINGS', { scale: 2, color: COLORS.gold });
 
     const s = () => saveSystem.get().settings;
     const change = (fn: (st: Settings) => void) => {
@@ -66,6 +68,11 @@ export class SettingsScene extends Phaser.Scene {
         onSelect: () => change((st) => (st.showTouchControls = cycle(['auto', 'on', 'off'] as const, st.showTouchControls))),
         onAdjust: (d) => change((st) => (st.showTouchControls = cycle(['auto', 'on', 'off'] as const, st.showTouchControls, d))),
       },
+      {
+        label: 'VIBRATION', value: () => onOff(s().rumble),
+        onSelect: () => change((st) => (st.rumble = !st.rumble)), onAdjust: () => change((st) => (st.rumble = !st.rumble)),
+      },
+      { label: 'CONTROLS', value: () => '▶', onSelect: () => openControls(this) },
     ];
     if (!overlay) {
       items.push({
@@ -88,11 +95,11 @@ export class SettingsScene extends Phaser.Scene {
       });
     }
     items.push({ label: 'BACK', onSelect: () => this.close(), sound: 'menu-back' });
-    box.clear();
-    drawPanel(box, GAME_WIDTH / 2 - 130, 24, 260, 58 + items.length * 20 + (overlay ? 0 : 14));
-    const menu = createMenu(this, items, GAME_WIDTH / 2, 74, 20, { width: 232, onBack: () => this.close() });
-    const toast = px(this, GAME_WIDTH / 2, 234, '', { color: COLORS.red }).setAlpha(0);
-    px(this, GAME_WIDTH / 2, GAME_HEIGHT - 10, '◀ ▶ ADJUST · ENTER TOGGLE · ESC BACK', { color: COLORS.sub });
+    const sp = 18;
+    drawPanel(box, GAME_WIDTH / 2 - 130, 16, 260, 52 + items.length * sp + (overlay ? 0 : 12));
+    const menu = createMenu(this, items, GAME_WIDTH / 2, 62, sp, { width: 232, onBack: () => this.close() });
+    const toast = px(this, GAME_WIDTH / 2, 62 + items.length * sp - 4, '', { color: COLORS.red }).setAlpha(0);
+    prompt(this, GAME_WIDTH / 2, GAME_HEIGHT - 10, (d) => (d === 'touch' ? 'TAP ◀ ▶ TO ADJUST' : '{ADJUST} ADJUST  {CONFIRM} TOGGLE  {BACK} BACK'), { color: COLORS.sub });
     if (!overlay) transitionIn(this);
   }
 

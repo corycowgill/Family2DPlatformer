@@ -100,7 +100,7 @@ sign 15 12 text=Jump_into_?_blocks!
 prop 45 12 frame=news_box
 prop 53 12 frame=lamp
 newspapers 52 12
-sign 60 12 text=Hold_RUN_to_jump_farther
+sign 60 12 text=Hold_{RUN}_to_jump_farther
 prop 67 12 frame=hotdog_cart
 prop 81 12 frame=hydrant
 trashCan 91 12

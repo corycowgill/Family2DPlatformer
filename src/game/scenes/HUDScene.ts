@@ -12,6 +12,8 @@ import { COLORS, drawPanel } from '../ui/Widgets';
 import { pad, remaining01 } from '../ui/format';
 import { reducedMotion } from '../ui/Transitions';
 import { audio } from '../systems/AudioSystem';
+import { prompt } from '../ui/Prompts';
+import { attachRumble } from '../ui/PadOverlay';
 
 const POWERUP_ICON: Partial<Record<PickupKind, string>> = { star: 'star_icon', ctaPass: 'pass', hotdog: 'hotdog', pizza: 'pizza' };
 const ABILITY_SHORT: Record<string, string> = { groundPound: 'POUND', airJump: 'SPARKLE', dash: 'DASH', projectile: 'BLAST', sniff: 'SNIFF' };
@@ -47,10 +49,7 @@ export class HUDScene extends Phaser.Scene {
 
     // --- Top-left: portrait, hearts, lives badge, ability gauge
     const g = this.add.graphics();
-    drawPanel(g, 3, 3, 98, 30, { alpha: 0.7 });
     const portraitKey = IMAGES.portrait(gameState.character);
-    g.fillStyle(COLORS.ink, 1).fillRect(6, 6, 26, 26);
-    g.fillStyle(def.color, 1).fillRect(7, 7, 24, 24);
     if (this.textures.exists(portraitKey)) this.add.image(7, 7, portraitKey).setOrigin(0).setDisplaySize(24, 24);
     const livesT = px(this, 33, 30, '', { origin: [1, 1] });
     const hearts: Phaser.GameObjects.Image[] = [];
@@ -58,6 +57,21 @@ export class HUDScene extends Phaser.Scene {
     this.abilityG = this.add.graphics();
     this.abilityT = px(this, 51, 25, ABILITY_SHORT[def.ability] ?? 'ABILITY', { origin: [0, 0.5] });
     this.drawAbility();
+    // Which button fires the ability (hidden on touch, where the ★ button says it).
+    const abilityKey = prompt(this, Math.round(this.abilityT.x + this.abilityT.width + 3), 25, (d) => (d === 'touch' ? '' : '{ABILITY}'), { origin: [0, 0.5] });
+    const panelW = () => Math.max(98, (abilityKey.blockW > 0 ? abilityKey.x + abilityKey.blockW : this.abilityT.x + this.abilityT.width) + 4 - 3);
+    let shownW = 0;
+    const drawLeftPanel = () => {
+      const w = panelW();
+      if (w === shownW) return;
+      shownW = w;
+      g.clear();
+      drawPanel(g, 3, 3, w, 30, { alpha: 0.7 });
+      g.fillStyle(COLORS.ink, 1).fillRect(6, 6, 26, 26);
+      g.fillStyle(def.color, 1).fillRect(7, 7, 24, 24);
+    };
+    drawLeftPanel();
+    this.events.on(Phaser.Scenes.Events.UPDATE, drawLeftPanel);
 
     // --- Top-right: coins, souvenirs, pause
     const rg = this.add.graphics();
@@ -146,8 +160,11 @@ export class HUDScene extends Phaser.Scene {
       [EV.SFX, (key: string) => audio.sfx(key)],
     ];
     for (const [e, fn] of handlers) ev.on(e, fn);
+    const offRumble = attachRumble(ev);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const [e, fn] of handlers) ev.off(e, fn);
+      offRumble();
+      this.events.off(Phaser.Scenes.Events.UPDATE, drawLeftPanel);
     });
 
     this.touch = new TouchControls(this);

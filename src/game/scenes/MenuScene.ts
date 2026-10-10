@@ -9,7 +9,7 @@ import { Skyline } from '../ui/Skyline';
 import { isRealAsset } from '../ui/Icons';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
 import { COLORS } from '../ui/Widgets';
-import { shouldShowTouch } from '../ui/TouchControls';
+import { prompt } from '../ui/Prompts';
 
 /** Draw a six-pointed Chicago-flag star centred at (cx, cy). */
 export function drawChicagoStar(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: number, color: number = COLORS.red): void {
@@ -51,10 +51,10 @@ export class MenuScene extends Phaser.Scene {
       17,
       { width: 172, panel: true, startIndex: hasSave ? 1 : 0, depth: 20 },
     );
-    const hint = shouldShowTouch()
-      ? 'TAP TO CHOOSE'
-      : 'ARROWS/WASD MOVE · SPACE JUMP · SHIFT RUN · J ABILITY';
-    px(this, GAME_WIDTH / 2, GAME_HEIGHT - 8, hint, { color: COLORS.sub }).setDepth(20);
+    prompt(this, GAME_WIDTH / 2, GAME_HEIGHT - 10, (d) => (d === 'touch' ? 'TAP TO CHOOSE' : '{MOVE} MOVE  {JUMP} JUMP  {RUN} RUN  {ABILITY} ABILITY'), {
+      color: COLORS.sub,
+      depth: 20,
+    });
     px(this, GAME_WIDTH - 4, 4, 'v0.1', { origin: [1, 0], color: COLORS.dim, outline: false }).setDepth(20);
     audio.music('title');
     transitionIn(this);

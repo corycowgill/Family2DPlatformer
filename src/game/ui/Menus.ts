@@ -37,6 +37,8 @@ export interface MenuOptions {
   /** Draw a panel behind the menu. */
   panel?: boolean;
   onBack?: () => void;
+  /** Pad Menu button (default: activate the selected item, like A). */
+  onStart?: () => void;
   startIndex?: number;
   depth?: number;
 }
@@ -60,7 +62,8 @@ export function nextEnabled(items: { disabled?: boolean }[], index: number, d: n
 
 /**
  * Vertical menu navigable by keyboard (arrows/WASD + Enter/Space/Z/J, Esc back), gamepad
- * (d-pad/stick + A/Start, B back) and touch/mouse (hover highlights, tap activates; on
+ * (d-pad/stick with auto-repeat, A confirm, Menu = onStart or confirm, B/View back; left/right
+ * adjust value rows) and touch/mouse (hover highlights, tap activates; on
  * value rows tap the left/right third to adjust).
  */
 export function createMenu(scene: Phaser.Scene, items: MenuItem[], x: number, y: number, spacing = 18, opts: MenuOptions = {}): MenuHandle {
@@ -183,6 +186,10 @@ export function createMenu(scene: Phaser.Scene, items: MenuItem[], x: number, y:
       }
     } else if (a === 'left' || a === 'right') adjust(a === 'left' ? -1 : 1);
     else if (a === 'confirm') activate();
+    else if (a === 'start') {
+      if (opts.onStart) opts.onStart();
+      else activate();
+    }
     else if (a === 'back' && opts.onBack) {
       audio.sfx('menu-back');
       opts.onBack();

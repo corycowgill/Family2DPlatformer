@@ -10,7 +10,7 @@ import { onNav } from '../ui/NavInput';
 import { Skyline } from '../ui/Skyline';
 import { COLORS, button, drawPanel, lighten, panel, setRatingBar } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
-import { shouldShowTouch } from '../ui/TouchControls';
+import { prompt } from '../ui/Prompts';
 
 const SLOT_SPACING = 64;
 const SLOT_Y = 222;
@@ -87,14 +87,15 @@ export class CharacterSelectScene extends Phaser.Scene {
     button(this, 38, SLOT_Y, 'BACK', () => this.back(), { sound: 'menu-back', w: 50 });
     button(this, GAME_WIDTH - 38, SLOT_Y, 'GO!', () => this.confirm(), { sound: null, w: 50, color: COLORS.gold });
 
-    const hint = shouldShowTouch() ? 'TAP A HERO · TAP AGAIN OR GO! TO START' : '◀ ▶ CHOOSE · ENTER CONFIRM · ESC BACK';
-    px(this, GAME_WIDTH / 2, GAME_HEIGHT - 8, hint, { color: COLORS.sub });
+    prompt(this, GAME_WIDTH / 2, GAME_HEIGHT - 10, (d) => (d === 'touch' ? 'TAP A HERO · TAP AGAIN OR GO! TO START' : '{CHOOSE} CHOOSE  {CONFIRM} CONFIRM  {BACK} BACK'), {
+      color: COLORS.sub,
+    });
 
     onNav(this, (a) => {
       if (this.confirmed) return;
       if (a === 'left' || a === 'up') this.select(this.index - 1);
       else if (a === 'right' || a === 'down') this.select(this.index + 1);
-      else if (a === 'confirm') this.confirm();
+      else if (a === 'confirm' || a === 'start') this.confirm();
       else if (a === 'back') {
         audio.sfx('menu-back');
         this.back();

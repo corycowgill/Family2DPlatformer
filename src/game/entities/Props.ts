@@ -4,6 +4,7 @@ import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { Pickup } from './Collectible';
 import { animKey } from '../systems/AnimationSystem';
 import { bool, burst, ensureTexture, hasFrame, num, playerRect, str } from '../world/worldUtil';
+import { prompt, type PromptText } from '../ui/Prompts';
 
 /**
  * prop <tx> <ty> frame=lamp|hydrant|hotdog_cart|bench|flag_pole|... [front=true] [flip=true]
@@ -31,12 +32,14 @@ export function spawnProp(ctx: LevelContext, o: SpawnObject): void {
 const SIGN_TEX = 'world-sign';
 
 /**
- * sign <tx> <ty> text="Hold RUN to jump farther"
+ * sign <tx> <ty> text="Hold {RUN} to jump farther"
  * A small tutorial sign; shows its text in a bubble while the player is close.
- * (Use `_` for spaces if the compiler's object line can't hold spaces.)
+ * (Use `_` for spaces if the compiler's object line can't hold spaces.) Tokens such as
+ * {JUMP} {RUN} {ABILITY} {MOVE} {CROUCH} render as the active device's button glyph
+ * (ui/Prompts) and update live when the player switches keyboard / controller / touch.
  */
 export class Sign extends Phaser.GameObjects.Image {
-  private bubble: Phaser.GameObjects.Text;
+  private bubble: PromptText;
   private shown = false;
   constructor(
     readonly ctx: LevelContext,
@@ -52,19 +55,8 @@ export class Sign extends Phaser.GameObjects.Image {
     ctx.scene.add.existing(this);
     this.setOrigin(0.5, 1).setDepth(DEPTH.props);
     const text = str(o, 'text', '').replace(/_/g, ' ').replace(/\\n/g, '\n');
-    this.bubble = ctx.scene.add
-      .text(o.x, o.y - 30, text, {
-        fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#ffffff',
-        backgroundColor: '#1b2a4a',
-        padding: { x: 4, y: 3 },
-        align: 'center',
-        resolution: 2,
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(DEPTH.foreground + 2)
-      .setAlpha(0);
+    this.bubble = prompt(ctx.scene, o.x, o.y - 30, text, { origin: [0.5, 1], bg: true, depth: DEPTH.foreground + 2 });
+    this.bubble.setAlpha(0);
     this.once(Phaser.GameObjects.Events.DESTROY, () => this.bubble.destroy());
   }
 

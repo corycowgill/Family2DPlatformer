@@ -6,6 +6,7 @@ import { DEPTH, PHYSICS } from '../config';
 import { EV, type HitInfo, type InputState } from '../types';
 import { canGroundJump, startAirJump, startJump } from './PlayerMotor';
 import { hasAnim, playAnim } from './AnimationSystem';
+import { rumble } from '../ui/PadOverlay';
 
 /**
  * Character special abilities (attack button). Every character also gets a short
@@ -224,6 +225,7 @@ class GroundPound extends BaseAbility {
     p.ctx.effect('dust', x + 10, y, { scale: 1 });
     p.ctx.shake(0.012, 200);
     p.ctx.sfx('pound');
+    rumble('pound');
     p.squash(1.3, 0.7, 180);
     for (const e of liveEnemies(p)) {
       const eb = e.body;

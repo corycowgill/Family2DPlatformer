@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { EMPTY_INPUT, type InputState } from '../types';
-import { EMPTY_RAW, KEY_BINDINGS, keysToRaw, mergeRaw, padToRaw, toInputState, type EdgeMemory, type RawButtons } from './InputMapping';
+import { EMPTY_RAW, KEY_BINDINGS, heldEdges, keysToRaw, mergeRaw, toInputState, type EdgeMemory, type RawButtons } from './InputMapping';
+import { gamepads } from './Gamepads';
 
 export { edge } from './InputMapping';
 
@@ -18,8 +19,9 @@ export function clearVirtualButtons(): void {
 
 /**
  * Merges keyboard (WASD/arrows, Space/Z/K jump, Shift run, J/X attack, Esc/P pause),
- * gamepad (stick/d-pad, south jump, west/east attack, bumpers/triggers run, start pause)
- * and touch into one InputState per frame. Mapping lives in InputMapping.ts.
+ * gamepad (the most recently used pad — stick/d-pad move, A jump, X/B ability, RT/LT/RB/LB
+ * run, Menu/View pause; see InputMapping.ts / Gamepads.ts) and touch into one InputState
+ * per frame.
  */
 export class InputSystem {
   private keys = new Map<string, Phaser.Input.Keyboard.Key>();
@@ -28,7 +30,7 @@ export class InputSystem {
   /** When set (by tests/bot), replaces all physical input. */
   override: Partial<VirtualButtons> | null = null;
 
-  constructor(private scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene) {
     const kb = scene.input.keyboard;
     if (kb) {
       const names = new Set(Object.values(KEY_BINDINGS).flat());
@@ -40,12 +42,6 @@ export class InputSystem {
     }
   }
 
-  private gamepad(): Phaser.Input.Gamepad.Gamepad | undefined {
-    const gp = this.scene.input.gamepad;
-    if (!gp || gp.total === 0) return undefined;
-    return gp.getPad(0) ?? gp.gamepads.find((p) => p && p.connected);
-  }
-
   /** Call once per frame (before player update). */
   update(): InputState {
     let raw: RawButtons;
@@ -55,9 +51,7 @@ export class InputSystem {
       for (const k of Object.keys(raw) as (keyof RawButtons)[]) raw[k] = !!o[k];
     } else {
       const kb = keysToRaw((name) => this.keys.get(name)?.isDown ?? false);
-      const pad = this.gamepad();
-      const padRaw = pad ? padToRaw(pad.buttons.map((b) => b?.pressed ?? false), pad.leftStick.x, pad.leftStick.y) : EMPTY_RAW;
-      raw = mergeRaw(kb, padRaw, virtualButtons);
+      raw = mergeRaw(kb, gamepads.raw(), virtualButtons);
     }
     return toInputState(raw, this.prev, this.state);
   }
@@ -68,6 +62,6 @@ export class InputSystem {
 
   /** Swallow held buttons so e.g. a menu "jump" doesn't trigger an in-game jump. */
   resetEdges(): void {
-    this.prev = { jump: true, attack: true, pause: true };
+    this.prev = heldEdges();
   }
 }

@@ -9,6 +9,7 @@ import { COLORS, panel } from '../ui/Widgets';
 import { transitionTo } from '../ui/Transitions';
 import { clearVirtualButtons } from '../systems/InputSystem';
 import { CHARACTERS } from '../characters';
+import { prompt } from '../ui/Prompts';
 
 /** In-level pause overlay. (Main-menu settings live in SettingsScene.) */
 export class PauseScene extends Phaser.Scene {
@@ -50,8 +51,9 @@ export class PauseScene extends Phaser.Scene {
       cx,
       106,
       20,
-      { width: 160, scale: 1, onBack: () => this.resume() },
+      { width: 160, scale: 1, onBack: () => this.resume(), onStart: () => this.resume() },
     );
+    prompt(this, cx, 226, (d) => (d === 'touch' ? '' : '{NAV} SELECT  {CONFIRM} OK  {BACK} RESUME'), { color: COLORS.sub });
     this.input.keyboard?.on('keydown-P', (e: KeyboardEvent) => !e.repeat && this.resume());
   }
 

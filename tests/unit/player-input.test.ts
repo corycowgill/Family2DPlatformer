@@ -92,7 +92,7 @@ describe('gamepad mapping', () => {
     expect(padToRaw(pressed(), -0.8, 0).left).toBe(true);
     expect(padToRaw(pressed(), 0.8, 0).right).toBe(true);
     expect(padToRaw(pressed(), 0, 0.9).down).toBe(true);
-    const drift = padToRaw(pressed(), 0.2, -0.2);
+    const drift = padToRaw(pressed(), 0.17, -0.17); // inside the 0.25 radial dead zone
     expect(drift.left || drift.right || drift.up || drift.down).toBe(false);
   });
 
