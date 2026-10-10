@@ -26,7 +26,7 @@ export class PreloadScene extends Phaser.Scene {
       console.warn(`Asset failed to load: ${f.key}`);
     });
     this.load.json('manifest', MANIFEST_PATH);
-    this.load.once(Phaser.Loader.Events.FILE_COMPLETE + 'json-manifest', () => {
+    this.load.once(Phaser.Loader.Events.FILE_KEY_COMPLETE + 'json-manifest', () => {
       const m = this.cache.json.get('manifest') as AssetManifest | undefined;
       if (!m) return;
       for (const a of m.atlases ?? []) this.load.atlas(a.key, a.png, a.json);
