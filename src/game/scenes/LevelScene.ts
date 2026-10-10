@@ -11,6 +11,7 @@ import { CombatSystem } from '../systems/CombatSystem';
 import { CameraSystem } from '../systems/CameraSystem';
 import { audio } from '../systems/AudioSystem';
 import { saveSystem } from '../systems/SaveSystem';
+import { REQUEST_PAUSE } from '../systems/InputDevice';
 import { animKey } from '../systems/AnimationSystem';
 import { gameState } from '../state/GameState';
 import { Parallax } from '../world/Parallax';
@@ -177,6 +178,12 @@ export class LevelScene extends Phaser.Scene {
 
     if (DEBUG) this.setupDebug();
     this.exposeTestHooks();
+    // Pause requests from outside the scene (app backgrounded, controller disconnected…).
+    const onRequestPause = () => {
+      if (this.scene.isActive() && !this.finished && this.player.isAlive()) this.pauseGame();
+    };
+    this.game.events.on(REQUEST_PAUSE, onRequestPause);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.game.events.off(REQUEST_PAUSE, onRequestPause));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.onShutdown());
   }
 
