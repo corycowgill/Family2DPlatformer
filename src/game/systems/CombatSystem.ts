@@ -45,11 +45,17 @@ export class CombatSystem {
     physics.add.collider(groups.pickups, ground);
     if (oneway) {
       // One-way tiles only collide on their top face (set up in LevelScene).
-      physics.add.collider(player, oneway);
+      // Player can drop through them (down + jump) — see Player.isDroppingThrough.
+      physics.add.collider(player, oneway, undefined, () => !player.isDroppingThrough());
       physics.add.collider(groups.enemies, oneway);
       physics.add.collider(groups.pickups, oneway);
     }
-    physics.add.collider(player, groups.platforms, undefined, (_p, plat) => this.platformProcess(plat as Phaser.GameObjects.GameObject));
+    physics.add.collider(
+      player,
+      groups.platforms,
+      (_p, plat) => player.setGroundPlatform((plat as Phaser.GameObjects.GameObject).body as Phaser.Physics.Arcade.Body),
+      (_p, plat) => this.platformProcess(plat as Phaser.GameObjects.GameObject),
+    );
     physics.add.collider(groups.enemies, groups.platforms);
 
     if (hazards) {
@@ -131,7 +137,9 @@ export class CombatSystem {
     if (!p.isAlive()) return false;
     const body = plat.body as Phaser.Physics.Arcade.Body;
     if (plat.getData('oneWay')) {
-      return p.body.velocity.y >= 0 && p.body.prev.y + p.body.height <= body.top + 6;
+      if (p.isDroppingThrough()) return false;
+      // Relative velocity so riders of rising platforms stay on.
+      return p.body.velocity.y >= body.velocity.y && p.body.prev.y + p.body.height <= body.prev.y + 6;
     }
     return true;
   }
@@ -148,6 +156,8 @@ export class CombatSystem {
   private playerVsEnemy(enemy: Enemy): void {
     const player: Player = this.ctx.player;
     if (enemy.dead || !enemy.active || !player.isAlive()) return;
+    // Star power, Brennan's dash, Dad's ground pound…
+    if (player.onEnemyContact(enemy)) return;
     const now = this.ctx.now();
     const pb = player.body;
     const eb = enemy.body;
