@@ -48,7 +48,7 @@ E2E (`tests/e2e`):
   movement; pause/resume (Esc), held keys don't stick through pause, pause menu restart/quit;
   pit death & respawn (HUD lives), checkpoint respawn, game over; hazards; level completion
   ⇒ Results, unlock, save persisted across reload, Continue / world map ✓; corrupted save boot;
-  known-defect tests (`test.fail`, see below).
+  touch controls hidden on desktop; grounded-on-flat-ground regression.
 - `touch.spec.ts` (`@touch`, mobile) — touch buttons shown; ▶/◀ move; jump while ▶ held (multi-touch); pause button.
 - `bot.spec.ts` — bot completes the test level with all five characters (damage on); widened
   gap; impassable wall ⇒ stuck report; every existing `LEVELS` map with every character
