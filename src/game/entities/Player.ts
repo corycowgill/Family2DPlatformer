@@ -535,7 +535,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    */
   onEnemyContact(enemy: Enemy): boolean {
     if (this.powerups.has('star')) {
-      enemy.takeHit({ amount: 99, fromX: this.x, kind: 'melee' });
+      enemy.takeHit({ amount: 99, fromX: this.x, kind: 'contact' });
       return true;
     }
     return this.ability?.onEnemyContact?.(enemy) ?? false;
@@ -578,7 +578,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.ability?.cancel?.();
     if (this.mode === 'ability') this.mode = 'normal';
     startJump(this.motor, this.stats, this.mods, Math.abs(v));
-    this.motor.jumpCut = !held;
+    // Unheld bounces use normal gravity (not jump-cut gravity, which would give a tiny
+    // ~11px hop and re-land on the enemy); held bounces stay cuttable like a real jump.
+    if (!held) this.motor.jumping = false;
+    this.motor.jumpCut = false;
     this.groundPlatform = null;
     this.appliedExtraVy = 0;
     this.stuckToGround = false;
