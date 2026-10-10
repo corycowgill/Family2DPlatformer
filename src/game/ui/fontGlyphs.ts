@@ -126,7 +126,7 @@ export interface Glyph {
 export function parseGlyph(ch: string, src: string): Glyph {
   const lines = src.split('|');
   const width = Math.max(...lines.map((l) => l.length));
-  if (lines.length !== CAP_HEIGHT && lines.length !== GLYPH_ROWS) {
+  if (lines.length < CAP_HEIGHT || lines.length > GLYPH_ROWS) {
     throw new Error(`Glyph "${ch}" has ${lines.length} rows`);
   }
   const rows: boolean[][] = [];

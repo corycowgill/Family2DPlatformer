@@ -90,10 +90,12 @@ describe('synth', () => {
       expect(pcm.length, k).toBeGreaterThan(100);
       expect(pcm.length, k).toBeLessThan(22050 * 2.5);
       let peak = 0;
-      for (const v of pcm) {
-        expect(Number.isFinite(v)).toBe(true);
-        peak = Math.max(peak, Math.abs(v));
+      let finite = true;
+      for (let i = 0; i < pcm.length; i++) {
+        if (!Number.isFinite(pcm[i])) finite = false;
+        peak = Math.max(peak, Math.abs(pcm[i]));
       }
+      expect(finite, k).toBe(true);
       expect(peak, k).toBeLessThanOrEqual(1);
       expect(peak, k).toBeGreaterThan(0.1);
     }

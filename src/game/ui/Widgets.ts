@@ -111,8 +111,8 @@ export function ratingBar(scene: Phaser.Scene, x: number, y: number, value: numb
   return g;
 }
 
-export function setRatingBar(g: Phaser.GameObjects.Graphics, x: number, y: number, value: number, max = 5, color: number = COLORS.gold): void {
-  g.clear();
+export function setRatingBar(g: Phaser.GameObjects.Graphics, x: number, y: number, value: number, max = 5, color: number = COLORS.gold, clear = true): void {
+  if (clear) g.clear();
   for (let i = 0; i < max; i++) {
     g.fillStyle(COLORS.ink, 1).fillRect(x + i * 11, y, 10, 6);
     g.fillStyle(i < value ? color : 0x2a3a5e, 1).fillRect(x + i * 11 + 1, y + 1, 8, 4);

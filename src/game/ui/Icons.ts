@@ -18,7 +18,7 @@ const ICONS: Record<string, string[]> = {
   coin_icon: ['..kkkk..', '.kYYYYk.', 'kYwYYoYk', 'kYwYYoYk', 'kYwYYoYk', 'kYYYYoYk', '.kYooYk.', '..kkkk..'],
   star_icon: ['....k....', '...kYk...', '...kYk...', 'kkkYwYkkk', 'kYYYwYYYk', '.kYYYYYk.', '..kYYYk..', '.kYYkYYk.', '.kYk.kYk.', '.kk...kk.'],
   souvenir_icon: ['...kkkkkk...', '.kkSSSSSSkk.', 'kSSwwSSSSSSk', 'kSwSSSSSSSsk', 'kSSSSkkSSSsk', 'kSSsk..ksSsk', '.kkk....kkk.'],
-  souvenir_icon_empty: ['...kkkkkk...', '.kkDDDDDDkk.', 'kDDDDDDDDDDk', 'kDDDDDDDDDDk', 'kDDDDkkDDDDk', 'kDDDk..kDDDk', '.kkk....kkk.'],
+  souvenir_icon_empty: ['...ssssss...', '.ssddddddss.', 'sddddddddDDs', 'sdddddddddDs', 'sdddDssddDDs', 'sdDDs..sDDDs', '.sss....sss.'],
   lock: ['..kkkk..', '.kssssk.', '.ks..sk.', '.ks..sk.', 'kkkkkkkk', 'kYYYYYYk', 'kYYkkYYk', 'kYYkkYYk', 'kYooooYk', 'kkkkkkkk'],
   check: ['.......kk', '......kGk', '.....kGgk', 'kk..kGgk.', 'kGkkGgk..', '.kGGgk...', '..kgk....', '...k.....'],
   pause: ['kkkkkkkkk', 'kwwkkkwwk', 'kwwkkkwwk', 'kwwkkkwwk', 'kwwkkkwwk', 'kwwkkkwwk', 'kkkkkkkkk'],
@@ -91,10 +91,10 @@ export function iconFrame(scene: Phaser.Scene, name: string): [string, string] {
 
 export function icon(scene: Phaser.Scene, x: number, y: number, name: string): Phaser.GameObjects.Image {
   const [tex, frame] = iconFrame(scene, name);
-  return scene.add.image(x, y, tex, frame);
+  return scene.add.image(x, y, tex, frame).setAlpha(name.endsWith('_empty') ? 0.6 : 1);
 }
 
 export function setIcon(img: Phaser.GameObjects.Image, name: string): void {
   const [tex, frame] = iconFrame(img.scene, name);
-  img.setTexture(tex, frame);
+  img.setTexture(tex, frame).setAlpha(name.endsWith('_empty') ? 0.6 : 1);
 }

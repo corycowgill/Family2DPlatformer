@@ -9,6 +9,8 @@ import { LevelScene } from './scenes/LevelScene';
 import { HUDScene } from './scenes/HUDScene';
 import { PauseScene } from './scenes/PauseScene';
 import { ResultsScene } from './scenes/ResultsScene';
+import { SettingsScene } from './scenes/SettingsScene';
+import { CreditsScene } from './scenes/CreditsScene';
 
 export function createGameConfig(parent: string): Phaser.Types.Core.GameConfig {
   return {
@@ -31,6 +33,6 @@ export function createGameConfig(parent: string): Phaser.Types.Core.GameConfig {
       arcade: { gravity: { x: 0, y: PHYSICS.gravity }, fps: 60, fixedStep: true, tileBias: 20, debug: false },
     },
     audio: { disableWebAudio: false },
-    scene: [BootScene, PreloadScene, MenuScene, CharacterSelectScene, WorldMapScene, LevelScene, HUDScene, PauseScene, ResultsScene],
+    scene: [BootScene, PreloadScene, MenuScene, CharacterSelectScene, WorldMapScene, LevelScene, HUDScene, PauseScene, ResultsScene, SettingsScene, CreditsScene],
   };
 }
