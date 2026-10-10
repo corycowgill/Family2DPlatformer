@@ -24,6 +24,8 @@ export interface EnemyConfig {
   coins?: number;
   /** Texture atlas key (defaults to kind). */
   atlas?: string;
+  /** The atlas is drawn facing LEFT (default: right). */
+  artFacesLeft?: boolean;
   /** Placeholder frame size if atlas missing. */
   frameSize?: { w: number; h: number };
   /** Distance (px) from the frame bottom up to the body bottom (flyers whose art hangs below the hitbox). */
@@ -143,7 +145,7 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     this.think(delta);
     if (!this.active) return;
-    this.setFlipX(this.facing === -1);
+    this.setFlipX(this.cfg.artFacesLeft ? this.facing === 1 : this.facing === -1);
   }
 
   /** AI per frame. */

@@ -345,6 +345,39 @@ def process(kind: str, sheets: dict[str, np.ndarray]):
     return frames, scale
 
 
+# Atlases drawn facing LEFT (Enemy reads `artFacesLeft` from EnemyConfig). The boss is
+# mirrored so it can face the player without its chest "CTA" plate reading backwards.
+FACES_LEFT = {'eliminator'}
+PLATE_COLORS = np.array([[0x25, 0x38, 0x5e], [0x18, 0x2b, 0x55]])
+
+
+def plate_bbox(frame: np.ndarray):
+    """Bounding box (x0, x1, y0, y1) of the navy CTA plate in a frame, or None."""
+    rgb = frame[..., :3].astype(int)
+    mask = (frame[..., 3] > 0) & np.any(np.all(np.abs(rgb[:, :, None, :] - PLATE_COLORS[None, None]) <= 6, axis=-1), axis=-1)
+    ys, xs = np.nonzero(mask)
+    if len(xs) < 40:
+        return None
+    cx, cy = int(np.median(xs)), int(np.median(ys))
+    sel = (np.abs(xs - cx) <= 12) & (np.abs(ys - cy) <= 6)
+    return xs[sel].min(), xs[sel].max(), ys[sel].min(), ys[sel].max()
+
+
+def face_left_keep_label(frames: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+    """Mirror every frame horizontally, then un-mirror the CTA plate so its text reads.
+    Tinted/flashed frames (plate colour changed) reuse the plate box of idle_0."""
+    fallback = plate_bbox(frames['idle_0'][:, ::-1])
+    out = {}
+    for name, frame in frames.items():
+        m = frame[:, ::-1].copy()
+        box = plate_bbox(m) or (fallback if not name.startswith('die_') or name in ('die_0', 'die_1') else None)
+        if box:
+            x0, x1, y0, y1 = box
+            m[y0:y1 + 1, x0:x1 + 1] = m[y0:y1 + 1, x0:x1 + 1][:, ::-1].copy()
+        out[name] = m
+    return out
+
+
 def main():
     sheets = {k: load(v) for k, v in SHEETS.items()}
     only = sys.argv[1:]
@@ -353,6 +386,8 @@ def main():
         if only and kind not in only:
             continue
         frames, scale = process(kind, sheets)
+        if kind in FACES_LEFT:
+            frames = face_left_keep_label(frames)
         write_atlas(OUT / 'enemies' / kind, frames)
         rows.append((kind, list(frames.items())))
         print(f'{kind}: scale {scale:.2f}, {len(frames)} frames {SPECS[kind]["frame"]}')

@@ -107,5 +107,5 @@ steamVent 177 10 period=2.8 offset=0 height=4
 steamVent 181 10 period=2.8 offset=1.4 height=4
 prop 198 7 frame=cta_entrance
 prop 192 7 frame=lamp
-boss 202 16 width=30 height=17 kind=eliminator
+boss 202 12 width=30 height=13 kind=eliminator
 levelStyle 0 0

@@ -60,7 +60,7 @@ export class Eliminator extends Boss {
     super(
       ctx,
       { ...spawn, x: bx, y: arena.bottom },
-      { kind: 'eliminator', hp: 12, contactDamage: 1, stompable: true, body: STAND, gravity: true, frameSize: ENEMY_FRAME_SIZE.eliminator },
+      { kind: 'eliminator', hp: 12, contactDamage: 1, stompable: true, artFacesLeft: true, body: STAND, gravity: true, frameSize: ENEMY_FRAME_SIZE.eliminator },
       arena,
       [Math.round((stats.hp * 2) / 3), Math.round(stats.hp / 3)],
     );
