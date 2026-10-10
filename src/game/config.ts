@@ -7,7 +7,30 @@ export const GAME_WIDTH = 480;
 export const GAME_HEIGHT = 270;
 export const TILE_SIZE = 16;
 
-/** Base physics shared by all characters. Units: pixels and seconds. */
+/**
+ * Base physics shared by all characters. Units: pixels and seconds.
+ *
+ * ── JUMP LIMITS (level-design contract) ───────────────────────────────────────
+ * Measured with `simulateArc` (systems/PlayerMotor.ts), which integrates exactly like
+ * the game (the motor runs once per 60 Hz Arcade step, so arcs are frame-rate
+ * independent). Live values: `JUMP_LIMITS[id]` / `MIN_JUMP_LIMITS`; landing reach on a
+ * ledge dy px higher/lower: `jumpReach(stats, dy)`. 16 px tiles. No abilities/power-ups.
+ *
+ *            tap    walk   run    walk   run    run gap
+ *            peak   peak   peak   dist   dist   (tiles)
+ *   dad      24.5   57.0   75.0   58.6   112.0  7
+ *   mom      24.5   57.0   75.0   58.6   108.5  7     (+ Sparkle Jump: +40 px ≈ 2.5 tiles)
+ *   brennan  24.0   55.7   74.0   60.0   119.0  7
+ *   parker   24.5   57.0   75.0   58.6   112.0  7
+ *   lupin    24.2   56.4   74.3   64.8   115.5  8
+ *
+ * Design against the minimums: a ledge 3 tiles up needs a full-hold jump (no run);
+ * 4 tiles up needs a running jump; 5 tiles is unreachable without an ability.
+ * Flat gaps: ≤ 3 tiles walking, ≤ 6 tiles running is comfortable, 7 is the max.
+ * Tap jump ≈ 1.5 tiles. CTA pass (×1.25 speed, ×1.08 jump) raises the run peak to ~87 px.
+ * Standing bodies are ≤ 30 px tall (fit 2-tile corridors); only Lupin (14 px) fits
+ * 1-tile tunnels. Timings: coyote 100 ms, jump buffer 120 ms.
+ */
 export const PHYSICS = {
   /** Gravity while rising with jump held. */
   gravity: 1250,

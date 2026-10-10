@@ -82,6 +82,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private landTimer = 0;
   /** Extra downward velocity we added last tick (ground stick + platform), excluded from motor readback. */
   private appliedExtraVy = 0;
+  /** Horizontal platform carry we added last step (excluded from motor readback). */
+  private appliedCarryVx = 0;
   /** Timed one-shot animation (attack / ability) overriding the locomotion anim. */
   private actionAnim: { name: string; until: number } | null = null;
   private lastCooldown = -1;
@@ -253,7 +255,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ── Read back collision results from the physics step ──
-    m.vx = b.velocity.x;
+    m.vx = b.velocity.x - this.appliedCarryVx;
+    if ((b.blocked.left && m.vx < 0) || (b.blocked.right && m.vx > 0) || (Math.abs(b.velocity.x) < 0.01 && (b.blocked.left || b.blocked.right))) m.vx = 0;
     const readVy = b.velocity.y;
     // Last step we pushed into the ground; unless something launched us (bounce pad), we're at rest.
     m.vy = this.appliedExtraVy !== 0 && readVy > -100 ? 0 : readVy;
@@ -279,11 +282,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // ── Write velocity back to the body ──
     let extraVy = 0;
+    let carryVx = 0;
+    const ridden = this.currentPlatform();
     if (m.grounded && m.vy >= 0) {
-      extraVy = PHYSICS.groundStickVy + (plat ? plat.velocity.y : 0);
+      extraVy = PHYSICS.groundStickVy + (ridden ? ridden.velocity.y : 0);
+      // Arcade carries riders itself only when the platform's friction.x > 0 (groups default to 0).
+      if (ridden) carryVx = ridden.velocity.x * (1 - Phaser.Math.Clamp(ridden.friction.x, 0, 1));
     }
     this.appliedExtraVy = extraVy;
-    b.setVelocity(m.vx, m.vy + extraVy);
+    this.appliedCarryVx = carryVx;
+    b.setVelocity(m.vx + carryVx, m.vy + extraVy);
 
     // Landing feedback
     if (m.grounded && !this.wasGrounded) this.onLand();
@@ -483,6 +491,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   // ───────────── hooks ─────────────
 
   protected onJump(): void {
+    // Jumping off a moving platform keeps its momentum.
+    const plat = this.currentPlatform();
+    if (plat) this.motor.vx += plat.velocity.x;
     this.groundPlatform = null;
     this.ctx.sfx('jump');
     this.ctx.effect('dust', this.x, this.y, { scale: 0.8 });
@@ -563,6 +574,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.motor.jumpCut = !held;
     this.groundPlatform = null;
     this.appliedExtraVy = 0;
+    this.appliedCarryVx = 0;
     this.body.setVelocityY(this.motor.vy);
   }
 
@@ -589,6 +601,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.motor.jumping = false;
     this.groundPlatform = null;
     this.appliedExtraVy = 0;
+    this.appliedCarryVx = 0;
     this.body.setVelocity(this.motor.vx, this.motor.vy);
     this.attacking = false;
     this.actionAnim = null;
@@ -635,6 +648,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.actionAnim = null;
     this.groundPlatform = null;
     this.appliedExtraVy = 0;
+    this.appliedCarryVx = 0;
     this.applyBodySize(false);
     this.invulnUntil = this.ctx.now() + 1500;
     for (const kind of [...this.powerups.keys()]) {

@@ -152,7 +152,7 @@ class GroundPound extends BaseAbility {
   onPress(_input: InputState): void {
     const p = this.p;
     if (this.state !== 'idle') return;
-    if (!p.grounded && !canGroundJump(p.motor)) {
+    if (!p.grounded) {
       if (!this.ready) return;
       this.state = 'hang';
       this.t = 0;
@@ -287,7 +287,7 @@ class AirJump extends BaseAbility {
 
   onPress(_input: InputState): void {
     const p = this.p;
-    if (!p.grounded && !canGroundJump(p.motor) && !this.usedInAir) {
+    if (!p.grounded && !this.usedInAir) {
       this.airJump(true);
       return;
     }

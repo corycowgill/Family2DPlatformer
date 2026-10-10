@@ -282,6 +282,23 @@ describe('level-design jump limits (all characters, no abilities)', () => {
     expect(spread('runDistance')).toBeLessThan(16);
   });
 
+  it('matches the table documented in config.ts (update both when retuning)', () => {
+    const documented: Record<string, [number, number, number, number]> = {
+      dad: [24.5, 57.0, 75.0, 112.0],
+      mom: [24.5, 57.0, 75.0, 108.5],
+      brennan: [24.0, 55.7, 74.0, 119.0],
+      parker: [24.5, 57.0, 75.0, 112.0],
+      lupin: [24.2, 56.4, 74.3, 115.5],
+    };
+    for (const [id, [tap, walk, run, dist]] of Object.entries(documented)) {
+      const l = JUMP_LIMITS[id as keyof typeof JUMP_LIMITS];
+      expect(l.tapPeak).toBeCloseTo(tap, 0);
+      expect(l.walkPeak).toBeCloseTo(walk, 0);
+      expect(l.runPeak).toBeCloseTo(run, 0);
+      expect(l.runDistance).toBeCloseTo(dist, 0);
+    }
+  });
+
   it('Mom air jump adds ~2.5 tiles', () => {
     expect(JUMP_LIMITS.mom.airJumpExtra).toBeGreaterThan(2.2 * TILE_SIZE);
     expect(JUMP_LIMITS.mom.airJumpExtra).toBeLessThan(2.8 * TILE_SIZE);
