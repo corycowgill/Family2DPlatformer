@@ -78,11 +78,46 @@ async function setButton(page: Page, i: number, value: number): Promise<void> {
   }, [i, value] as const);
 }
 
-async function tap(page: Page, i: number, holdMs = 90): Promise<void> {
-  await setButton(page, i, 1);
-  await page.waitForTimeout(holdMs);
-  await setButton(page, i, 0);
-  await page.waitForTimeout(90);
+/** Wait for `n` rendered frames (the game polls pads once per frame) — robust under CPU load. */
+function frames(page: Page, n = 4): Promise<void> {
+  return page.evaluate(
+    (n) =>
+      new Promise<void>((resolve) => {
+        let k = 0;
+        const f = () => (++k >= n ? resolve() : requestAnimationFrame(f));
+        requestAnimationFrame(f);
+      }),
+    n,
+  );
+}
+
+/**
+ * Press and release a button inside the page, counted in rendered frames: the hold must not
+ * stretch with Playwright round-trip latency under load (a long hold auto-repeats d-pad nav).
+ */
+async function tap(page: Page, i: number, holdFrames = 3): Promise<void> {
+  await page.evaluate(
+    ([i, n]) =>
+      new Promise<void>((resolve) => {
+        const b = window.__pad.pad.buttons[i];
+        const set = (v: number) => {
+          b.value = v;
+          b.pressed = v > 0.5;
+          b.touched = v > 0;
+          window.__pad.pad.timestamp++;
+        };
+        set(1);
+        let k = 0;
+        const f = () => {
+          k++;
+          if (k === n) set(0);
+          if (k >= n + 3) resolve();
+          else requestAnimationFrame(f);
+        };
+        requestAnimationFrame(f);
+      }),
+    [i, holdFrames] as const,
+  );
 }
 
 async function stick(page: Page, x: number, y: number): Promise<void> {
@@ -91,6 +126,27 @@ async function stick(page: Page, x: number, y: number): Promise<void> {
     window.__pad.pad.axes[1] = y;
     window.__pad.pad.timestamp++;
   }, [x, y] as const);
+}
+
+/** Push the left stick for a few frames and let go (in-page, like `tap`). */
+async function flick(page: Page, x: number, y: number, holdFrames = 3): Promise<void> {
+  await page.evaluate(
+    ([x, y, n]) =>
+      new Promise<void>((resolve) => {
+        const a = window.__pad.pad.axes;
+        a[0] = x;
+        a[1] = y;
+        let k = 0;
+        const f = () => {
+          k++;
+          if (k === n) a[0] = a[1] = 0;
+          if (k >= n + 3) resolve();
+          else requestAnimationFrame(f);
+        };
+        requestAnimationFrame(f);
+      }),
+    [x, y, holdFrames] as const,
+  );
 }
 
 /** Glyph ids of the prompts currently shown in a scene. */
@@ -145,10 +201,7 @@ test.describe('Xbox controller', () => {
     await waitForScene(page, 'CharacterSelect');
     expect(await glyphs(page, 'CharacterSelect')).toEqual(expect.arrayContaining(['pad:DPAD', 'pad:A', 'pad:B']));
     await page.waitForTimeout(400); // wipe-in
-    await stick(page, 0.9, 0.05); // dad → mom with the stick
-    await page.waitForTimeout(120);
-    await stick(page, 0, 0);
-    await page.waitForTimeout(80);
+    await flick(page, 0.9, 0.05); // dad → mom with the stick
     await tap(page, BTN.A);
     await waitForScene(page, 'WorldMap');
     await page.waitForTimeout(400);
@@ -161,7 +214,7 @@ test.describe('Xbox controller', () => {
     await page.waitForFunction(() => window.__harness!.getState().grounded, undefined, { timeout: 10_000 });
     const s0 = await getState(page);
     expect(s0.levelId).toBe('loop-1');
-    expect(s0.character).toBe('mom');
+    expect(s0.character, "stick right on character select picks Mom").toBe("mom");
     await page.waitForTimeout(600);
     const s1 = await getState(page);
     expect(s1.y, 'held A from the map must not jump on spawn').toBeCloseTo(s0.y, 0);
@@ -192,7 +245,7 @@ test.describe('Xbox controller', () => {
     await setButton(page, BTN.RT, 0.6);
     await page.waitForTimeout(300);
     const s1 = await getState(page);
-    await tap(page, BTN.A, 150);
+    await tap(page, BTN.A, 8);
     await page.waitForFunction((y) => window.__harness!.getState().y < y - 8, s1.y, { timeout: 5_000 });
     await setButton(page, BTN.RT, 0);
     await stick(page, 0, 0);
@@ -315,9 +368,9 @@ test.describe('Xbox controller', () => {
     await page.waitForTimeout(400);
     // MUSIC, SOUND FX, MUTE ALL, REDUCED MOTION, TOUCH CONTROLS, VIBRATION — hold the d-pad (auto-repeat).
     await setButton(page, BTN.DOWN, 1);
-    await page.waitForTimeout(380 + 140 * 3 + 60);
+    await page.waitForTimeout(380 + 140 * 2);
     await setButton(page, BTN.DOWN, 0);
-    await page.waitForTimeout(100);
+    await frames(page, 4);
     const onVibration = () =>
       harness(page, (h) => {
         const s = h.game.scene.getScene('Settings');
@@ -325,7 +378,7 @@ test.describe('Xbox controller', () => {
         return vib.tintTopLeft === 0xffd25a; // gold = selected
       });
     // The repeat count depends on frame timing: finish with single taps.
-    for (let i = 0; i < 6 && !(await onVibration()); i++) await tap(page, BTN.DOWN);
+    for (let i = 0; i < 10 && !(await onVibration()); i++) await tap(page, BTN.DOWN);
     expect(await onVibration()).toBe(true);
     const rumbleSetting = () => harness(page, (h) => (h.getSave() as { settings: { rumble: boolean } }).settings.rumble);
     await tap(page, BTN.A);
