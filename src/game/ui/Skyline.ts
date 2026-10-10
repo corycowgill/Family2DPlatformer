@@ -248,6 +248,8 @@ export class Skyline {
     const realBg = ['sky', 'far', 'mid', 'near'].every((l) => isRealAsset(scene, IMAGES.bg('day', l as 'sky')));
     if (realBg) {
       (['sky', 'far', 'mid', 'near'] as const).forEach((l, i) => this.addLayer(IMAGES.bg('day', l), [0, 3, 8, 16][i], depth + i));
+      // Drifting cumulus layer (backgrounds art ships it separately from the static sky).
+      if (scene.textures.exists('bg-day-clouds')) this.addLayer('bg-day-clouds', 1.5, depth + 0.5, scene.textures.get('bg-day-clouds').getSourceImage().height);
     } else {
       canvasTex(scene, 'menu-sky', W, H, drawSky);
       canvasTex(scene, 'menu-far', W, H, (c) =>
@@ -271,8 +273,8 @@ export class Skyline {
     if (opts.train !== false && this.moving) this.buildTrain(depth + 3.5);
   }
 
-  private addLayer(key: string, speed: number, depth: number): void {
-    const ts = this.scene.add.tileSprite(0, 0, W, H, key).setOrigin(0).setDepth(depth).setScrollFactor(0);
+  private addLayer(key: string, speed: number, depth: number, height = H): void {
+    const ts = this.scene.add.tileSprite(0, 0, W, height, key).setOrigin(0).setDepth(depth).setScrollFactor(0);
     this.layers.push({ ts, speed });
   }
 

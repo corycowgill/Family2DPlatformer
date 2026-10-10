@@ -1,25 +1,60 @@
 #!/usr/bin/env python3
 """
-Parallax backgrounds: public/assets/backgrounds/bg-<theme>-<layer>.png
-  sky  480x270 opaque gradient + clouds (tileable)
-  far  960x270 distant skyline (Willis, Hancock, Trump, Aon...) transparent above
-  mid  960x270 closer buildings / L structure / river + bridges
-  near 960x270 low foreground silhouettes in the bottom ~80px
-All layers wrap horizontally (every primitive is drawn modulo the width).
+Parallax backgrounds + ambient sprites for the four level themes.
+
+Outputs
+  public/assets/backgrounds/bg-<theme>-sky.png     480x270 opaque gradient, sun, distant clouds (static)
+  public/assets/backgrounds/bg-<theme>-clouds.png  640x176 drifting cumulus layer (transparent)
+  public/assets/backgrounds/bg-<theme>-far.png     960x270 skyline: hazy back row + landmark row
+  public/assets/backgrounds/bg-<theme>-mid.png     960x270 mid-rises / rooftops / river + bridges / L
+  public/assets/backgrounds/bg-<theme>-near.png    960x270 dark, saturated foreground silhouettes
+  public/assets/ambient.png/.json                  ambient sprite atlas (birds, trains, boats, steam...)
+  public/assets/ambient-water.png                  32x8 scrolling water-surface highlight strip
+  src/game/world/AmbientAnchors.ts                 generated: lit windows / vents / track & river lines
+  art/previews/backgrounds.png                     all four themes composited
+
+Every primitive is drawn modulo the layer width so all layers tile seamlessly.
+Atmospheric perspective: each row of buildings is drawn in "material" colours, then
+graded per theme -- far rows are pulled hard toward the horizon haze (more so near their
+base, where the air is thickest), mid rows less, near layers are darkened and saturated.
+Sunset rows are first pushed toward a purple silhouette and get a warm rim light on the
+sun side plus lit windows (whose positions are exported for the twinkle effect).
 """
+import json
 import math
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from pxl import ASSETS, PREVIEWS, Cv, T, c, hexc, lerp, rng, scaled  # noqa: E402
+from pxl import ASSETS, PREVIEWS, ROOT, FONT3, Cv, T, c, hexc, rng, pack_atlas  # noqa: E402
 from PIL import Image  # noqa: E402
 
 W, H = 480, 270
 WIDE = 960
+CLOUD_W, CLOUD_H = 640, 176
 OUT = os.path.join(ASSETS, "backgrounds")
+ANCHORS_TS = os.path.join(ROOT, "src", "game", "world", "AmbientAnchors.ts")
 
 BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+THEME_NAMES = ("day", "rooftop", "river", "sunset")
+
+
+def clamp01(v):
+    return 0.0 if v < 0 else 1.0 if v > 1 else v
+
+
+def mix(a, b, t):
+    a, b = c(a), c(b)
+    return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3)) + (255,)
+
+
+def dith(t, x, y, steps):
+    """Quantise t (0..1) to `steps` levels with a 4x4 ordered dither."""
+    q = clamp01(t) * steps
+    i = int(q)
+    if (q - i) * 16 > BAYER[y % 4][x % 4] + 0.5:
+        i += 1
+    return min(steps, i) / steps
 
 
 class Wrap(Cv):
@@ -30,6 +65,12 @@ class Wrap(Cv):
         if 0 <= y < self.h:
             self.px[x, y] = c(col) if col != T else T
 
+    def get(self, x, y):
+        y = int(y)
+        if 0 <= y < self.h:
+            return self.px[int(x) % self.w, y]
+        return T
+
     def rect(self, x, y, w, h, col):
         col = c(col) if col != T else T
         for yy in range(max(0, int(y)), min(self.h, int(y + h))):
@@ -37,191 +78,419 @@ class Wrap(Cv):
                 self.px[xx % self.w, yy] = col
 
 
-def tint(col, toward, t):
-    return lerp(col, toward, t)
-
-
 # ---------------------------------------------------------------------------
-# Theme palettes
+# Theme definitions
 # ---------------------------------------------------------------------------
 THEMES = {
     "day": dict(
-        sky=["2f7fd6", "4a97e2", "6cb0ea", "93c8f0", "bde0f6", "dff1fb"],
-        cloud="ffffff", cloud2="e3f0fa", cloud3="bcd6ee",
-        haze="b9d8f2", far=["9db9db", "86a5cc", "7392bd", "b7cfe8"], far_win="c8dcf0",
-        mid_haze="a9c8e6", mid_t=0.56, near=["3d6e5a", "2f5a4e", "4f8466"], near_metal="34485a", near_t=0.2,
-        lamp_glow=None,
+        sky=[(0, "2a6cd0"), (60, "3c86de"), (120, "62a4ea"), (175, "93c6f2"), (215, "c4e2f8"), (250, "e6f4fc")],
+        sun=(132, 58, "fffbe8", "fff3c0"), sun_glow=34,
+        cloud=["ffffff", "f0f7fd", "d6e6f4", "b0c9e2", "93b1d4"], cloud_rim=None,
+        haze="cfe4f6", far_fog=(0.34, 0.62), back_fog=(0.62, 0.82), far_y=(70, 262),
+        mid_haze="b7d3ec", mid_fog=(0.2, 0.42), sil=None,
+        rim_side=-1, rim="ffffff", rim_t=0.32,
+        near_dark=0.18, near_sat=0.25,
     ),
     "rooftop": dict(
-        sky=["3b78cf", "5a92da", "84ade2", "b4c9e2", "e6d9c8", "f8e2b8"],
-        cloud="fff6e8", cloud2="f2dcc8", cloud3="d7bfb0",
-        haze="d8d0d0", far=["a7aec8", "9198b8", "7f86a8", "c4c6d6"], far_win="e8e0d0",
-        mid_haze="c2bcc4", mid_t=0.5, near=["4a4f63", "3a3e52", "5c6278"], near_metal="2f3346", near_t=0.15,
-        lamp_glow=None,
+        sky=[(0, "2c5aa8"), (45, "3f74bc"), (95, "6e98c8"), (140, "b0bcc8"), (180, "e4cdb0"), (220, "f6d49c"), (255, "fae0b0")],
+        sun=(388, 52, "fffbea", "fff0c8"), sun_glow=40,
+        cloud=["fffaf0", "f6ecdc", "e0d2c4", "c4b6b0", "a69ca6"], cloud_rim=None,
+        haze="ead8c0", far_fog=(0.3, 0.9), back_fog=(0.6, 0.95), far_y=(60, 252),
+        mid_haze="d6c8bc", mid_fog=(0.16, 0.5), sil=None,
+        rim_side=1, rim="fff4dc", rim_t=0.35,
+        near_dark=0.12, near_sat=0.1,
     ),
     "river": dict(
-        sky=["2a86d0", "45a0de", "68b6e6", "92cced", "bfe2f2", "e2f4f8"],
-        cloud="ffffff", cloud2="e0f0f8", cloud3="b8d4e8",
-        haze="b2d8ea", far=["98bcd6", "82a8c6", "6f95b8", "b4d0e4"], far_win="c8e0ee",
-        mid_haze="a4cce2", mid_t=0.5, near=["3a6a58", "2d584c", "4b8062"], near_metal="2e4652", near_t=0.18,
-        lamp_glow=None,
+        sky=[(0, "2470c4"), (60, "3a8ad4"), (120, "5fa8e2"), (175, "8ec8ec"), (215, "bfe2f0"), (250, "e2f4f4")],
+        sun=(96, 66, "fffcec", "fff4cc"), sun_glow=30,
+        cloud=["ffffff", "eef8fc", "d2e8f2", "a8cce2", "8ab4d2"], cloud_rim=None,
+        haze="c6e2ee", far_fog=(0.36, 0.66), back_fog=(0.62, 0.84), far_y=(70, 262),
+        mid_haze="b4d6e8", mid_fog=(0.16, 0.36), sil=None,
+        rim_side=-1, rim="ffffff", rim_t=0.3,
+        near_dark=0.15, near_sat=0.25,
     ),
     "sunset": dict(
-        sky=["2a1c5a", "4e2a78", "843a8c", "c4508a", "f07a5a", "ffb45a"],
-        cloud="ffc9a0", cloud2="f2909a", cloud3="a8508a",
-        haze="d0708a", far=["6c3d7e", "5a3070", "4a2762", "84508e"], far_win="ffcf6a",
-        mid_haze="5a2c6a", mid_t=0.55, near=["2a1a3c", "21142f", "34224a"], near_metal="1c1228", near_t=0.0,
-        lamp_glow="ffd77a",
+        sky=[(0, "1a1240"), (40, "2e1a5c"), (90, "5a2678"), (135, "963a86"), (175, "d4567a"), (205, "f27e5e"), (232, "ffb060"), (255, "ffd27c")],
+        sun=(330, 150, "fff2b8", "ffb45a"), sun_glow=80,
+        cloud=["ffd0a8", "f6a092", "d06e8a", "8e4a86", "5e3478"], cloud_rim="ffe0a0",
+        haze="d8708a", far_fog=(0.12, 0.5), back_fog=(0.42, 0.7), far_y=(60, 262),
+        mid_haze="9a4878", mid_fog=(0.04, 0.22), sil=("54306e", 0.72, "2e1c46", 0.86, "1c1230", 0.9),
+        rim_side=1, rim="ffb26a", rim_t=0.55,
+        near_dark=0.0, near_sat=0.0,
+        lit=["ffd27a", "ffc060", "fff0b0", "ffb070"],
     ),
 }
+
+# material colours: body, shade, light, window
+MAT = {
+    "glass": ("6a90b8", "4d6f96", "a0c2e0", "a8d0ee"),
+    "glassd": ("43587a", "33445f", "7088aa", "8aa6c8"),
+    "teal": ("5c98a4", "457a86", "8cc0c8", "a8dce0"),
+    "black": ("363a46", "272a33", "5c6272", "6c7488"),
+    "lime": ("cdbd94", "a99a74", "e6dab6", "7c8696"),
+    "white": ("dcdee2", "b6bac2", "f4f6f8", "9aa6b6"),
+    "brick": ("a65a40", "80412f", "c87a5c", "5a6880"),
+    "conc": ("a0a2aa", "80828c", "c0c2ca", "667082"),
+    "tan": ("bba07c", "977c5f", "d6c09c", "667082"),
+    "green": ("6c8c84", "52706a", "94b2a8", "a8ccc4"),
+}
+
+
+# ---------------------------------------------------------------------------
+# Post-processing (grade / fog / rim)
+# ---------------------------------------------------------------------------
+def grade(cv, theme, fog, y0, y1, haze, sil=None, steps=10):
+    """Atmospheric perspective: pull opaque pixels toward `haze`, more strongly near the base."""
+    hz = c(haze)
+    s_col = c(sil[0]) if sil else None
+    for y in range(cv.h):
+        k = clamp01((y - y0) / max(1, y1 - y0))
+        t = fog[0] + (fog[1] - fog[0]) * k * k ** 0.2
+        for x in range(cv.w):
+            p = cv.px[x, y]
+            if p[3] == 0:
+                continue
+            if s_col:
+                p = mix(p, s_col, sil[1])
+            tt = dith(t, x, y, steps)
+            cv.px[x, y] = mix(p, hz, tt)
+
+
+def rim_light(cv, side, col, t, ymax=None, depth=1):
+    """Lighten pixels whose neighbour on `side` (-1 left, +1 right) is transparent."""
+    w, h = cv.w, cv.h
+    alpha = [[cv.px[x, y][3] for x in range(w)] for y in range(h)]
+    for y in range(h):
+        if ymax and y > ymax:
+            break
+        row = alpha[y]
+        for x in range(w):
+            if not row[x]:
+                continue
+            for d in range(1, depth + 1):
+                if not row[(x + side * d) % w]:
+                    cv.px[x, y] = mix(cv.px[x, y], col, t * (1.0 if d == 1 else 0.5))
+                    break
+
+
+def top_light(cv, col, t, ymax=None):
+    """Lighten pixels whose upper neighbour is transparent (roof edges catch the sky)."""
+    w = cv.w
+    for y in range(1, cv.h):
+        if ymax and y > ymax:
+            break
+        for x in range(w):
+            if cv.px[x, y][3] and not cv.px[x, y - 1][3]:
+                cv.px[x, y] = mix(cv.px[x, y], col, t)
+
+
+def saturate(col, amt, dark):
+    r, g, b, a = col
+    m = (r + g + b) / 3
+    r, g, b = (m + (r - m) * (1 + amt), m + (g - m) * (1 + amt), m + (b - m) * (1 + amt))
+    f = 1 - dark
+    return (max(0, min(255, int(r * f))), max(0, min(255, int(g * f))), max(0, min(255, int(b * f))), 255)
 
 
 # ---------------------------------------------------------------------------
 # SKY
 # ---------------------------------------------------------------------------
+def gradient_col(stops, y):
+    for i in range(len(stops) - 1):
+        (ya, ca), (yb, cb) = stops[i], stops[i + 1]
+        if y <= yb:
+            return ca, cb, clamp01((y - ya) / max(1, yb - ya))
+    return stops[-1][1], stops[-1][1], 0.0
+
+
 def draw_sky(theme):
     th = THEMES[theme]
     cv = Wrap(W, H)
-    bands = [hexc(x) for x in th["sky"]]
-    n = len(bands) - 1
-    horizon = 230
     for y in range(H):
-        t = min(1.0, y / horizon) * n
-        i = min(n - 1, int(t))
-        f = t - i
+        ca, cb, t = gradient_col(th["sky"], y)
         for x in range(W):
-            # ordered dither between neighbouring bands (8 levels)
-            cv.px[x, y] = bands[i + 1] if f * 16 > BAYER[y % 4][x % 4] else bands[i]
+            cv.px[x, y] = mix(ca, cb, dith(t, x, y, 6))
+    sx, sy, core, edge = th["sun"]
+    glow = th["sun_glow"]
+    # sun glow: dithered halo blending toward a warm/white tint
+    for y in range(max(0, sy - glow), min(H, sy + glow)):
+        for x in range(sx - glow, sx + glow):
+            d = math.hypot(x - sx, y - sy)
+            if d < glow:
+                k = (1 - d / glow) ** 2
+                cv.px[x % W, y] = mix(cv.px[x % W, y], edge, dith(k * (0.75 if theme == "sunset" else 0.55), x, y, 8))
+    r_sun = 22 if theme == "sunset" else 8
+    for y in range(sy - r_sun - 1, sy + r_sun + 2):
+        for x in range(sx - r_sun - 1, sx + r_sun + 2):
+            d = math.hypot(x - sx, y - sy)
+            if d <= r_sun:
+                if theme == "sunset":
+                    # retro banded sun: horizontal gaps that widen toward the bottom
+                    band = y - (sy - 4)
+                    if band > 0 and band % 6 >= 6 - min(4, 1 + band // 6):
+                        continue
+                    cv.set(x, y, mix(core, edge, clamp01((y - (sy - r_sun)) / (2 * r_sun)) * 0.9))
+                else:
+                    cv.set(x, y, core if d < r_sun - 2 else edge)
+    r = rng({"day": 11, "rooftop": 12, "river": 13, "sunset": 14}[theme])
+    tones = th["cloud"]
     if theme == "sunset":
-        # sun disc sinking on the horizon
-        for y in range(150, 240):
-            for x in range(300, 400):
-                d = math.hypot(x - 350, y - 205)
-                if d < 26:
-                    cv.set(x, y, "fff0b0" if d < 22 else "ffd27a")
-                elif d < 40 and BAYER[y % 4][x % 4] < (40 - d) * 0.9:
-                    cv.set(x, y, "ffc46a")
-        for y, w in ((196, 70), (204, 90), (212, 60)):
-            cv.rect(350 - w // 2, y, w, 2, "f08a6a")
-    r = rng(hash(theme) & 0xFFFF if False else {"day": 1, "rooftop": 2, "river": 3, "sunset": 4}[theme])
-    clouds = [(30, 40, 1.0), (170, 70, 0.7), (300, 30, 0.9), (410, 95, 0.6), (95, 120, 0.5), (250, 140, 0.45)]
-    for cx, cy, s in clouds:
-        cloud(cv, cx + r.randint(-10, 10), cy, s, th, r)
+        # long lit stratus streaks near the sun + dark high streaks
+        for (cx, cy, w, col) in ((300, 150, 140, tones[0]), (420, 168, 90, tones[0]), (90, 128, 120, tones[1]),
+                                 (200, 104, 110, tones[2]), (40, 84, 90, tones[3]), (360, 70, 120, tones[3]),
+                                 (180, 182, 70, tones[0])):
+            streak(cv, cx, cy, w, col, mix(col, "ffffff", 0.35), r)
+    elif theme == "rooftop":
+        # high cirrus mares' tails + a low distant cloud bank
+        for (cx, cy, w) in ((80, 70, 120), (260, 54, 160), (420, 88, 110), (180, 112, 90), (360, 130, 80)):
+            cirrus(cv, cx, cy, w, mix(tones[1], th["sky"][2][1], 0.35), mix(tones[0], th["sky"][2][1], 0.15), r)
+        for cx in range(0, W, 46):
+            cumulus(cv, cx + r.randint(-6, 6), 214, r.randint(26, 40), r.randint(7, 11), [mix(t, th["haze"], 0.55) for t in tones], r)
+    else:
+        # small, far cumulus sitting low over the horizon (they don't drift: far away)
+        for cx in range(10, W, 60):
+            cumulus(cv, cx + r.randint(-10, 10), 206 + r.randint(-14, 4), r.randint(22, 40), r.randint(7, 12),
+                    [mix(t, th["haze"], 0.45) for t in tones], r)
+        for (cx, cy, w) in ((300, 112, 80),):
+            cirrus(cv, cx, cy, w, mix(tones[1], th["sky"][2][1], 0.55), mix(tones[0], th["sky"][2][1], 0.4), r)
     return cv
 
 
-def cloud(cv, cx, cy, s, th, r):
-    """Puffy pixel cloud made of overlapping discs, flat bottom, 3 tones."""
+def streak(cv, cx, cy, w, col, hi, r):
+    """Sunset stratus: thin lens-shaped streak, brighter on its lower edge."""
+    for i in range(-w // 2, w // 2):
+        u = i / (w / 2)
+        th = 1 + int(3 * (1 - u * u))
+        off = int(2 * math.sin(i * 0.05 + cx))
+        for k in range(th):
+            if abs(u) > 0.8 and BAYER[(cy + k) % 4][(cx + i) % 4] < (abs(u) - 0.8) * 70:
+                continue
+            cv.set(cx + i, cy + off + k, hi if k == th - 1 else col)
+
+
+def cirrus(cv, cx, cy, w, col, hi, r):
+    """Soft high-altitude haze streak: a long, thin, feathered lens with a brighter core."""
+    ry = 3.2
+    for y in range(int(cy - ry * 2), int(cy + ry * 2) + 1):
+        for x in range(int(cx - w / 2), int(cx + w / 2)):
+            u = (x - cx) / (w / 2)
+            yc = cy + u * u * 4 - u * 2  # gentle curve
+            d = ((y - yc) / ry) ** 2 + u * u
+            if d >= 1:
+                continue
+            dens = (1 - d) ** 1.4
+            if BAYER[y % 4][x % 4] < dens * 15:
+                cv.set(x, y, hi if dens > 0.55 else col)
+
+
+def cumulus(cv, cx, base_y, width, height, tones, r, rim=None):
+    """Pixel cumulus painted puff by puff (back/top puffs first, lower front puffs over them).
+    Each puff gets a lit crescent on its upper-left and a shaded rim on its lower-right; the
+    whole cloud gets a flat, shaded base. tones: 0 highlight .. 4 underside."""
     puffs = []
-    w = int(70 * s)
-    x = cx - w // 2
-    while x < cx + w // 2:
-        rad = r.randint(int(7 * s) + 3, int(14 * s) + 5)
-        puffs.append((x, cy - rad // 2, rad))
-        x += max(4, int(rad * 0.9))
-    bottom = cy + int(6 * s) + 2
-    shape = {}
-    for px_, py_, rad in puffs:
-        for y in range(py_ - rad, bottom + 1):
-            for xx in range(px_ - rad, px_ + rad + 1):
-                if math.hypot(xx - px_, (y - py_) * 1.15) <= rad and y <= bottom:
-                    d_top = (y - (py_ - rad)) / (2 * rad)
-                    shape[(xx, y)] = min(shape.get((xx, y), 9), d_top)
-    for (x, y), d in shape.items():
-        if y >= bottom - 1:
-            col = th["cloud3"]
-        elif d < 0.45:
-            col = th["cloud"]
-        else:
-            col = th["cloud2"]
-        cv.set(x, y, col)
-    # underside shade
-    for (x, y), d in shape.items():
-        if (x, y + 1) not in shape:
-            cv.set(x, y, th["cloud3"])
+    n = max(3, width // 13)
+    for i in range(n):
+        u = (i + 0.5) / n
+        dome = math.sin(u * math.pi)
+        rad = height * (0.36 + 0.42 * dome) * r.uniform(0.85, 1.1)
+        puffs.append((cx - width / 2 + u * width + r.uniform(-2, 2), base_y - rad * 0.5 - dome * height * 0.3, rad))
+    for _ in range(max(1, n // 2)):
+        u = r.uniform(0.25, 0.75)
+        rad = height * r.uniform(0.38, 0.55)
+        puffs.append((cx - width / 2 + u * width, base_y - height * 0.62 - rad * 0.35, rad))
+    puffs.sort(key=lambda p: p[1])  # top first
+    paint = {}
+    for (px_, py_, rad) in puffs:
+        sh = max(1.5, rad * 0.22)
+        for y in range(int(py_ - rad) - 1, int(py_ + rad) + 2):
+            if y > base_y:
+                continue
+            for x in range(int(px_ - rad) - 1, int(px_ + rad) + 2):
+                d = math.hypot(x - px_, (y - py_) * 1.1)
+                if d > rad:
+                    continue
+                d_hi = math.hypot(x - (px_ + sh), (y - (py_ + sh)) * 1.1)  # lit crescent
+                d_lo = math.hypot(x - (px_ - sh * 0.8), (y - (py_ - sh * 0.8)) * 1.1)  # shaded rim
+                if d_hi > rad:
+                    t = 0
+                elif d_lo > rad:
+                    t = 2
+                else:
+                    t = 1
+                paint[(x, y)] = t
+    top = min(y for (_, y) in paint) if paint else base_y
+    hgt = max(1, base_y - top)
+    for (x, y), t in paint.items():
+        k = (y - top) / hgt
+        if k > 0.78:
+            t = max(t, 3 if k > 0.9 or (k > 0.84 and (x + y) % 2) else 2)
+        elif k > 0.62 and t < 2 and (x + y) % 2 == 0:
+            t = 2
+        if y >= base_y or (x, y + 1) not in paint:
+            t = 4 if rim is None else -1
+        cv.set(x, y, rim if t == -1 else tones[t])
+
+
+def lit_band(cv, cx, base_y, w, hgt, tones, rim, r):
+    """Sunset altostratus: lens-shaped band with a lumpy top, dark violet top shading to a
+    hot orange underside and a bright rim on the bottom edge."""
+    bumps = [(r.uniform(-0.5, 0.5) * w, r.uniform(0.25, 0.6) * hgt, r.uniform(0.08, 0.16) * w) for _ in range(max(3, w // 22))]
+    for i in range(-w // 2, w // 2 + 1):
+        u = i / (w / 2)
+        th = hgt * (1 - u * u) ** 0.7
+        for (bx, bh, bw) in bumps:
+            d = (i - bx) / bw
+            if abs(d) < 1:
+                th += bh * (1 - d * d)
+        top = int(round(base_y - th))
+        bot = base_y - int(abs(u) ** 3 * 3)
+        for y in range(top, bot + 1):
+            v = (y - top) / max(1, bot - top)  # 0 top -> 1 bottom
+            if y >= bot:
+                col = rim
+            else:
+                q = (1 - v) * 3.0
+                idx = int(q)
+                if 0.4 < q - idx < 0.6 and (i + y) % 2 == 0:
+                    idx += 1
+                elif q - idx >= 0.6:
+                    idx += 1
+                col = tones[min(4, idx + 1)] if idx >= 1 else tones[0]
+                if v > 0.82:
+                    col = tones[0]
+            if abs(u) > 0.85 and BAYER[y % 4][(cx + i) % 4] < (abs(u) - 0.85) * 100:
+                continue
+            cv.set(cx + i, y, col)
+
+
+def draw_clouds(theme):
+    th = THEMES[theme]
+    cv = Wrap(CLOUD_W, CLOUD_H)
+    r = rng({"day": 21, "rooftop": 22, "river": 23, "sunset": 24}[theme])
+    tones = th["cloud"]
+    if theme == "sunset":
+        # long flat cloud bands; undersides catch the low sun
+        for (cx, by, w, hgt) in ((80, 70, 150, 12), (330, 98, 190, 15), (560, 58, 120, 9), (450, 140, 110, 8), (180, 150, 90, 7)):
+            lit_band(cv, cx, by, w, hgt, tones, th["cloud_rim"], r)
+    elif theme == "rooftop":
+        for (cx, by, w, hgt) in ((70, 92, 80, 22), (330, 70, 110, 28), (540, 118, 70, 18)):
+            cumulus(cv, cx, by, w, hgt, tones, r)
+    else:
+        for (cx, by, w, hgt) in ((60, 86, 96, 30), (250, 62, 72, 22), (420, 104, 120, 34), (590, 74, 64, 20), (330, 140, 54, 14)):
+            cumulus(cv, cx, by, w, hgt, tones, r)
+    return cv
 
 
 # ---------------------------------------------------------------------------
-# Building primitives
+# Building primitives (material colours; graded afterwards)
 # ---------------------------------------------------------------------------
-def windows(cv, x, y, w, h, col, dx=3, dy=4, ww=1, wh=2, r=None, density=0.85, col2=None):
-    for yy in range(y + 2, y + h - 1, dy):
-        for xx in range(x + 2, x + w - 2 - ww + 1, dx):
+def win_grid(cv, x, y, w, h, col, dx=2, dy=3, ww=1, wh=1, r=None, density=1.0, alt=None, coll=None):
+    for yy in range(y, y + h - wh + 1, dy):
+        for xx in range(x, x + w - ww + 1, dx):
             if r and r.random() > density:
                 continue
-            cc = col2 if (col2 and r and r.random() < 0.2) else col
-            cv.rect(xx, yy, ww, wh, cc)
+            cv.rect(xx, yy, ww, wh, alt if (alt and r and r.random() < 0.15) else col)
+            if coll is not None:
+                coll.append((xx, yy, ww, wh))
 
 
-def tower(cv, x, base, w, h, body, shade, light=None, top="flat", r=None, win=None, wpat=(3, 4, 1, 2)):
+def tower(cv, x, base, w, h, mat, top="flat", r=None, wpat=(2, 3, 1, 1), win=True, coll=None):
+    body, shade, light, wcol = MAT[mat]
     y = base - h
     cv.rect(x, y, w, h, body)
-    sw = max(1, w // 4)
+    sw = max(2, w // 3)
     cv.rect(x + w - sw, y, sw, h, shade)
-    if light:
-        cv.rect(x, y, 1, h, light)
+    cv.rect(x, y, 1, h, light)
     if win:
-        windows(cv, x, y, w - sw, h, win, *wpat, r=r)
+        win_grid(cv, x + 2, y + 3, w - sw - 2, h - 4, wcol, *wpat, coll=coll)
+        win_grid(cv, x + w - sw + 1, y + 3, sw - 2, h - 4, mix(wcol, shade, 0.5), *wpat)
     if top == "spire":
-        cv.rect(x + w // 2 - 1, y - 6, 3, 6, body)
-        cv.rect(x + w // 2, y - 18, 1, 12, body)
+        cv.rect(x + w // 2 - 2, y - 5, 4, 5, body)
+        cv.rect(x + w // 2 - 1, y - 9, 2, 4, shade)
+        cv.rect(x + w // 2, y - 22, 1, 13, body)
     elif top == "antenna":
-        cv.rect(x + w // 3, y - 12, 1, 12, body)
+        cv.rect(x + w // 3, y - 14, 1, 14, shade)
+        cv.rect(x + w // 3 + 4, y - 7, 1, 7, shade)
     elif top == "pyramid":
-        for i in range(w // 2 + 1):
-            cv.rect(x + i, y - (i // 1) // 2 - 1 if False else y - i // 2 - 1, w - 2 * i, 1, body) if w - 2 * i > 0 else None
-    elif top == "crown":
-        cv.rect(x + 2, y - 4, w - 4, 4, body)
-        cv.rect(x + 4, y - 8, w - 8, 4, shade)
-        cv.rect(x + w // 2, y - 14, 1, 6, body)
+        half = w // 2
+        for i in range(half + 1):
+            cv.rect(x + i, y - 1 - (i * 4) // 3, w - 2 * i, 1, body if i < half * 0.6 else shade)
+        cv.rect(x + half, y - (half * 4) // 3 - 10, 1, 10, body)
+    elif top == "chevron":  # Two Prudential: gable + spire
+        half = w // 2
+        for i in range(half):
+            cv.rect(x + i, y - 1 - i, 1, i + 1, light if i < 2 else body)
+            cv.rect(x + w - 1 - i, y - 1 - i, 1, i + 1, shade)
+        cv.rect(x + half - 1, y - half - 18, 2, 18, shade)
+        cv.rect(x + half, y - half - 26, 1, 8, body)
+    elif top == "crown":  # 311 S Wacker style lit cylinder crown
+        cv.rect(x + 3, y - 4, w - 6, 4, body)
+        cv.rect(x + 5, y - 12, w - 10, 8, light)
+        cv.rect(x + w - 8, y - 12, 3, 8, shade)
+        for xx in range(x + 6, x + w - 6, 2):
+            cv.rect(xx, y - 11, 1, 6, body)
+        cv.rect(x + 5, y - 14, w - 10, 2, body)
+    elif top == "diamond":  # Crain Communications slanted diamond top
+        for i in range(w):
+            hh = int(abs(i - w * 0.35) * 0.9)
+            cv.rect(x + i, y - (int(w * 0.6) - hh) if int(w * 0.6) - hh > 0 else y, 1, max(0, int(w * 0.6) - hh), light if i < w * 0.35 else body)
     elif top == "step":
         cv.rect(x + 3, y - 6, w - 6, 6, body)
+        cv.rect(x + w - 3 - (w - 6) // 3, y - 6, (w - 6) // 3, 6, shade)
         cv.rect(x + 6, y - 11, max(2, w - 12), 5, body)
     elif top == "gothic":
         cv.rect(x + 2, y - 8, w - 4, 8, body)
+        cv.rect(x + w - 6, y - 8, 4, 8, shade)
         for i in range(0, w - 4, 3):
-            cv.rect(x + 2 + i, y - 11, 1, 3, body)
-        cv.rect(x + w // 2 - 1, y - 14, 2, 6, body)
+            cv.rect(x + 2 + i, y - 12, 1, 4, body)
+        cv.rect(x + w // 2 - 1, y - 16, 2, 8, body)
+    elif top == "deco":  # Board of Trade: stepped + pyramid roof + statue
+        cv.rect(x + 2, y - 5, w - 4, 5, body)
+        cv.rect(x + 5, y - 9, w - 10, 4, body)
+        half = (w - 10) // 2
+        for i in range(half + 1):
+            cv.rect(x + 5 + i, y - 10 - i, w - 10 - 2 * i, 1, shade)
+        cv.rect(x + w // 2, y - 13 - half, 1, 4, light)
     return y
 
 
-def willis(cv, x, base, body, shade, light, win):
-    # three stepped bundles of tubes + twin white-tipped antennas
-    cv.rect(x, base - 120, 30, 120, body)
-    cv.rect(x + 10, base - 158, 20, 38, body)
-    cv.rect(x + 10, base - 178, 12, 20, body)
-    cv.rect(x + 20, base - 158, 10, 0, body)
-    cv.rect(x + 24, base - 120, 6, 120, shade)
-    cv.rect(x + 24, base - 158, 6, 38, shade)
-    cv.rect(x + 18, base - 178, 4, 20, shade)
-    cv.rect(x, base - 120, 1, 120, light)
-    cv.rect(x + 10, base - 178, 1, 58, light)
-    for xx in range(x + 2, x + 24, 2):
-        for yy in range(base - 116, base - 2, 3):
-            cv.set(xx, yy, win)
-    for xx in range(x + 12, x + 18, 2):
-        for yy in range(base - 174, base - 120, 3):
-            cv.set(xx, yy, win)
-    # belt trusses
-    for yy in (base - 60, base - 90):
-        cv.rect(x, yy, 30, 1, shade)
-    cv.rect(x + 10, base - 158, 20, 1, shade)
-    cv.rect(x + 10, base - 140, 20, 1, shade)
-    cv.rect(x + 12, base - 200, 1, 22, body)
-    cv.rect(x + 19, base - 196, 1, 18, body)
-    cv.set(x + 12, base - 201, light)
-    cv.set(x + 19, base - 197, light)
+def willis(cv, x, base, coll=None):
+    body, shade, light, wcol = MAT["black"]
+    cols = [(0, 12, 124), (12, 12, 186), (24, 7, 154), (31, 7, 98)]
+    for (ox, w, h) in cols:
+        cv.rect(x + ox, base - h, w, h, body)
+        cv.rect(x + ox + w - 3, base - h, 3, h, shade)
+        cv.rect(x + ox, base - h, 1, h, light)
+        for xx in range(x + ox + 2, x + ox + w - 3, 2):
+            for yy in range(base - h + 3, base - 2, 2):
+                if (yy // 2) % 9:
+                    cv.set(xx, yy, wcol)
+                    if coll is not None:
+                        coll.append((xx, yy, 1, 1))
+        cv.rect(x + ox, base - h, w, 1, light)
+    for yy in (base - 34, base - 68, base - 102, base - 140, base - 172):
+        for (ox, w, h) in cols:
+            if base - yy < h - 2:
+                cv.rect(x + ox, yy, w, 2, shade)
+    # twin antennas with white tips
+    for ax, ah in ((x + 15, 30), (x + 21, 25)):
+        cv.rect(ax, base - 186 - ah, 1, ah, light)
+        cv.rect(ax - 1, base - 186 - ah + 8, 3, 2, body)
+        cv.set(ax, base - 187 - ah, "ffffff")
 
 
-def hancock(cv, x, base, body, shade, light, win, h=150):
-    bw, tw = 26, 16
+def hancock(cv, x, base, h=168):
+    body, shade, light, wcol = MAT["black"]
+    bw, tw = 30, 18
     for i in range(h):
         y = base - i
         w = bw - (bw - tw) * i / h
         x0 = x + (bw - w) / 2
         cv.rect(int(round(x0)), y, int(round(w)), 1, body)
-        cv.rect(int(round(x0 + w * 0.72)), y, int(round(w * 0.28)) + 1, 1, shade)
-    # X bracing
+        cv.rect(int(round(x0 + w * 0.68)), y, int(round(w * 0.32)) + 1, 1, shade)
+        if i % 2 == 0:
+            for xx in range(int(round(x0)) + 2, int(round(x0 + w * 0.68)), 2):
+                cv.set(xx, y, wcol)
     seg = h // 5
     for k in range(5):
         y0, y1 = base - k * seg, base - (k + 1) * seg
@@ -233,134 +502,137 @@ def hancock(cv, x, base, body, shade, light, win, h=150):
         cv.line(b0, y0, a1, y1, light)
         cv.line(a1, y1, b1, y1, light)
     tx = x + (bw - tw) // 2
-    cv.rect(tx + 3, base - h - 26, 1, 26, body)
-    cv.rect(tx + 12, base - h - 26, 1, 26, body)
-    cv.rect(tx + 2, base - h - 4, tw - 4, 4, shade)
+    cv.rect(tx + 1, base - h - 3, tw - 2, 3, shade)
+    for ax in (tx + 4, tx + 13):
+        cv.rect(ax, base - h - 30, 1, 27, light)
+        cv.rect(ax - 1, base - h - 14, 3, 2, shade)
+        cv.set(ax, base - h - 31, "ffffff")
 
 
-def trump(cv, x, base, body, shade, light, win):
-    cv.rect(x, base - 100, 24, 100, body)
-    cv.rect(x + 3, base - 128, 18, 28, body)
-    cv.rect(x + 6, base - 150, 12, 22, body)
-    cv.rect(x + 8, base - 160, 8, 10, body)
-    cv.rect(x + 11, base - 188, 2, 28, body)
-    cv.rect(x + 17, base - 100, 7, 100, shade)
-    cv.rect(x + 15, base - 128, 6, 28, shade)
-    cv.rect(x + 14, base - 150, 4, 22, shade)
-    for yy in range(base - 160, base, 3):
-        cv.rect(x + 1, yy, 15, 1, win) if yy > base - 100 else None
-    cv.rect(x, base - 100, 1, 100, light)
+def trump(cv, x, base):
+    body, shade, light, wcol = MAT["glass"]
+    tiers = [(0, 28, 104), (3, 22, 136), (6, 16, 160), (9, 10, 172)]
+    for (ox, w, h) in tiers:
+        cv.rect(x + ox, base - h, w, h, body)
+        cv.rect(x + ox + w - max(3, w // 3), base - h, max(3, w // 3), h, shade)
+        cv.rect(x + ox, base - h, 1, h, light)
+        cv.rect(x + ox, base - h, w, 1, light)
+    for yy in range(base - 168, base - 2, 2):
+        cv.rect(x + 2, yy, 15, 1, mix(body, wcol, 0.5)) if yy > base - 104 else cv.rect(x + 8, yy, 6, 1, mix(body, wcol, 0.5))
+    cv.rect(x + 5, base - 160, 2, 158, light)  # glass sky reflection streak
+    cv.rect(x + 13, base - 200, 2, 28, shade)
+    cv.rect(x + 14, base - 214, 1, 14, light)
 
 
-def aon(cv, x, base, body, shade, light, win):
-    cv.rect(x, base - 164, 22, 164, body)
-    cv.rect(x + 16, base - 164, 6, 164, shade)
-    for xx in range(x + 2, x + 16, 3):
-        cv.rect(xx, base - 160, 1, 158, win)
-    cv.rect(x, base - 164, 1, 164, light)
+def aon(cv, x, base):
+    body, shade, light, wcol = MAT["white"]
+    cv.rect(x, base - 182, 24, 182, body)
+    cv.rect(x + 17, base - 182, 7, 182, shade)
+    for xx in range(x + 2, x + 17, 2):
+        cv.rect(xx, base - 178, 1, 176, mix(body, shade, 0.6))
+    cv.rect(x, base - 182, 24, 2, light)
+    cv.rect(x, base - 182, 1, 182, light)
 
 
-def marina_city(cv, x, base, body, shade, win, h=96):
-    """One 'corncob' tower: rounded petal balconies + parking spiral base."""
-    w = 20
+def marina_city(cv, x, base, h=112, theme="day"):
+    """Corncob tower: scalloped balcony bands, cylinder shading, parking spiral base."""
+    w = 22
+    body, shade, light, wcol = MAT["white"]
+    dark = "4a4e58"
+    park = 38
     for yy in range(base - h, base):
-        cv.rect(x, yy, w, 1, body)
-    cv.rect(x + 14, base - h, 6, h, shade)
-    for yy in range(base - h + 2, base - 30, 3):
-        for xx in range(x + 1, x + w - 1, 4):
-            cv.rect(xx, yy, 3, 1, win)
-    for yy in range(base - 30, base, 4):
-        cv.rect(x, yy, w, 1, shade)
-    # rounded top
-    cv.rect(x + 1, base - h - 1, w - 2, 1, body)
-    cv.rect(x + 3, base - h - 2, w - 6, 1, body)
+        rel = base - yy
+        if rel > park:
+            band = (yy - (base - h)) % 3
+            inset = 0 if band == 0 else 1
+        else:
+            band = -1
+            inset = 1
+        for i in range(inset, w - inset):
+            u = (i + 0.5) / w
+            light_k = 0.5 - math.cos(u * math.pi) * 0.5  # 0 left -> 1 right
+            if band == 0:
+                col = mix(light, shade, light_k * 0.8)  # balcony lip
+            elif band > 0:
+                col = mix(mix(body, dark, 0.65), dark, light_k * 0.6)  # recessed glass
+            else:
+                col = mix(body, shade, light_k)
+                if (yy % 4) in (1, 2) and 2 < i < w - 3:
+                    col = mix(dark, shade, 0.3)  # open parking decks
+            cv.set(x + i, yy, col)
+    for i in range(2, w - 2):  # rounded crown
+        cv.set(x + i, base - h - 1, light if i < w * 0.6 else shade)
+    for i in range(5, w - 5):
+        cv.set(x + i, base - h - 2, light if i < w * 0.6 else shade)
 
 
-def water_tower(cv, x, base, body, shade, dark):
-    # classic rooftop water tank on legs
-    cv.rect(x + 1, base - 8, 1, 8, dark)
-    cv.rect(x + 12, base - 8, 1, 8, dark)
-    cv.rect(x + 6, base - 8, 1, 8, dark)
-    cv.line(x + 1, base - 1, x + 12, base - 8, dark)
-    cv.rect(x, base - 22, 14, 14, body)
-    cv.rect(x + 10, base - 22, 4, 14, shade)
-    for yy in (base - 19, base - 13):
-        cv.rect(x, yy, 14, 1, dark)
-    for i in range(8):
-        cv.rect(x + i, base - 23 - i // 2 if False else base - 22 - (7 - abs(i - 0)) // 4 - 0, 1, 0, body)
-    # cone roof
-    for i in range(8):
-        cv.rect(x - 1 + i, base - 23 - i // 1 // 2, 16 - 2 * i, 1, shade if i == 0 else body)
-    cv.set(x + 7, base - 28, dark)
+def wrigley(cv, x, base, main=82):
+    """Wrigley Building: white terracotta block + tiered clock tower (`main` = block height)."""
+    tb = base + (82 - main)  # tower parts are offset with the block height
+    body, shade, light, _ = MAT["white"]
+    win = "8aa0b8"
+    cv.rect(x, base - main, 62, main, body)
+    cv.rect(x + 50, base - main, 12, main, shade)
+    cv.rect(x - 1, base - main - 2, 64, 2, light)
+    for yy in range(base - main + 4, base - 4, 5):
+        for xx in range(x + 3, x + 48, 4):
+            cv.rect(xx, yy, 2, 3, win)
+    # clock tower: tiers + cupola (compact proportions for the mid layer)
+    cx = x + 20
+    yt = base - main
+    cv.rect(cx, yt - 26, 22, 26, body)
+    cv.rect(cx + 16, yt - 26, 6, 26, shade)
+    cv.rect(cx - 1, yt - 28, 24, 2, light)
+    cv.rect(cx + 2, yt - 38, 18, 10, body)
+    cv.rect(cx + 15, yt - 38, 5, 10, shade)
+    for xx in range(cx + 4, cx + 15, 3):
+        cv.rect(xx, yt - 36, 1, 7, mix(body, shade, 0.7))
+    cv.rect(cx + 4, yt - 46, 14, 8, light)
+    cv.rect(cx + 13, yt - 46, 5, 8, body)
+    cv.rect(cx + 7, yt - 54, 8, 8, body)
+    cv.rect(cx + 12, yt - 54, 3, 8, shade)
+    cv.rect(cx + 10, yt - 60, 2, 6, shade)
+    cv.set(cx + 10, yt - 61, "ffd27a")
+    cv.disc(cx + 10, yt - 15, 6, "c8a24a")
+    cv.disc(cx + 10, yt - 15, 5, "fbf6e4")
+    cv.rect(cx + 10, yt - 19, 1, 4, "2b2d42")
+    cv.rect(cx + 10, yt - 15, 3, 1, "2b2d42")
 
 
-def l_structure(cv, y_deck, body, shade, dark, light, w_total, span=64, x_off=0):
-    """Elevated L track: deck girder band + posts every `span` px with X bracing."""
-    cv.rect(0, y_deck, w_total, 2, light)
-    cv.rect(0, y_deck + 2, w_total, 8, body)
-    cv.rect(0, y_deck + 9, w_total, 2, dark)
-    for x in range(0, w_total, 8):
-        cv.rect(x + x_off, y_deck + 4, 1, 1, light)
-        cv.rect(x + 4 + x_off, y_deck + 7, 1, 1, shade)
-    # ties / rail
-    for x in range(0, w_total, 4):
-        cv.rect(x, y_deck - 2, 3, 2, dark)
-    cv.rect(0, y_deck - 3, w_total, 1, shade)
-    for x in range(x_off, w_total + x_off, span):
-        for px in (x, x + 18):
-            cv.rect(px, y_deck + 11, 4, H - y_deck - 11, body)
-            cv.rect(px + 3, y_deck + 11, 1, H - y_deck - 11, shade)
-            cv.rect(px, y_deck + 11, 1, H - y_deck - 11, light)
-        for yy in range(y_deck + 11, H - 10, 22):
-            cv.line(x + 4, yy, x + 17, yy + 20, shade)
-            cv.line(x + 17, yy, x + 4, yy + 20, shade)
-            cv.rect(x + 4, yy, 14, 1, body)
+def tribune(cv, x, base, body_h=110):
+    """Tribune Tower: limestone shaft + gothic lantern crown with flying buttresses."""
+    tb = base + (110 - body_h)
+    body, shade, light, wcol = MAT["lime"]
+    cv.rect(x, base - body_h, 28, body_h, body)
+    cv.rect(x + 20, base - body_h, 8, body_h, shade)
+    cv.rect(x, base - body_h, 1, body_h, light)
+    for xx in range(x + 3, x + 20, 3):
+        cv.rect(xx, base - body_h + 4, 1, body_h - 6, mix(body, shade, 0.7))
+    # gothic crown: octagonal lantern with flying buttresses
+    cv.rect(x + 4, tb - 132, 20, 22, body)
+    cv.rect(x + 18, tb - 132, 6, 22, shade)
+    for xx in range(x + 6, x + 18, 3):
+        cv.rect(xx, tb - 128, 1, 14, mix(body, "40404a", 0.6))
+    for i in range(6):
+        cv.set(x + 1 + i // 2, tb - 112 - i * 3, body)
+        cv.set(x + 26 - i // 2, tb - 112 - i * 3, shade)
+        cv.line(x + 1, tb - 110, x + 5, tb - 126, body)
+        cv.line(x + 26, tb - 110, x + 22, tb - 126, shade)
+    for xx in range(x + 4, x + 25, 3):
+        cv.rect(xx, tb - 138, 1, 6, body if xx < x + 18 else shade)
+        cv.set(xx, tb - 139, light)
+    cv.rect(x + 12, tb - 142, 4, 4, body)
 
 
-def l_train(cv, x, y_bottom, cars, body, shade, dark, win, stripe):
-    """Simplified CTA 'L' cars (silver, blue windows, red/blue stripe)."""
-    cw = 54
-    for k in range(cars):
-        cx = x + k * (cw + 2)
-        cv.rect(cx, y_bottom - 18, cw, 16, body)
-        cv.rect(cx, y_bottom - 4, cw, 2, shade)
-        cv.rect(cx + 1, y_bottom - 19, cw - 2, 1, body)
-        cv.rect(cx, y_bottom - 7, cw, 1, stripe)
-        for wx in range(cx + 4, cx + cw - 6, 7):
-            cv.rect(wx, y_bottom - 15, 5, 5, win)
-        cv.rect(cx + cw // 2 - 3, y_bottom - 16, 6, 12, shade)
-        for wx in (cx + 6, cx + cw - 12):
-            cv.rect(wx, y_bottom - 2, 6, 2, dark)
-
-
-def lamp_post(cv, x, base, col, glow=None, h=38):
-    cv.rect(x, base - h, 2, h, col)
-    cv.rect(x - 1, base - 3, 4, 3, col)
-    cv.rect(x - 4, base - h + 2, 10, 1, col)
-    for gx in (x - 5, x + 5):
-        cv.rect(gx, base - h - 2, 3, 4, glow or col)
-        cv.rect(gx + 1, base - h - 3, 1, 1, col)
-        if glow:
-            cv.set(gx + 1, base - h - 1, "fffbe0")
-    cv.rect(x, base - h - 4, 2, 4, col)
-
-
-def tree(cv, cx, base, r, cols, rr, trunk):
-    """cols = (mid, dark, light). Canopy of overlapping blobs, dithered light from top-left."""
-    top_c = base - r - 18
-    cv.rect(cx - 1, top_c, 3, base - top_c, trunk)
-    cv.line(cx, top_c + 10, cx - 6, top_c + 2, trunk)
-    cv.line(cx + 1, top_c + 12, cx + 7, top_c + 4, trunk)
-    blobs = [(cx, top_c - r * 0.35, r * 0.85), (cx - r * 0.65, top_c + r * 0.15, r * 0.7),
-             (cx + r * 0.7, top_c + r * 0.1, r * 0.72), (cx - r * 0.1, top_c + r * 0.35, r * 0.7)]
-    for bx, by, br in blobs:
-        for y in range(int(by - br) - 1, int(by + br) + 2):
-            for x in range(int(bx - br) - 1, int(bx + br) + 2):
-                d = math.hypot(x - bx, (y - by) * 1.15)
-                if d <= br:
-                    k = ((x - bx) * 0.6 + (y - by)) / max(br, 1) + (BAYER[y % 4][x % 4] - 7.5) / 40
-                    col = cols[2] if k < -0.45 else cols[0] if k < 0.35 else cols[1]
-                    cv.set(x, y, col)
+def mies_black(cv, x, base, w=34, h=98):
+    """330 N Wabash / IBM: dark steel grid."""
+    body, shade, light, wcol = MAT["black"]
+    cv.rect(x, base - h, w, h, body)
+    cv.rect(x + w - 8, base - h, 8, h, shade)
+    for xx in range(x + 2, x + w - 1, 3):
+        cv.rect(xx, base - h + 2, 1, h - 2, mix(body, light, 0.35))
+    for yy in range(base - h + 2, base, 3):
+        cv.rect(x, yy, w, 1, mix(body, wcol, 0.25))
 
 
 # ---------------------------------------------------------------------------
@@ -368,363 +640,789 @@ def tree(cv, cx, base, r, cols, rr, trunk):
 # ---------------------------------------------------------------------------
 def draw_far(theme):
     th = THEMES[theme]
-    cv = Wrap(WIDE, H)
-    body, shade, dark, light = th["far"][0], th["far"][1], th["far"][2], th["far"][3]
-    win = th["far_win"]
-    r = rng(100 + len(theme))
-    base = 262
-    # back row of low-contrast filler towers
-    back = tint(body, th["haze"], 0.45)
-    back_s = tint(shade, th["haze"], 0.45)
+    r = rng(100 + THEME_NAMES.index(theme))
+    base = 270 if theme == "rooftop" else 262
+    # --- back row: dense, plain, very hazy
+    back = Wrap(WIDE, H)
     x = 0
     while x < WIDE:
         w = r.randint(14, 30)
-        hgt = r.randint(50, 110)
-        tower(cv, x, base, w, hgt, back, back_s, top=r.choice(["flat", "flat", "antenna", "step"]))
-        x += w + r.randint(-4, 3)
-    # front row with landmarks
-    slots = []
-    x = 6
-    while x < WIDE - 10:
-        w = r.randint(16, 30)
-        slots.append((x, w))
-        x += w + r.randint(0, 6)
-    lm = {"willis": 110, "hancock": 560, "trump": 330, "aon": 230, "willis2": None}
-    occupied = []
-    for name, lx in lm.items():
-        if lx is None:
-            continue
-        occupied.append((lx - 4, lx + 34))
-    for x0, w in slots:
-        if any(a < x0 + w and x0 < b for a, b in occupied):
-            continue
-        hgt = r.randint(40, 120)
-        tower(cv, x0, base, w, hgt, body, shade, light, top=r.choice(["flat", "flat", "spire", "pyramid", "crown", "step", "antenna"]),
-              r=r, win=win if theme == "sunset" or r.random() < 0.6 else None,
-              wpat=(3, 4, 1, 1) if theme != "sunset" else (3, 3, 1, 1))
-    lit = win
-    dk = tint(dark, "000000", 0.15)
-    willis(cv, 110, base, dk if theme != "sunset" else dark, tint(dk, "000000", 0.2), light, lit)
-    hancock(cv, 560, base, dk if theme != "sunset" else dark, tint(dk, "000000", 0.2), light, lit)
-    trump(cv, 330, base, tint(body, "ffffff", 0.08), shade, light, lit)
-    aon(cv, 230, base, tint(body, "ffffff", 0.12), shade, light, lit)
-    # a couple more recognisable shapes: 311 S Wacker crown, Prudential spire
-    tower(cv, 690, base, 22, 128, body, shade, light, top="crown", r=r, win=lit)
-    tower(cv, 800, base, 18, 120, body, shade, light, top="spire", r=r, win=lit)
-    tower(cv, 470, base, 20, 104, body, shade, light, top="gothic", r=r, win=lit)
-    cv.rect(0, base, WIDE, H - base, shade)
-    return cv
+        hgt = r.randint(46, 112)
+        tower(back, x, base, w, hgt, r.choice(["conc", "glass", "tan", "glassd"]),
+              top=r.choice(["flat", "flat", "antenna", "step", "spire"]), win=False)
+        x += w + r.randint(-5, 2)
+    back.rect(0, base, WIDE, H - base, MAT["conc"][1])
+    grade(back, theme, th["back_fog"], th["far_y"][0], th["far_y"][1], th["haze"],
+          sil=(th["sil"][0], th["sil"][1] * 0.9) if th["sil"] else None)
+    # --- front row: landmarks + filler
+    front = Wrap(WIDE, H)
+    LM = {"willis": (110, 40), "aon": (262, 26), "pru": (304, 22), "trump": (378, 30), "crain": (456, 24),
+          "hancock": (590, 32), "wacker": (700, 24), "cbot": (790, 22), "legacy": (850, 18)}
+    occupied = [(lx - 3, lx + lw + 3) for lx, lw in LM.values()]
+    groups = []
+    x = 4
+    while x < WIDE - 6:
+        w = r.randint(16, 28)
+        if not any(a < x + w and x < b for a, b in occupied):
+            wl = []
+            tower(front, x, base, w, r.randint(42, 112), r.choice(["conc", "glass", "tan", "glassd", "lime", "green"]),
+                  top=r.choice(["flat", "flat", "antenna", "step", "gothic", "spire"]), r=r, coll=wl)
+            groups.append(wl)
+        x += w + r.randint(1, 7)
+    wl = []
+    willis(front, 110, base, coll=wl)
+    groups.append(wl)
+    for (tx, tw, th_, mat, top) in ((304, 22, 150, "glassd", "chevron"), (456, 24, 136, "glass", "diamond"),
+                                    (700, 24, 130, "lime", "crown"), (790, 22, 98, "lime", "deco"), (850, 18, 140, "glassd", "step")):
+        wl = []
+        tower(front, tx, base, tw, th_, mat, top=top, coll=wl)
+        groups.append(wl)
+    aon(front, 262, base)
+    trump(front, 378, base)
+    hancock(front, 590, base)
+    front.rect(0, base, WIDE, H - base, MAT["conc"][1])
+    sil = (th["sil"][0], th["sil"][1]) if th["sil"] else None
+    grade(front, theme, th["far_fog"], th["far_y"][0], th["far_y"][1], th["haze"], sil=sil)
+    rim_light(front, th["rim_side"], th["rim"], th["rim_t"], ymax=base - 2)
+    windows = []
+    if theme == "sunset":
+        windows = light_groups(front, groups, r, th, p_row=0.26, run=(2, 7))
+    back.blit(front, 0, 0)
+    return back, windows
+
+
+def light_groups(cv, groups, r, th, p_row, run):
+    """Light whole runs of windows along random floors (offices still working at dusk).
+    Returns a sample of the windows left dark: the runtime switches those on and off."""
+    dark = []
+    for wl in groups:
+        rows = {}
+        for rc in wl:
+            rows.setdefault(rc[1], []).append(rc)
+        for y, lst in rows.items():
+            lst.sort()
+            if r.random() < p_row:
+                n = r.randint(*run)
+                s0 = r.randint(0, max(0, len(lst) - n))
+                col = r.choice(th["lit"])
+                for i, rc in enumerate(lst):
+                    if s0 <= i < s0 + n:
+                        cv.rect(rc[0], rc[1], rc[2], rc[3], col)
+                    else:
+                        dark.append(rc)
+            else:
+                dark.extend(lst)
+    r.shuffle(dark)
+    return dark
 
 
 # ---------------------------------------------------------------------------
 # MID
 # ---------------------------------------------------------------------------
-def mid_palette(theme):
-    th = THEMES[theme]
-    hz, t = th["mid_haze"], th["mid_t"]
-    names = ["l1", "l2", "l3", "b1", "b2", "b3", "gl2", "gl3", "gl4", "g1", "g2", "g3", "r1", "r2", "r3", "s1", "s2", "s3",
-             "t2", "t3", "t4", "gr2", "gr3", "w", "y1", "ink2"]
-    return {n: tint(n, hz, t) for n in names}
-
-
-def mid_building(cv, x, base, w, h, kind, pal, r, theme):
+def mid_building(cv, x, base, w, h, mat, r, roof=True, coll=None):
+    body, shade, light, wcol = MAT[mat]
     y = base - h
-    lit = theme == "sunset"
-    if kind == "brick":
-        body, shade, trim, win = pal["b2"], pal["b3"], pal["l2"], pal["gl3"]
-    elif kind == "lime":
-        body, shade, trim, win = pal["l1"], pal["l3"], pal["l2"], pal["gl3"]
-    elif kind == "glass":
-        body, shade, trim, win = pal["gl3"], pal["gl4"], pal["gl2"], pal["gl2"]
-    else:
-        body, shade, trim, win = pal["g2"], pal["g3"], pal["g1"], pal["gl4"]
-    if lit:
-        win = pal["y1"]
     cv.rect(x, y, w, h, body)
-    cv.rect(x + w - 3, y, 3, h, shade)
-    cv.rect(x - 1, y, w + 2, 3, trim)
+    cv.rect(x + w - 4, y, 4, h, shade)
+    # cornice
+    cv.rect(x - 1, y, w + 2, 2, light)
     cv.rect(x - 1, y + 2, w + 2, 1, shade)
-    if kind == "glass":
-        for xx in range(x + 2, x + w - 3, 4):
-            cv.rect(xx, y + 4, 1, h - 4, shade)
-        for yy in range(y + 4, base, 6):
-            cv.rect(x, yy, w - 3, 1, trim)
-        if lit:
-            for _ in range(w * h // 60):
-                cv.rect(r.randint(x + 1, x + w - 6), r.randint(y + 5, base - 3), 3, 2, pal["y1"])
+    if mat in ("glass", "glassd", "teal"):
+        for xx in range(x + 3, x + w - 4, 4):
+            cv.rect(xx, y + 4, 1, h - 4, mix(body, shade, 0.7))
+        for yy in range(y + 5, base, 4):
+            cv.rect(x, yy, w - 4, 1, mix(body, light, 0.35))
+        cv.rect(x + 2, y + 4, 1, h - 4, light)
     else:
-        for yy in range(y + 6, base - 4, 8):
-            for xx in range(x + 3, x + w - 6, 5):
-                if lit and r.random() < 0.45:
-                    cv.rect(xx, yy, 3, 4, pal["g3"] if kind != "brick" else pal["b3"])
-                    continue
-                cv.rect(xx, yy, 3, 4, win)
-                cv.rect(xx, yy + 4, 3, 1, trim)
-    if r.random() < 0.35 and kind != "glass" and w > 24:
-        water_tower(cv, x + r.randint(3, w - 18), y, pal["wd"] if "wd" in pal else pal["r3"], pal["b3"], pal["ink2"])
+        for yy in range(y + 6, base - 6, 7):
+            for xx in range(x + 3, x + w - 7, 5):
+                cv.rect(xx, yy, 3, 4, wcol)
+                if coll is not None:
+                    coll.append((xx, yy + 1, 3, 3))
+                cv.rect(xx, yy, 3, 1, mix(wcol, "1a1c2c", 0.4))
+                cv.rect(xx, yy + 4, 3, 1, light)
+        # storefront band
+        cv.rect(x, base - 6, w - 4, 6, mix(body, "1a1c2c", 0.45))
+    if roof and r.random() < 0.55 and w > 26:
+        water_tower(cv, x + r.randint(3, w - 18), y, "9c6237", "6e4227", "3a2c26")
+    elif roof and r.random() < 0.4:
+        cv.rect(x + 4, y - 5, 8, 5, shade)
+        cv.rect(x + 4, y - 5, 8, 1, light)
     return y
+
+
+def water_tower(cv, x, base, body, shade, dark):
+    """Classic Chicago wooden rooftop water tank on a steel stand (16 px wide)."""
+    for lx in (x + 2, x + 7, x + 12):
+        cv.rect(lx, base - 9, 1, 9, dark)
+    cv.line(x + 2, base - 1, x + 12, base - 8, dark)
+    cv.line(x + 12, base - 1, x + 2, base - 8, dark)
+    cv.rect(x + 1, base - 10, 13, 1, dark)
+    cv.rect(x + 1, base - 24, 13, 14, body)
+    cv.rect(x + 10, base - 24, 4, 14, shade)
+    cv.rect(x + 2, base - 24, 1, 14, mix(body, "ffffff", 0.25))
+    for yy in (base - 21, base - 16, base - 12):
+        cv.rect(x + 1, yy, 13, 1, dark)
+    for i in range(6):
+        cv.rect(x + i, base - 25 - i, 15 - 2 * i, 1, shade if i == 0 else mix(dark, body, 0.4))
+    cv.set(x + 7, base - 31, dark)
+
+
+def chicago_theatre_sign(cv, x, base, h=58):
+    """The vertical 'CHICAGO' marquee sign: red blade with white letters + marquee below."""
+    cv.rect(x, base - h, 9, h - 12, "c4262e")
+    cv.rect(x + 7, base - h, 2, h - 12, "8c1820")
+    cv.rect(x, base - h - 2, 9, 2, "f4e4b0")
+    for i, ch in enumerate("CHICAGO"):
+        g = FONT3[ch]
+        for gy, row in enumerate(g):
+            for gx, v in enumerate(row):
+                if v == "#":
+                    cv.set(x + 3 + gx, base - h + 2 + i * 6 + gy, "fff6d8")
+    cv.rect(x - 10, base - 12, 30, 8, "f4e4b0")
+    cv.rect(x - 9, base - 11, 28, 6, "c4262e")
+    for xx in range(x - 8, x + 18, 2):
+        cv.set(xx, base - 9, "ffe08a")
+
+
+def l_structure(cv, y_deck, steel, span=64, x_off=0, bottom=H):
+    """Elevated L: riveted deck girder + rails + bents (paired posts with X bracing)."""
+    body, shade, dark, light = steel
+    cv.rect(0, y_deck - 4, WIDE, 1, shade)  # running rail
+    for x in range(0, WIDE, 3):
+        cv.rect(x, y_deck - 3, 2, 3, dark)  # ties
+    cv.rect(0, y_deck, WIDE, 2, light)
+    cv.rect(0, y_deck + 2, WIDE, 7, body)
+    cv.rect(0, y_deck + 9, WIDE, 2, dark)
+    for x in range(0, WIDE, 6):
+        cv.set(x, y_deck + 4, light)
+        cv.set(x + 3, y_deck + 7, shade)
+    for x in range(0, WIDE, 24):
+        cv.rect(x, y_deck + 2, 1, 7, shade)
+    for x in range(x_off, WIDE + x_off, span):
+        for px in (x, x + 20):
+            cv.rect(px, y_deck + 11, 4, bottom - y_deck - 11, body)
+            cv.rect(px + 3, y_deck + 11, 1, bottom - y_deck - 11, dark)
+            cv.rect(px, y_deck + 11, 1, bottom - y_deck - 11, light)
+        cv.rect(x - 1, y_deck + 11, 26, 2, shade)
+        for yy in range(y_deck + 13, bottom - 8, 20):
+            cv.line(x + 4, yy, x + 19, yy + 18, shade)
+            cv.line(x + 19, yy, x + 4, yy + 18, shade)
 
 
 def draw_mid(theme):
     th = THEMES[theme]
-    pal = mid_palette(theme)
-    pal["wd"] = tint("wd2", th["mid_haze"], th["mid_t"])
+    r = rng(200 + THEME_NAMES.index(theme))
     cv = Wrap(WIDE, H)
-    r = rng(200 + len(theme))
+    anchors = {}
+    sil = (th["sil"][2], th["sil"][3]) if th["sil"] else None
     if theme in ("day", "sunset"):
         x = 0
-        kinds = ["brick", "lime", "glass", "brick", "concrete", "lime"]
+        kinds = ["brick", "lime", "glass", "brick", "conc", "tan", "teal"]
+        groups = []
         while x < WIDE:
-            w = r.randint(36, 70)
-            hgt = r.randint(46, 104)
-            mid_building(cv, x, 262, w, hgt, r.choice(kinds), pal, r, theme)
-            x += w + r.randint(4, 14)
-        cv.rect(0, 262, WIDE, 8, pal["g3"])
-        if theme == "day":
-            # an L line crossing the mid ground, low
-            l_structure(cv, 186, pal["r1"], pal["r2"], pal["r3"], tint("r0", th["mid_haze"], th["mid_t"]), WIDE, span=96)
-            l_train(cv, 300, 184, 4, pal["g1"], pal["g2"], pal["ink2"], pal["gl3"], tint("cr", th["mid_haze"], th["mid_t"]))
-        else:
-            l_structure(cv, 186, pal["r2"], pal["r3"], pal["ink2"], pal["r1"], WIDE, span=96)
-            l_train(cv, 520, 184, 4, pal["g2"], pal["g3"], pal["ink2"], pal["y1"], tint("cr", th["mid_haze"], th["mid_t"]))
+            w = r.randint(36, 66)
+            wl = []
+            mid_building(cv, x, 262, w, r.randint(56, 120), r.choice(kinds), r, coll=wl)
+            groups.append(wl)
+            x += w + r.randint(3, 12)
+        chicago_theatre_sign(cv, 412, 197)
+        cv.rect(0, 262, WIDE, 8, MAT["conc"][1])
+        grade(cv, theme, th["mid_fog"], 120, 262, th["mid_haze"], sil=sil)
+        steel = [mix(s, th["mid_haze"], th["mid_fog"][0] + 0.12) for s in ("b8603c", "8e4428", "5e2c1e", "d88a5c")]
+        if sil:
+            steel = [mix(s, th["sil"][2], 0.6) for s in steel]
+        if sil:
+            anchors["win_mid"] = light_groups(cv, groups, r, th, p_row=0.45, run=(1, 6))
+        l_structure(cv, 196, steel, span=96)
+        anchors["train"] = {"layer": "mid", "y": 193}
     elif theme == "rooftop":
-        # we are up high: tops of neighbouring buildings + the L down below in the gaps
+        # high vantage: roofs of the neighbours (water towers, setbacks), the L below
         x = 0
         while x < WIDE:
-            w = r.randint(40, 80)
-            hgt = r.randint(40, 110)
-            mid_building(cv, x, 270, w, hgt, r.choice(["brick", "lime", "glass", "concrete"]), pal, r, theme)
-            x += w + r.randint(10, 24)
-        l_structure(cv, 206, pal["r1"], pal["r2"], pal["r3"], tint("r0", th["mid_haze"], th["mid_t"]), WIDE, span=80)
-        l_train(cv, 100, 204, 5, pal["g1"], pal["g2"], pal["ink2"], pal["gl3"], tint("cr", th["mid_haze"], th["mid_t"]))
-        l_train(cv, 620, 204, 3, pal["g1"], pal["g2"], pal["ink2"], pal["gl3"], tint("cb3", th["mid_haze"], th["mid_t"]))
+            w = r.randint(44, 84)
+            hgt = r.randint(30, 96)
+            mat = r.choice(["brick", "lime", "glass", "conc", "tan", "brick"])
+            y = mid_building(cv, x, 270, w, hgt, mat, r, roof=False)
+            # roof furniture seen from slightly above: tar roof plane + tanks + vents
+            cv.rect(x, y - 3, w, 3, "6a6670")
+            cv.rect(x, y - 3, w, 1, "8a8690")
+            for _ in range(r.randint(1, 2)):
+                tx = x + r.randint(2, max(3, w - 18))
+                if r.random() < 0.65:
+                    water_tower(cv, tx, y - 2, "9c6237", "6e4227", "3a2c26")
+                else:
+                    cv.rect(tx, y - 9, 12, 7, "a8a4ac")
+                    cv.rect(tx, y - 9, 12, 1, "c8c4cc")
+                    cv.rect(tx + 9, y - 9, 3, 7, "7e7a84")
+            x += w + r.randint(8, 22)
+        grade(cv, theme, th["mid_fog"], 150, 270, th["mid_haze"])
+        steel = [mix(s, th["mid_haze"], 0.25) for s in ("b8603c", "8e4428", "5e2c1e", "d88a5c")]
+        l_structure(cv, 214, steel, span=80)
+        anchors["train"] = {"layer": "mid", "y": 211}
     elif theme == "river":
-        # far bank buildings incl. Marina City + Wrigley Building, then water and bascule bridges
-        BANK = 190
+        BANK = 160
         x = 0
         while x < WIDE:
-            w = r.randint(34, 64)
-            hgt = r.randint(40, 96)
-            if 120 < x < 220 or 560 < x < 640:
-                x += 20
+            w = r.randint(32, 62)
+            hgt = r.randint(36, 92)
+            if 116 < x + w and x < 196 or 548 < x + w and x < 700:
+                x += 12
                 continue
-            mid_building(cv, x, BANK, w, hgt, r.choice(["brick", "lime", "glass", "concrete"]), pal, r, theme)
+            mid_building(cv, x, BANK, w, hgt, r.choice(["brick", "lime", "glass", "conc", "tan", "teal"]), r)
             x += w + r.randint(4, 12)
-        marina_city(cv, 140, BANK, pal["g1"], pal["g2"], pal["g3"], h=110)
-        marina_city(cv, 168, BANK, pal["g1"], pal["g2"], pal["g3"], h=110)
-        # Wrigley building: white terracotta with clock tower
-        wb = tint("w", th["mid_haze"], th["mid_t"] * 0.6)
-        dy = BANK - 214
-        cv.rect(566, 134 + dy, 60, 80, wb)
-        cv.rect(616, 134 + dy, 10, 80, pal["g1"])
-        cv.rect(586, 96 + dy, 20, 38, wb)
-        cv.rect(590, 82 + dy, 12, 14, wb)
-        cv.rect(594, 70 + dy, 4, 12, wb)
-        cv.disc(596, 112 + dy, 5, pal["g3"])
-        cv.disc(596, 112 + dy, 4, wb)
-        cv.set(596, 109 + dy, pal["ink2"]), cv.set(596, 110 + dy, pal["ink2"]), cv.set(597, 112 + dy, pal["ink2"])
-        for yy in range(140 + dy, BANK - 4, 6):
-            for xx in range(570, 614, 5):
-                cv.rect(xx, yy, 2, 3, pal["gl3"])
-        # river wall + water
-        cv.rect(0, BANK - 2, WIDE, 6, pal["g2"])
-        cv.rect(0, BANK - 2, WIDE, 1, pal["g1"])
-        cv.rect(0, BANK + 3, WIDE, 1, pal["g3"])
-        t1, t2, t3, t4 = tint("t1", th["mid_haze"], th["mid_t"]), pal["t2"], pal["t3"], pal["t4"]
+        marina_city(cv, 132, BANK, 104, theme)
+        marina_city(cv, 162, BANK, 104, theme)
+        cv.rect(126, BANK - 12, 64, 12, MAT["conc"][1])
+        wrigley(cv, 556, BANK, main=50)
+        tribune(cv, 640, BANK, body_h=78)
+        mies_black(cv, 230, BANK, 34, 96)
+        grade(cv, theme, th["mid_fog"], 90, BANK, th["mid_haze"])
+        top_light(cv, "ffffff", 0.25, ymax=BANK)
+        rim_light(cv, th["rim_side"], th["rim"], th["rim_t"] * 0.7, ymax=BANK)
+        # river wall
+        cv.rect(0, BANK - 2, WIDE, 6, "9aa4a8")
+        cv.rect(0, BANK - 2, WIDE, 1, "c4ccd0")
+        cv.rect(0, BANK + 3, WIDE, 1, "6c767c")
+        for bx in (20, 470):
+            bridge(cv, bx, BANK - 22, th)
         WY = BANK + 4
-        for y in range(WY, H):
-            for x in range(WIDE):
-                k = (y - WY) / (H - WY)
-                col = t3 if k < 0.45 or (k < 0.6 and BAYER[y % 4][x % 4] < (0.6 - k) * 100) else t4
-                if (x * 7 + y * 13) % 41 == 0 or ((x + y * 3) % 29 == 0 and y % 4 == 0):
-                    col = t2
-                cv.px[x, y] = c(col)
-        for y in range(WY + 2, H, 5):
-            for x in range(WIDE):
-                if (x + y * 11) % 48 < 6:
-                    cv.set(x, y, t2)
-                if (x + y * 11) % 48 == 2:
-                    cv.set(x, y, t1)
-        # reflections of buildings (dithered streaks)
-        for x in range(0, WIDE):
-            col = cv.get(x, BANK - 8)
-            if col[3]:
-                for y in range(WY + 1, WY + 22, 2):
-                    if (x + y) % 3 == 0:
-                        cv.set(x, y, tint(col[:3], t3, 0.55))
-        # bascule bridges
-        for bx in (40, 520):
-            bridge(cv, bx, pal, th, BANK - 20)
-        # tour boat
-        boat_bg(cv, 330, BANK + 22, pal)
-    return cv
+        river_water(cv, WY, BANK, th)
+        anchors["river"] = {"layer": "mid", "top": WY, "boatY": [WY + 10, WY + 15]}
+    return cv, anchors
 
 
-def bridge(cv, x, pal, th, deck_y=200):
-    steel = tint("s3", th["mid_haze"], th["mid_t"] * 0.7)
-    steel_d = tint("s4", th["mid_haze"], th["mid_t"] * 0.7)
-    lime = pal["l1"]
-    lime_d = pal["l3"]
-    # deck span with truss
-    cv.rect(x, deck_y, 200, 3, steel)
-    cv.rect(x, deck_y + 3, 200, 8, steel_d)
-    for xx in range(x, x + 200, 10):
-        cv.line(xx, deck_y + 3, xx + 5, deck_y + 10, steel)
-        cv.line(xx + 5, deck_y + 10, xx + 10, deck_y + 3, steel)
-    cv.rect(x, deck_y - 6, 200, 1, steel)
-    for xx in range(x, x + 200, 4):
-        cv.rect(xx, deck_y - 5, 1, 5, steel)
-    # bridge houses (limestone towers) at both ends
-    for hx in (x - 6, x + 186):
-        cv.rect(hx, deck_y - 30, 20, 30 + 18, lime)
-        cv.rect(hx + 15, deck_y - 30, 5, 48, lime_d)
-        cv.rect(hx - 1, deck_y - 32, 22, 3, lime_d)
-        cv.rect(hx + 2, deck_y - 38, 16, 6, lime)
-        cv.rect(hx + 5, deck_y - 24, 4, 7, pal["gl3"])
-        cv.rect(hx + 11, deck_y - 24, 2, 7, pal["gl3"])
-        cv.rect(hx, deck_y + 12, 20, 6, lime_d)
-    # piers
-    for px in (x + 60, x + 130):
-        cv.rect(px, deck_y + 11, 8, 8, lime_d)
+def bridge(cv, x, deck_y, th):
+    """Chicago bascule bridge: green-grey truss span between limestone bridge houses."""
+    steel = mix("5e7068", th["mid_haze"], 0.25)
+    steel_d = mix("3e4c48", th["mid_haze"], 0.25)
+    steel_l = mix("8a9c94", th["mid_haze"], 0.25)
+    lime, lime_s, lime_l = (mix(m, th["mid_haze"], 0.2) for m in MAT["lime"][:3])
+    span = 220
+    cv.rect(x, deck_y, span, 2, steel_l)
+    cv.rect(x, deck_y + 2, span, 9, steel)
+    cv.rect(x, deck_y + 11, span, 1, steel_d)
+    for xx in range(x, x + span, 10):
+        cv.line(xx, deck_y + 2, xx + 5, deck_y + 10, steel_d)
+        cv.line(xx + 5, deck_y + 10, xx + 10, deck_y + 2, steel_d)
+    # railing + lamp posts on the deck
+    cv.rect(x, deck_y - 6, span, 1, steel_d)
+    for xx in range(x, x + span, 3):
+        cv.rect(xx, deck_y - 5, 1, 5, steel_d)
+    for xx in range(x + 30, x + span - 20, 40):
+        cv.rect(xx, deck_y - 16, 1, 10, steel_d)
+        cv.rect(xx - 1, deck_y - 18, 3, 2, "ffe9a0" if th["sil"] else steel_l)
+    # arched underside
+    for i in range(span):
+        u = i / span
+        drop = int(10 * math.sin(u * math.pi))
+        cv.rect(x + i, deck_y + 12, 1, max(0, 6 - drop // 2), steel_d)
+    for hx in (x - 8, x + span - 14):
+        cv.rect(hx, deck_y - 34, 22, 56, lime)
+        cv.rect(hx + 16, deck_y - 34, 6, 56, lime_s)
+        cv.rect(hx - 1, deck_y - 36, 24, 3, lime_l)
+        cv.rect(hx + 2, deck_y - 42, 18, 6, lime)
+        cv.rect(hx + 14, deck_y - 42, 6, 6, lime_s)
+        cv.rect(hx + 4, deck_y - 46, 14, 4, lime_l)
+        cv.rect(hx + 5, deck_y - 28, 4, 8, "4e6a88")
+        cv.rect(hx + 12, deck_y - 28, 3, 8, "4e6a88")
+        cv.rect(hx + 5, deck_y - 30, 4, 2, lime_l)
+        cv.rect(hx + 12, deck_y - 30, 3, 2, lime_l)
 
 
-def boat_bg(cv, x, y, pal):
-    cv.rect(x, y, 60, 6, pal["w"])
-    cv.rect(x + 2, y + 6, 56, 2, pal["g2"])
-    cv.rect(x + 8, y - 6, 40, 6, pal["w"])
-    for wx in range(x + 10, x + 46, 5):
-        cv.rect(wx, y - 4, 3, 2, pal["gl3"])
-    cv.rect(x + 6, y - 7, 44, 1, pal["b2"])
-    cv.rect(x, y + 2, 60, 1, pal["gl3"])
-    for k in range(0, 50, 6):
-        cv.rect(x - 8 - k, y + 7, 4, 1, pal["t2"])
+def river_water(cv, WY, BANK, th):
+    """Chicago-river green water with mirrored, rippled reflections of everything above."""
+    water = [mix(w, th["mid_haze"], 0.15) for w in ("2e8a84", "237270", "1b5c5e", "4fa8a0", "8ad0c4")]
+    if th["sil"]:
+        water = [mix(w, "4a2a5a", 0.55) for w in water]
+    src = [[cv.px[x, y] for x in range(WIDE)] for y in range(H)]
+    for y in range(WY, H):
+        k = (y - WY) / (H - WY)
+        base = water[0] if k < 0.35 else water[1] if k < 0.7 else water[2]
+        for x in range(WIDE):
+            col = base
+            sy = BANK - 3 - int((y - WY) * 1.25)
+            wob = int(round(1.6 * math.sin(y * 1.3 + x * 0.02)))
+            if 0 <= sy and (y % 3 != 2 or k < 0.15):
+                p = src[sy][(x + wob) % WIDE]
+                if p[3]:
+                    col = mix(p, base, 0.5 + 0.4 * k)
+            if (x * 7 + y * 13) % 53 == 0 or ((x + y * 5) % 37 == 0 and y % 3 == 0):
+                col = water[3]
+            cv.px[x, y] = c(col)
+    for y in range(WY + 2, H, 4):
+        for x in range(WIDE):
+            if (x + y * 11) % 64 < 5:
+                cv.set(x, y, water[3])
+            if (x + y * 11) % 64 == 2:
+                cv.set(x, y, water[4])
+    cv.rect(0, WY, WIDE, 1, mix(water[2], "000000", 0.2))
 
 
 # ---------------------------------------------------------------------------
 # NEAR
 # ---------------------------------------------------------------------------
+def lamp_post(cv, x, base, col, glow=None, h=62):
+    """Chicago twin-globe park lamp."""
+    cv.rect(x, base - h, 2, h, col)
+    cv.rect(x - 1, base - 4, 4, 4, col)
+    cv.rect(x - 1, base - h + 10, 4, 2, col)
+    cv.rect(x - 5, base - h + 2, 12, 1, col)
+    for gx in (x - 6, x + 5):
+        cv.rect(gx, base - h - 3, 3, 5, glow or mix(col, "ffffff", 0.18))
+        cv.rect(gx + 1, base - h - 4, 1, 1, col)
+        if glow:
+            cv.set(gx + 1, base - h - 2, "fffbe0")
+    cv.rect(x, base - h - 5, 2, 5, col)
+
+
+def glow_halo(cv, cx, cy, rad, col, strength=0.55):
+    for y in range(cy - rad, cy + rad + 1):
+        for x in range(cx - rad, cx + rad + 1):
+            d = math.hypot(x - cx, y - cy)
+            if d >= rad:
+                continue
+            p = cv.get(x, y)
+            k = (1 - d / rad) ** 1.6 * strength
+            if not p[3]:
+                if BAYER[y % 4][x % 4] < k * 22 - 4:
+                    cv.set(x, y, col)
+            else:
+                cv.set(x, y, mix(p, col, dith(k, x, y, 4)))
+
+
+def tree(cv, cx, base, rad, cols, trunk):
+    """cols = (mid, dark, light, deep). Overlapping canopy blobs lit from upper-left."""
+    top_c = base - rad - 20
+    cv.rect(cx - 1, top_c, 3, base - top_c, trunk)
+    cv.line(cx, top_c + 12, cx - 7, top_c + 3, trunk)
+    cv.line(cx + 1, top_c + 13, cx + 8, top_c + 5, trunk)
+    blobs = [(cx, top_c - rad * 0.35, rad * 0.85), (cx - rad * 0.65, top_c + rad * 0.15, rad * 0.7),
+             (cx + rad * 0.7, top_c + rad * 0.1, rad * 0.72), (cx - rad * 0.1, top_c + rad * 0.4, rad * 0.72),
+             (cx + rad * 0.3, top_c - rad * 0.65, rad * 0.5)]
+    for bx, by, br in blobs:
+        for y in range(int(by - br) - 1, int(by + br) + 2):
+            for x in range(int(bx - br) - 1, int(bx + br) + 2):
+                d = math.hypot(x - bx, (y - by) * 1.15)
+                if d <= br:
+                    k = ((x - bx) * 0.6 + (y - by)) / max(br, 1) + (BAYER[y % 4][x % 4] - 7.5) / 36
+                    col = cols[2] if k < -0.5 else cols[0] if k < 0.2 else cols[1] if k < 0.75 else cols[3]
+                    cv.set(x, y, col)
+    # leaf clumps texture
+    for y in range(int(top_c - rad * 1.3), int(top_c + rad * 1.2)):
+        for x in range(cx - int(rad * 1.5), cx + int(rad * 1.5)):
+            p = cv.get(x, y)
+            if p[3] and (x * 3 + y * 5) % 11 == 0 and c(p) == c(cols[0]):
+                cv.set(x, y, cols[2])
+
+
+def near_cols(theme, names):
+    th = THEMES[theme]
+    if th["sil"]:
+        return [mix(n, th["sil"][4], th["sil"][5]) for n in names]
+    return [saturate(c(n), th["near_sat"], th["near_dark"]) for n in names]
+
+
 def draw_near(theme):
     th = THEMES[theme]
     cv = Wrap(WIDE, H)
-    r = rng(300 + len(theme))
-    g = [hexc(x) for x in th["near"]]
-    metal = th["near_metal"]
-    glow = th["lamp_glow"]
+    r = rng(300 + THEME_NAMES.index(theme))
+    anchors = {}
     base = 266
+    greens = near_cols(theme, ["3f8a4c", "2c6a3e", "6cae5a", "1f4c30"])
+    metal = near_cols(theme, ["2c3a44"])[0]
+    glow = "ffd77a" if theme == "sunset" else None
+    lamps = []
     if theme in ("day", "sunset", "river"):
-        x = 24
+        x = 20
         i = 0
         while x < WIDE - 40:
             if i % 3 == 1:
-                lamp_post(cv, x, base, metal, glow, h=62)
+                lamp_post(cv, x, base, metal, glow, h=64)
+                lamps.append((x, base - 64))
             else:
-                tree(cv, x, base, r.randint(17, 24), [g[0], g[1], g[2]], r, metal)
-            x += r.randint(72, 104)
+                tree(cv, x, base, r.randint(18, 25), greens, near_cols(theme, ["4a3426"])[0])
+            x += r.randint(70, 100)
             i += 1
         if theme == "river":
-            # riverwalk railing silhouette
-            cv.rect(0, 228, WIDE, 3, metal)
-            cv.rect(0, 231, WIDE, 1, g[2])
-            for x in range(0, WIDE, 7):
-                cv.rect(x, 232, 1, 20, metal)
-            for x in range(0, WIDE, 56):
-                cv.rect(x, 224, 4, 30, metal)
-                cv.rect(x - 1, 222, 6, 2, metal)
-            cv.rect(0, 252, WIDE, H - 252, metal)
+            rail = near_cols(theme, ["24343c"])[0]
+            cv.rect(0, 226, WIDE, 3, rail)
+            cv.rect(0, 226, WIDE, 1, mix(rail, "ffffff", 0.2))
+            for x in range(0, WIDE, 6):
+                cv.rect(x, 229, 1, 22, rail)
+            for x in range(0, WIDE, 48):
+                cv.rect(x, 222, 4, 30, rail)
+                cv.rect(x - 1, 220, 6, 2, rail)
+            cv.rect(0, 250, WIDE, H - 250, near_cols(theme, ["5a5c58"])[0])
+            cv.rect(0, 250, WIDE, 2, near_cols(theme, ["8a8a80"])[0])
+            for x in range(0, WIDE, 32):
+                cv.rect(x, 252, 1, H - 252, near_cols(theme, ["44463f"])[0])
         else:
-            # hedge strip + low iron fence
             for x in range(WIDE):
                 top = 240 - int(3 * math.sin(x * 0.13) + 2 * math.sin(x * 0.051 + 1))
                 for y in range(top, H):
                     k = (BAYER[y % 4][x % 4] - 7.5) / 30
-                    cv.set(x, y, g[2] if y - top < 2 + k * 4 else g[0] if y - top < 7 else g[1])
-            cv.rect(0, 236, WIDE, 1, metal)
+                    cv.set(x, y, greens[2] if y - top < 2 + k * 4 else greens[0] if y - top < 7 else greens[1])
             for x in range(0, WIDE, 5):
-                cv.rect(x, 236, 1, 6, metal)
-                cv.set(x, 235, metal)
+                cv.rect(x, 234, 1, 8, metal)
+                cv.set(x, 233, metal)
+            cv.rect(0, 235, WIDE, 1, metal)
+            cv.rect(0, 239, WIDE, 1, metal)
+        if glow:
+            for (lx, ly) in lamps:
+                for gx in (lx - 5, lx + 6):
+                    glow_halo(cv, gx, ly - 1, 13, "ffc870", 0.5)
     elif theme == "rooftop":
-        # parapet line with rooftop clutter
-        PY = 226
+        PY = 228
+        g = near_cols(theme, ["5a5e72", "44485a", "7a7e94", "34374a"])
+        dark = near_cols(theme, ["2a2c38"])[0]
         cv.rect(0, PY, WIDE, H - PY, g[1])
         cv.rect(0, PY, WIDE, 2, g[2])
+        cv.rect(0, PY + 2, WIDE, 1, g[3])
         for x in range(0, WIDE, 16):
-            cv.rect(x, PY + 2, 1, H - PY - 2, g[0])
+            cv.rect(x, PY + 3, 1, H - PY - 3, g[3])
+        vents = []
+        signs = 0
         x = 8
-        while x < WIDE - 50:
-            k = r.choice(["hvac", "tank", "chimney", "antenna", "sign", "dish"])
+        while x < WIDE - 60:
+            k = r.choice(["hvac", "tank", "chimney", "antenna", "sign", "vent", "hvac", "tank", "vent"])
+            if k == "sign":
+                signs += 1
+                if signs > 1:
+                    k = "chimney"
             if k == "hvac":
-                cv.rect(x, PY - 22, 38, 22, g[0])
-                cv.rect(x, PY - 22, 38, 2, g[2])
+                cv.rect(x, PY - 22, 40, 22, g[0])
+                cv.rect(x, PY - 22, 40, 2, g[2])
+                cv.rect(x + 34, PY - 22, 6, 22, g[1])
                 for yy in range(PY - 18, PY - 3, 3):
-                    cv.rect(x + 3, yy, 20, 1, g[1])
-                cv.disc(x + 31, PY - 11, 5, g[1])
-                cv.disc(x + 31, PY - 11, 2, g[0])
-                x += 44
+                    cv.rect(x + 3, yy, 22, 1, g[1])
+                cv.disc(x + 30, PY - 11, 6, g[1])
+                cv.disc(x + 30, PY - 11, 5, g[3])
+                cv.rect(x + 25, PY - 11, 11, 1, g[2])
+                cv.rect(x + 30, PY - 16, 1, 11, g[2])
+                vents.append([x + 30, PY - 18])
+                x += 46
             elif k == "tank":
-                water_tower(cv, x, PY, g[0], g[1], metal)
+                water_tower(cv, x, PY, *near_cols(theme, ["8a5a36", "623e26"]), dark)
                 x += 22
             elif k == "chimney":
-                cv.rect(x, PY - 34, 12, 34, g[0])
-                cv.rect(x - 1, PY - 37, 14, 3, g[2])
-                for yy in range(PY - 30, PY, 4):
-                    cv.rect(x, yy, 12, 1, g[1])
+                cv.rect(x, PY - 36, 12, 36, near_cols(theme, ["8e4a36"])[0])
+                cv.rect(x + 8, PY - 36, 4, 36, near_cols(theme, ["6e3628"])[0])
+                cv.rect(x - 1, PY - 39, 14, 3, g[2])
+                for yy in range(PY - 32, PY, 4):
+                    cv.rect(x, yy, 12, 1, near_cols(theme, ["6e3628"])[0])
+                vents.append([x + 6, PY - 40])
                 x += 20
-            elif k == "antenna":
-                cv.rect(x + 5, PY - 60, 1, 60, metal)
-                for yy, ww in ((PY - 52, 11), (PY - 44, 9), (PY - 36, 7)):
-                    cv.rect(x + 5 - ww // 2, yy, ww, 1, metal)
+            elif k == "vent":
+                cv.rect(x + 2, PY - 18, 6, 18, g[0])
+                cv.rect(x + 6, PY - 18, 2, 18, g[1])
+                cv.rect(x, PY - 22, 10, 4, g[2])
+                cv.rect(x + 1, PY - 23, 8, 1, g[0])
+                vents.append([x + 5, PY - 24])
                 x += 16
-            elif k == "sign":
-                cv.rect(x + 6, PY - 30, 2, 30, metal)
-                cv.rect(x + 44, PY - 30, 2, 30, metal)
-                cv.line(x + 7, PY - 2, x + 45, PY - 28, metal)
-                cv.rect(x, PY - 62, 52, 32, g[0])
-                cv.rect(x + 2, PY - 60, 48, 28, g[2])
-                cv.rect(x + 6, PY - 54, 38, 5, g[1])
-                cv.rect(x + 6, PY - 45, 26, 4, g[1])
-                x += 58
+            elif k == "antenna":
+                cv.rect(x + 5, PY - 64, 1, 64, dark)
+                for yy, ww in ((PY - 56, 13), (PY - 48, 11), (PY - 40, 9)):
+                    cv.rect(x + 5 - ww // 2, yy, ww, 1, dark)
+                cv.set(x + 5, PY - 65, "ff4a4a")
+                x += 18
             else:
-                cv.rect(x + 7, PY - 16, 2, 16, metal)
-                for i in range(14):
-                    cv.rect(x + i, PY - 26 + abs(i - 7) // 2, 1, 9 - abs(i - 7) // 2, g[0])
-                x += 20
-            x += r.randint(14, 40)
+                cv.rect(x + 6, PY - 30, 2, 30, dark)
+                cv.rect(x + 48, PY - 30, 2, 30, dark)
+                cv.line(x + 7, PY - 2, x + 49, PY - 28, dark)
+                cv.rect(x, PY - 64, 56, 34, dark)
+                cv.rect(x + 2, PY - 62, 52, 30, near_cols(theme, ["c8423a"])[0])
+                cv.rect(x + 2, PY - 62, 52, 2, near_cols(theme, ["e86a5a"])[0])
+                for i, ch in enumerate("HOT DOGS"):
+                    gch = FONT3.get(ch)
+                    for gy, row in enumerate(gch):
+                        for gx, v in enumerate(row):
+                            if v == "#":
+                                cv.set(x + 6 + i * 6 + gx, PY - 56 + gy, near_cols(theme, ["fff2c8"])[0])
+                cv.rect(x + 6, PY - 46, 44, 8, near_cols(theme, ["f2c84a"])[0])
+                cv.rect(x + 8, PY - 44, 18, 4, near_cols(theme, ["c8423a"])[0])
+                x += 62
+            x += r.randint(12, 34)
+        anchors["vents"] = vents
+        cv.harden()
+    return cv, anchors
+
+
+# ---------------------------------------------------------------------------
+# AMBIENT ATLAS
+# ---------------------------------------------------------------------------
+def spr(w, h):
+    return Cv(w, h)
+
+
+def draw_ambient():
+    frames = {}
+    # birds: white silhouettes (tinted per theme at runtime), 4-frame flap
+    shapes = [
+        ["#.......#", ".#.....#.", "..##.##..", "....#...."],
+        [".........", "##.....##", "..##.##..", "....#...."],
+        [".........", ".........", "#########", "....#...."],
+        ["....#....", "..##.##..", ".#.....#.", "........."],
+    ]
+    for i, rows in enumerate(shapes):
+        cv = spr(9, 5)
+        for y, row in enumerate(rows):
+            for x, v in enumerate(row):
+                if v == "#":
+                    cv.set(x, y + 1, "ffffff")
+        frames[f"bird_{i}"] = cv.im
+    # L trains for the mid layer (pre-hazed per theme, 4 cars)
+    for theme in ("day", "rooftop", "sunset"):
+        frames[f"train_{theme}"] = l_train_sprite(theme).im
+    # river boats (pre-hazed for the mid layer)
+    frames["boat_tour"] = tour_boat().im
+    frames["boat_taxi"] = water_taxi().im
+    frames["boat_tour_sunset"] = tour_boat(sunset=True).im
+    frames["boat_taxi_sunset"] = water_taxi(sunset=True).im
+    # steam puffs: 4 sizes, dithered discs (white; tinted/alpha at runtime)
+    for i, rad in enumerate((2, 3, 4, 5)):
+        cv = spr(12, 12)
+        for y in range(12):
+            for x in range(12):
+                d = math.hypot(x - 5.5, y - 5.5)
+                if d <= rad and (d < rad - 1 or BAYER[y % 4][x % 4] < 9):
+                    cv.set(x, y, "ffffff" if d < rad * 0.5 or y < 5 else "dde4ec")
+        frames[f"steam_{i}"] = cv.im
+    # glint: 4-frame sparkle
+    for i, n in enumerate((1, 2, 3, 2)):
+        cv = spr(9, 9)
+        for k in range(-n, n + 1):
+            cv.set(4 + k, 4, "ffffff")
+            cv.set(4, 4 + k, "ffffff")
+        if n >= 2:
+            for d in (-1, 1):
+                cv.set(4 + d, 4 + d, "fff6c8")
+                cv.set(4 + d, 4 - d, "fff6c8")
+        frames[f"glint_{i}"] = cv.im
+    # 1px white for lit windows / misc (scaled + tinted)
+    cv = spr(2, 2)
+    cv.rect(0, 0, 2, 2, "ffffff")
+    frames["px"] = cv.im
+    # boat wake (white dashes)
+    for i in range(2):
+        cv = spr(16, 3)
+        for x in range(16):
+            if (x + i * 3) % 6 < 3:
+                cv.set(x, 1 + (x // 6 + i) % 2, "ffffff")
+        frames[f"wake_{i}"] = cv.im
+    return frames
+
+
+def l_train_sprite(theme):
+    th = THEMES[theme]
+    cars, cw = 4, 46
+    cv = spr(cars * (cw + 2), 18)
+    body, shade, dark = "c8ccd4", "9aa0aa", "3a3e4a"
+    win = "4a6a90"
+    stripe = "c8282e"
+    roof = "b0b4bc"
+    for k in range(cars):
+        x = k * (cw + 2)
+        cv.rect(x, 2, cw, 13, body)
+        cv.rect(x + 1, 1, cw - 2, 1, roof)
+        cv.rect(x, 12, cw, 2, shade)
+        cv.rect(x, 10, cw, 1, stripe)
+        for wx in range(x + 4, x + cw - 5, 6):
+            cv.rect(wx, 4, 4, 4, win)
+            cv.set(wx, 4, mix(win, "ffffff", 0.4))
+        cv.rect(x + cw // 2 - 2, 3, 4, 9, shade)
+        for wx in (x + 5, x + cw - 11):
+            cv.rect(wx, 15, 6, 2, dark)
+            cv.set(wx + 1, 17, dark)
+            cv.set(wx + 4, 17, dark)
+        if k < cars - 1:
+            cv.rect(x + cw, 6, 2, 6, dark)
+    # cab windows at both ends
+    cv.rect(0, 4, 2, 5, win)
+    cv.rect(cv.w - 2, 4, 2, 5, win)
+    if theme == "rooftop":
+        # seen from above: roof plane with vents
+        cv.rect(0, 0, cv.w, 2, "d8dce2")
+        for k in range(cars):
+            cv.rect(k * (cw + 2) + 10, 0, 6, 1, "8a8e96")
+            cv.rect(k * (cw + 2) + 28, 0, 6, 1, "8a8e96")
+    im = cv
+    # grade to the mid layer of the theme
+    for y in range(im.h):
+        for x in range(im.w):
+            p = im.px[x, y]
+            if not p[3]:
+                continue
+            if th["sil"]:
+                if p[:3] == c(win)[:3]:
+                    im.px[x, y] = c(th["lit"][(x // 6) % 2])
+                    continue
+                p = mix(p, th["sil"][2], th["sil"][3] * 0.85)
+            im.px[x, y] = mix(p, th["mid_haze"], th["mid_fog"][0] + 0.15)
+    return im
+
+
+def tour_boat(sunset=False):
+    cv = spr(64, 16)
+    hull, hull_d, deck, cabin, win, trim = "f2f4f6", "9aa4ae", "c8ccd2", "e8eaee", "3e5c82", "2e4a7a"
+    cv.rect(2, 9, 60, 4, hull)
+    cv.rect(4, 13, 56, 2, hull_d)
+    cv.rect(0, 9, 3, 2, hull)
+    cv.rect(61, 9, 3, 3, hull)
+    cv.rect(2, 11, 60, 1, trim)
+    cv.rect(10, 4, 44, 5, cabin)
+    cv.rect(9, 3, 46, 1, trim)
+    for wx in range(12, 52, 5):
+        cv.rect(wx, 5, 3, 2, win)
+    cv.rect(6, 8, 52, 1, deck)
+    # passengers on the open top deck
+    for px_, col in ((14, "e34a3a"), (20, "3a7ae3"), (27, "f2c84a"), (34, "3ab25a"), (41, "e37ab0"), (47, "f2f2f2")):
+        cv.set(px_, 1, "f0b080")
+        cv.set(px_, 2, col)
+    for xx in range(9, 56, 3):
+        cv.set(xx, 2, "8a98a8")
+    return grade_sprite(cv, sunset, "river")
+
+
+def water_taxi(sunset=False):
+    cv = spr(34, 12)
+    cv.rect(2, 6, 30, 3, "f2c84a")
+    cv.rect(4, 9, 26, 2, "c8962a")
+    cv.rect(0, 6, 3, 2, "f2c84a")
+    cv.rect(8, 2, 16, 4, "f6f2e8")
+    cv.rect(8, 1, 16, 1, "2b2d42")
+    for wx in range(10, 23, 4):
+        cv.rect(wx, 3, 2, 2, "3e5c82")
+    cv.rect(2, 7, 30, 1, "2b2d42")
+    return grade_sprite(cv, sunset, "river")
+
+
+def grade_sprite(cv, sunset, theme):
+    th = THEMES["sunset" if sunset else theme]
+    for y in range(cv.h):
+        for x in range(cv.w):
+            p = cv.px[x, y]
+            if not p[3]:
+                continue
+            if sunset:
+                if p[:3] == c("3e5c82")[:3]:
+                    cv.px[x, y] = c("ffd27a")
+                    continue
+                p = mix(p, th["sil"][2], 0.55)
+            cv.px[x, y] = mix(p, th["mid_haze"], 0.18)
+    return cv
+
+
+def draw_water_strip():
+    """32x8 tileable highlight strip scrolled along water surfaces at runtime."""
+    cv = Cv(32, 8)
+    for x in range(32):
+        if x % 16 in (2, 3, 4, 5):
+            cv.set(x, 1 if x % 16 in (3, 4) else 2, "ffffff")
+        if (x + 9) % 32 in (0, 1, 2):
+            cv.set(x, 5, "e8fbff")
+        if (x + 22) % 32 in (0, 1):
+            cv.set(x, 6, "e8fbff")
     return cv
 
 
 # ---------------------------------------------------------------------------
-def check_wrap(im: Image.Image):
-    """Return True if the image tiles horizontally (left & right columns blend: sanity check only)."""
-    return True
+def write_anchors(anchors):
+    lines = [
+        "// GENERATED by tools/art/draw_backgrounds.py -- do not edit by hand.",
+        "// Positions are in parallax-layer pixels (layer x wraps at the layer width).",
+        "import type { LevelTheme } from '../types';",
+        "",
+        "export interface ThemeAnchors {",
+        "  /** Dark windows (x, y, w, h flattened) per layer that the sunset twinkle switches on and off. */",
+        "  windows: { far: number[]; mid: number[] };",
+        "  /** Glass-tower glint spots on the far layer (x, y flattened). */",
+        "  glints: number[];",
+        "  /** Steam vent mouths on the near layer (x, y flattened). */",
+        "  vents: number[];",
+        "  /** L train: y of the train's bottom edge on the given layer. */",
+        "  train: { layer: 'far' | 'mid'; y: number } | null;",
+        "  /** River surface on the mid layer: water top y and boat baselines. */",
+        "  river: { layer: 'mid'; top: number; boatY: number[] } | null;",
+        "}",
+        "",
+        f"export const LAYER_WIDTH = {WIDE};",
+        f"export const CLOUD_LAYER = {{ width: {CLOUD_W}, height: {CLOUD_H} }};",
+        "",
+        "export const AMBIENT_ANCHORS: Record<LevelTheme, ThemeAnchors> = {",
+    ]
+    for theme in THEME_NAMES:
+        a = anchors[theme]
+        flat = lambda rects: ", ".join(str(v) for rc in rects for v in rc)  # noqa: E731
+        lines.append(f"  {theme}: {{")
+        lines.append(f"    windows: {{ far: [{flat(a.get('win_far', []))}], mid: [{flat(a.get('win_mid', []))}] }},")
+        lines.append(f"    glints: [{flat(a.get('glints', []))}],")
+        lines.append(f"    vents: [{flat(a.get('vents', []))}],")
+        tr = a.get("train")
+        lines.append(f"    train: {('{ layer: ' + repr(tr['layer']) + ', y: ' + str(tr['y']) + ' }') if tr else 'null'},")
+        rv = a.get("river")
+        lines.append(f"    river: {('{ layer: ' + repr(rv['layer']) + ', top: ' + str(rv['top']) + ', boatY: [' + ', '.join(map(str, rv['boatY'])) + '] }') if rv else 'null'},")
+        lines.append("  },")
+    lines.append("};")
+    with open(ANCHORS_TS, "w") as f:
+        f.write("\n".join(lines).replace("'", "'") + "\n")
+
+
+def glint_spots(far_cv, r, n=10):
+    """Bright pixels high on glass towers -> sun glint spots."""
+    out = []
+    tries = 0
+    while len(out) < n and tries < 5000:
+        tries += 1
+        x, y = r.randint(0, WIDE - 1), r.randint(80, 200)
+        p = far_cv.get(x, y)
+        if p[3] and far_cv.get(x - 3, y)[3] and far_cv.get(x + 3, y)[3] and sum(p[:3]) > 520:
+            if all(abs(x - ox) > 40 for ox, _ in out):
+                out.append((x, y))
+    return out
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
     previews = []
-    for theme in THEMES:
-        layers = {
-            "sky": draw_sky(theme),
-            "far": draw_far(theme),
-            "mid": draw_mid(theme),
-            "near": draw_near(theme),
-        }
+    anchors = {}
+    total = {}
+    for theme in THEME_NAMES:
+        far, win_far = draw_far(theme)
+        mid, mid_anchors = draw_mid(theme)
+        near, near_anchors = draw_near(theme)
+        win_mid = [w for w in mid_anchors.pop("win_mid", []) if w[1] < 192]
+        layers = {"sky": draw_sky(theme), "clouds": draw_clouds(theme), "far": far, "mid": mid, "near": near}
+        a = {"win_far": [w for w in win_far if 40 < w[1] < 250][:64], "win_mid": win_mid[:40]}
+        a.update(mid_anchors)
+        a.update(near_anchors)
+        if theme in ("day", "river", "rooftop"):
+            a["glints"] = glint_spots(far, rng(500 + THEME_NAMES.index(theme)))
+        anchors[theme] = a
+        tot = 0
         for name, cv in layers.items():
             cv.harden()
             cv.save(os.path.join(OUT, f"bg-{theme}-{name}.png"))
-        # composite preview (two tiles wide to reveal seams)
-        comp = Image.new("RGBA", (WIDE * 1, H))
+            tot += cv.w * cv.h * 4
+        total[theme] = tot
+        comp = Image.new("RGBA", (WIDE, H))
         for x in range(0, WIDE, W):
             comp.alpha_composite(layers["sky"].im, (x, 0))
+        for x in range(0, WIDE, CLOUD_W):
+            comp.alpha_composite(layers["clouds"].im, (x, 0))
         for name in ("far", "mid", "near"):
-            im = layers[name].im
-            comp.alpha_composite(im, (0, 0))
+            comp.alpha_composite(layers[name].im, (0, 0))
         previews.append(comp)
+    write_anchors(anchors)
+    frames = draw_ambient()
+    pack_atlas(frames, os.path.join(ASSETS, "ambient"), max_w=256)
+    draw_water_strip().save(os.path.join(ASSETS, "ambient-water.png"))
     sheet = Image.new("RGBA", (WIDE, H * len(previews)))
     for i, p in enumerate(previews):
         sheet.alpha_composite(p, (0, i * H))
     os.makedirs(PREVIEWS, exist_ok=True)
     sheet.save(os.path.join(PREVIEWS, "backgrounds.png"))
-    print("backgrounds ok")
+    print("backgrounds ok; uncompressed bytes per theme:", {k: f"{v / 1e6:.2f} MB" for k, v in total.items()})
 
 
 if __name__ == "__main__":

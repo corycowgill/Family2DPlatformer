@@ -143,6 +143,7 @@ export class LevelScene extends Phaser.Scene {
     };
     this.player.attach(this.ctx);
     attachAbilities(this.player);
+    this.parallax.attachAmbient(this.ctx);
 
     for (const o of objects) {
       if (o.type === 'playerStart') continue;

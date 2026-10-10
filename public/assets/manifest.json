@@ -1,6 +1,11 @@
 {
   "atlases": [
     {
+      "key": "ambient",
+      "png": "assets/ambient.png",
+      "json": "assets/ambient.json"
+    },
+    {
       "key": "brennan",
       "png": "assets/characters/brennan.png",
       "json": "assets/characters/brennan.json"
@@ -123,6 +128,14 @@
   ],
   "images": [
     {
+      "key": "ambient-water",
+      "path": "assets/ambient-water.png"
+    },
+    {
+      "key": "bg-day-clouds",
+      "path": "assets/backgrounds/bg-day-clouds.png"
+    },
+    {
       "key": "bg-day-far",
       "path": "assets/backgrounds/bg-day-far.png"
     },
@@ -137,6 +150,10 @@
     {
       "key": "bg-day-sky",
       "path": "assets/backgrounds/bg-day-sky.png"
+    },
+    {
+      "key": "bg-river-clouds",
+      "path": "assets/backgrounds/bg-river-clouds.png"
     },
     {
       "key": "bg-river-far",
@@ -155,6 +172,10 @@
       "path": "assets/backgrounds/bg-river-sky.png"
     },
     {
+      "key": "bg-rooftop-clouds",
+      "path": "assets/backgrounds/bg-rooftop-clouds.png"
+    },
+    {
       "key": "bg-rooftop-far",
       "path": "assets/backgrounds/bg-rooftop-far.png"
     },
@@ -169,6 +190,10 @@
     {
       "key": "bg-rooftop-sky",
       "path": "assets/backgrounds/bg-rooftop-sky.png"
+    },
+    {
+      "key": "bg-sunset-clouds",
+      "path": "assets/backgrounds/bg-sunset-clouds.png"
     },
     {
       "key": "bg-sunset-far",
