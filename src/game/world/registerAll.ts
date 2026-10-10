@@ -4,3 +4,4 @@
  */
 import '../entities/spawners';
 import '../enemies';
+import './worldSpawners';

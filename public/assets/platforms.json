@@ -1,0 +1,255 @@
+{
+ "frames": {
+  "girder_2": {
+   "frame": {
+    "x": 114,
+    "y": 41,
+    "w": 32,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 32,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 32,
+    "h": 16
+   }
+  },
+  "girder_3": {
+   "frame": {
+    "x": 147,
+    "y": 41,
+    "w": 48,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 16
+   }
+  },
+  "girder_4": {
+   "frame": {
+    "x": 196,
+    "y": 41,
+    "w": 64,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 16
+   }
+  },
+  "plank_2": {
+   "frame": {
+    "x": 310,
+    "y": 41,
+    "w": 32,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 32,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 32,
+    "h": 8
+   }
+  },
+  "plank_3": {
+   "frame": {
+    "x": 343,
+    "y": 41,
+    "w": 48,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 8
+   }
+  },
+  "scaffold_3": {
+   "frame": {
+    "x": 261,
+    "y": 41,
+    "w": 48,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 16
+   }
+  },
+  "train_car": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 40
+   }
+  },
+  "train_front": {
+   "frame": {
+    "x": 129,
+    "y": 0,
+    "w": 128,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 128,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 40
+   }
+  },
+  "boat": {
+   "frame": {
+    "x": 363,
+    "y": 0,
+    "w": 112,
+    "h": 36
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 36
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 36
+   }
+  },
+  "bus": {
+   "frame": {
+    "x": 258,
+    "y": 0,
+    "w": 104,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 104,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 104,
+    "h": 40
+   }
+  },
+  "taxi": {
+   "frame": {
+    "x": 0,
+    "y": 41,
+    "w": 56,
+    "h": 26
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 26
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 26
+   }
+  },
+  "cop_car": {
+   "frame": {
+    "x": 57,
+    "y": 41,
+    "w": 56,
+    "h": 26
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 26
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 26
+   }
+  }
+ },
+ "meta": {
+  "app": "tools/art (Chicago Family Adventure)",
+  "version": "1.0",
+  "image": "platforms.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 476,
+   "h": 67
+  },
+  "scale": "1"
+ }
+}

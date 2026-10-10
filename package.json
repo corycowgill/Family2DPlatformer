@@ -10,7 +10,8 @@
     "preview": "vite preview --port 4173 --strictPort",
     "typecheck": "tsc --noEmit",
     "levels": "node tools/levels/build-levels.mjs",
-    "levels:check": "node tools/levels/build-levels.mjs --check",
+    "levels:check": "node tools/levels/build-levels.mjs --check && node tools/levels/check-reachability.mjs",
+    "levels:reach": "node tools/levels/check-reachability.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
