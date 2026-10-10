@@ -19,6 +19,7 @@ import { getSpawner } from '../world/registry';
 import '../world/registerAll';
 import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { Checkpoint } from '../entities/Triggers';
+import { LevelFx } from '../fx/LevelFx';
 
 export interface LevelSceneData {
   levelId: string;
@@ -46,6 +47,7 @@ export class LevelScene extends Phaser.Scene {
   inputSys!: InputSystem;
   cameraSys!: CameraSystem;
   private parallax!: Parallax;
+  fx!: LevelFx;
   private levelTime = 0;
   private spawnPoint = { x: 32, y: 32 };
   private checkpoints: Checkpoint[] = [];
@@ -165,6 +167,7 @@ export class LevelScene extends Phaser.Scene {
     }
 
     new CombatSystem(this.ctx);
+    this.fx = new LevelFx(this.ctx);
     this.inputSys = new InputSystem(this);
     this.inputSys.resetEdges();
     this.cameraSys = new CameraSystem(this.cameras.main, this.player, map.widthInPixels, map.heightInPixels);
@@ -332,6 +335,7 @@ export class LevelScene extends Phaser.Scene {
     this.player.tick(input, dt);
     this.cameraSys.update(dt);
     this.parallax.update();
+    this.fx.update(dt);
     if (this.debugGfx) this.updateDebug();
   }
 

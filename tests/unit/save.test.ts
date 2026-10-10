@@ -95,6 +95,7 @@ describe('SaveSystem corrupted / malformed data', () => {
       reducedMotion: true,
       showTouchControls: 'auto',
       rumble: true,
+      effects: 'high',
     });
   });
 

@@ -366,7 +366,7 @@ test.describe('Xbox controller', () => {
     await tap(page, BTN.A);
     await waitForScene(page, 'Settings');
     await page.waitForTimeout(400);
-    // MUSIC, SOUND FX, MUTE ALL, REDUCED MOTION, TOUCH CONTROLS, VIBRATION — hold the d-pad (auto-repeat).
+    // MUSIC, SOUND FX, MUTE ALL, REDUCED MOTION, EFFECTS, TOUCH CONTROLS, VIBRATION — hold the d-pad (auto-repeat).
     await setButton(page, BTN.DOWN, 1);
     await page.waitForTimeout(380 + 140 * 2);
     await setButton(page, BTN.DOWN, 0);

@@ -21,7 +21,7 @@ const W = await p.evaluate(() => window.__level.ctx.map.widthInPixels);
 const n = Number(count);
 for (let i = 0; i < n; i++) {
   const x = 120 + (W - 240) * i / (n - 1);
-  await p.evaluate((x) => { const L = window.__level; L.player.invulnUntil = Number.MAX_SAFE_INTEGER;
+  await p.evaluate((x) => { const L = window.__level; L.player.isInvulnerable = () => true; // no hurt-blink in screenshots
     // find standable y: scan from top for first ground tile below an empty tile
     const g = L.ctx.ground; let y = 16;
     for (let ty = 1; ty < L.ctx.map.height; ty++) { const t = g.getTileAtWorldXY(x, ty*16+1); const t2 = L.ctx.oneway?.getTileAtWorldXY(x, ty*16+1);

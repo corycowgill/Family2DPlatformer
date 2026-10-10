@@ -6,6 +6,7 @@ import { playAnim } from '../systems/AnimationSystem';
 import { ensureEnemyArt } from '../enemies/enemyArt';
 import { applyStatOverrides, telegraphBlink } from '../enemies/ai';
 import { EnemyProjectile, type EnemyProjectileOptions } from './Projectile';
+import { flashWhite } from '../fx/fxAnim';
 
 export interface EnemyConfig {
   kind: EnemyKind;
@@ -237,7 +238,7 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.ctx.sfx(hit?.kind === 'stomp' ? 'stomp' : 'enemy-defeat');
     this.ctx.effect('poof', this.x, this.y - this.height / 2);
     this.body.enable = false;
-    this.clearTint();
+    flashWhite(this, 70);
     if (hit?.kind === 'stomp') {
       this.setScale(1.2, 0.5);
     }

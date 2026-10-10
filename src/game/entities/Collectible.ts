@@ -3,6 +3,7 @@ import { DEPTH } from '../config';
 import { EV, type PickupKind } from '../types';
 import type { Collectible, LevelContext } from '../world/LevelContext';
 import { playAnim } from '../systems/AnimationSystem';
+import { desyncAnim } from '../fx/fxAnim';
 
 /** Durations of timed power-ups (ms). */
 export const POWERUP_DURATION: Partial<Record<PickupKind, number>> = {
@@ -44,6 +45,7 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite implements Collectible 
     this.body.setSize(12, 12);
     if (kind === 'coin') playAnim(this, 'coin');
     if (kind === 'star') playAnim(this, 'star');
+    desyncAnim(this); // coins in a row shouldn't all turn edge-on at once
     if (kind !== 'coin' && !dynamic) {
       // gentle hover so rare items stand out
       ctx.scene.tweens.add({ targets: this, y: y - 3, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });

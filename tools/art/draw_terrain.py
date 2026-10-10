@@ -1412,12 +1412,13 @@ def band(part):
     cv.hline(0, 0, S, FBc["mortar"])
     cv.hline(0, 1, S, FBc["brick"])
     cv.hline(0, 15, S, FBc["frame"])
-    if part == "BAND_2":
-        text(cv, 2, 6, "EAT", "y1")
-        cv.hline(2, 11, 11, "y3")
-    if part == "BAND":
-        for x in (3, 12):
-            cv.set(x, 7, "y4"), cv.set(x, 8, "y4")
+    if part in ("BAND", "BAND_2"):
+        # Blank sign board with a row of marquee bulbs (8 px pitch, so it repeats seamlessly).
+        # No lettering: 3-px glyphs on a 16-px tile read as stray characters ("E T").
+        lit, dim = ("y1", "y4") if part == "BAND_2" else ("y4", "y1")
+        for x, col in ((3, lit), (11, dim)):
+            cv.set(x, 8, col), cv.set(x + 1, 8, col)
+            cv.set(x, 9, "y3"), cv.set(x + 1, 9, "y3")
     if part == "BAND_L":
         cv.vline(0, 2, 12, trim)
         cv.vline(1, 3, 10, dk)

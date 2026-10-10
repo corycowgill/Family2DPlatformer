@@ -12,6 +12,8 @@ export interface Settings {
   showTouchControls: 'auto' | 'on' | 'off';
   /** Controller vibration (rumble) where the browser supports it. */
   rumble: boolean;
+  /** Lighting / particle quality: 'low' drops screen overlays, glints and sparkle particles (weak phones). */
+  effects: 'high' | 'low';
 }
 
 export interface LevelRecord {
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS: Settings = {
   reducedMotion: false,
   showTouchControls: 'auto',
   rumble: true,
+  effects: 'high',
 };
 
 export function defaultSave(): SaveData {
@@ -98,6 +101,7 @@ export function sanitizeSave(raw: unknown): SaveData {
       reducedMotion: s.reducedMotion === true,
       showTouchControls: s.showTouchControls === 'on' || s.showTouchControls === 'off' ? s.showTouchControls : 'auto',
       rumble: s.rumble !== false,
+      effects: s.effects === 'low' ? 'low' : 'high',
     };
   }
   return out;

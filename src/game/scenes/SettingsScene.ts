@@ -64,6 +64,11 @@ export class SettingsScene extends Phaser.Scene {
         onSelect: () => change((st) => (st.reducedMotion = !st.reducedMotion)), onAdjust: () => change((st) => (st.reducedMotion = !st.reducedMotion)),
       },
       {
+        label: 'EFFECTS', value: () => s().effects.toUpperCase(),
+        onSelect: () => change((st) => (st.effects = st.effects === 'high' ? 'low' : 'high')),
+        onAdjust: () => change((st) => (st.effects = st.effects === 'high' ? 'low' : 'high')),
+      },
+      {
         label: 'TOUCH CONTROLS', value: () => s().showTouchControls.toUpperCase(),
         onSelect: () => change((st) => (st.showTouchControls = cycle(['auto', 'on', 'off'] as const, st.showTouchControls))),
         onAdjust: (d) => change((st) => (st.showTouchControls = cycle(['auto', 'on', 'off'] as const, st.showTouchControls, d))),
