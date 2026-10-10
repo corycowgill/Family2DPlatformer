@@ -5,10 +5,16 @@ import { setInputDevice } from './game/systems/InputDevice';
 import { installPlatform } from './game/platform';
 
 const game = new Phaser.Game(createGameConfig('game'));
+// The game is running: drop the HTML loading screen (and its boot diagnostics).
+document.getElementById('boot')?.remove();
 audio.init(game);
 // Mobile / iOS: hardening, audio unlock + background pause, DOM touch controls, home-screen tip.
-installPlatform(game);
-document.getElementById('boot')?.remove();
+// Optional extras — a failure here must never stop the game from starting.
+try {
+  installPlatform(game);
+} catch (e) {
+  console.error('Platform setup failed', e);
+}
 
 // Track the active input device for prompts / touch-control visibility (gamepad sets itself).
 window.addEventListener('keydown', () => setInputDevice('keyboard'), { capture: true, passive: true });

@@ -31,11 +31,42 @@
       /* Phaser's autoCenter positions the canvas; no flex centering on top (it double-offsets). */
       #game { position: fixed; inset: 0; }
       #game canvas { image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; -webkit-touch-callout: none; outline: none; }
-      #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #cfe3ff; font: 16px monospace; }
+      #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; box-sizing: border-box; color: #cfe3ff; font: 16px monospace; text-align: center; }
+      #boot small { max-width: 640px; color: #ffd25a; font-size: 13px; line-height: 1.5; -webkit-user-select: text; user-select: text; }
     </style>
   </head>
   <body>
     <div id="boot">Loading Chicago…</div>
+    <script>
+      // Boot diagnostics: if the game can't start, say why instead of showing "Loading" forever.
+      (function () {
+        var boot = document.getElementById('boot');
+        function show(msg) {
+          if (!boot || !boot.isConnected) return;
+          boot.innerHTML = '';
+          var t = document.createElement('div');
+          t.textContent = "Couldn't start Chicago Family Adventure";
+          var d = document.createElement('small');
+          d.textContent = msg;
+          boot.appendChild(t);
+          boot.appendChild(d);
+        }
+        var hint = location.protocol === 'file:'
+          ? 'The game must be served by a web server, not opened as a file. Run "npm install && npm run dev" and open the address it prints.'
+          : 'If this is GitHub Pages, set Settings > Pages > Source to "GitHub Actions" (deploying the branch directly serves unbuilt source).';
+        window.addEventListener('error', function (e) {
+          var el = e.target;
+          if (el && el.tagName === 'SCRIPT') show('Game script failed to load (' + (el.src || 'module') + '). ' + hint);
+          else if (e.message) show('Error: ' + e.message);
+        }, true);
+        window.addEventListener('unhandledrejection', function (e) {
+          show('Error: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)));
+        });
+        setTimeout(function () {
+          show('The game is taking too long to start. ' + hint + ' Otherwise try reloading, or a current Safari / Chrome / Edge / Firefox.');
+        }, 15000);
+      })();
+    </script>
     <div id="game"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
