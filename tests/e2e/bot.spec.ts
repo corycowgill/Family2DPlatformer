@@ -66,6 +66,7 @@ test.describe('platforming bot', () => {
   });
 
   test('traverses every registered level that exists (warn only)', async ({ page }, testInfo) => {
+    test.setTimeout(15 * 60_000); // levels × characters of simulated play
     await openGame(page);
     const levels = (await availableLevels(page)).filter((l) => l.exists && l.id !== 'test');
     if (levels.length === 0) {

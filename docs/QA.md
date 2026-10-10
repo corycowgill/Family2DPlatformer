@@ -96,6 +96,11 @@ h.getState();  // { scenes, levelId, character, x, y, vx, vy, grounded, mode, he
 | `measureFps(ms)` | Real render frame times. |
 | `bot(options)` | Runs the platforming bot (below). |
 
+**Player motor and stepping:** the player motor advances on the Arcade world's
+`WORLD_STEP` event; `Player.tick()` only latches input. `stepFrames` runs the scene's whole
+update, including `world.update()`, which fires exactly one `WORLD_STEP` per 1000/60 ms frame
+(another `dtMs` still works; the world's fixed-step accumulator decides how many steps run).
+
 **How determinism works:** in manual mode the Level scene's `sys.step` is gated, so the
 browser's rAF loop keeps rendering but never advances the simulation. `stepFrames` calls the
 real `Systems.step` with a synthetic time and fixed dt; the TweenManager (normally
@@ -132,15 +137,14 @@ backtrack left.
 
 ## Known defects / flaky areas
 
-- **Grounded flicker (open defect).** On flat ground `Player.grounded` toggles every frame:
-  the motor sets `vy = 0` when grounded and the body has gravity disabled, so the next physics
-  step doesn't touch the floor (`blocked.down = false`), gravity pulls it back the frame after.
-  Effects: `onLand` fires every other frame (dust puffs, `land` sfx, squash tween that also
-  resizes the Arcade body), jump/fall animation flicker. Repro: `?debug`, hold → on the
-  ground — the dust trail and `g0/g1` alternating in the debug line. Tracked by the
-  `test.fail` test in `gameplay.spec.ts` (it will report "unexpectedly passed" once fixed —
-  then delete the `test.fail` line). Likely fix (player team): keep a small downward velocity
-  while grounded (e.g. `vy = gravity * dt`) or detect ground with a probe.
+- **Grounded flicker (fixed on main).** Before the fixed-step motor, `Player.grounded`
+  toggled every frame on flat ground (vy = 0 with gravity off → no floor contact on the next
+  step): `onLand` fired every other frame (dust trail, `land` sfx, squash tween resizing the
+  body). Now a regression test in `gameplay.spec.ts`.
+- **Bot limits on the real levels** (warnings, not failures): it doesn't climb one-way
+  platform staircases to get over tall walls (loop-2 ≈ x 1547, the TTTT wall at column 98),
+  and it can walk into the pocket under the loop-3 overhang (≈ x 1578, columns 96–100) instead
+  of taking the bridge above. Characters with better jumps get through some of these.
 - **FPS in CI / containers** is software WebGL (SwiftShader): expect 25–40 fps; the perf spec only warns.
 - **Real-time specs** (pause, death respawn, touch) depend on wall-clock timers; they use
   generous `waitForFunction` timeouts. If they flake under heavy load, run with `--workers=1`.

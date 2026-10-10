@@ -3,14 +3,15 @@ import { gameToPage, getState, harness, openGame, startLevel } from './helpers';
 
 /**
  * Mobile project only (tagged @touch): Pixel 7 landscape with hasTouch. Touch buttons are
- * drawn in the HUD at fixed logical (480x270) positions — see src/game/ui/TouchControls.ts.
+ * drawn in the HUD at fixed logical (480x270) positions — mirrors TOUCH_LAYOUT in
+ * src/game/ui/TouchControls.ts and the HUD pause button (HUDScene).
  */
 const BUTTONS = {
-  left: { x: 34, y: 270 - 34 },
-  right: { x: 84, y: 270 - 34 },
-  jump: { x: 480 - 34, y: 270 - 40 },
-  attack: { x: 480 - 82, y: 270 - 26 },
-  pause: { x: 480 - 16, y: 40 },
+  left: { x: 28, y: 270 - 30 },
+  right: { x: 78, y: 270 - 30 },
+  jump: { x: 480 - 30, y: 270 - 34 },
+  attack: { x: 480 - 76, y: 270 - 22 },
+  pause: { x: 480 - 13, y: 13 },
 };
 
 /** Real touch events through CDP, multi-touch capable. Returns a release function. */
@@ -39,8 +40,7 @@ test.describe('touch controls @touch', () => {
     await openGame(page);
     await startLevel(page, 'test', 'dad');
     expect(await page.evaluate(() => 'ontouchstart' in window || navigator.maxTouchPoints > 0)).toBe(true);
-    const circles = await harness(page, (h) => h.sceneObjects('HUD', 'Arc'));
-    expect(circles).toBeGreaterThanOrEqual(5);
+    expect(await harness(page, (h) => h.touchControlsVisible())).toBe(true);
   });
 
   test('holding the ▶ button moves the player right, ◀ moves left', async ({ page }) => {

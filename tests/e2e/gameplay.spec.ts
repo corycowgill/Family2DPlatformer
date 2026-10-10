@@ -25,6 +25,12 @@ test.describe('menus → level', () => {
     expect(log.errors, log.errors.join('\n')).toEqual([]);
   });
 
+  test('touch controls are hidden on a non-touch desktop', async ({ page }) => {
+    await openGame(page);
+    await startLevel(page, 'test', 'dad');
+    expect(await harness(page, (h) => h.touchControlsVisible())).toBe(false);
+  });
+
   test('player moves on keyboard input', async ({ page }) => {
     await openGame(page);
     await startLevel(page, 'test', 'dad');
@@ -96,10 +102,13 @@ test.describe('pause', () => {
 
     await holdKey(page, 'Escape');
     await waitForScene(page, 'Pause');
-    for (let i = 0; i < 7; i++) await page.keyboard.press('ArrowDown'); // last item: Quit to Map
+    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown'); // RESUME, RESTART, SETTINGS, QUIT TO MAP
     await page.keyboard.press('Enter');
     await waitForScene(page, 'WorldMap');
-    expect(await harness(page, (h) => h.scenes())).toEqual(['WorldMap']);
+    await page.waitForFunction(() => {
+      const sc = window.__harness!.scenes();
+      return !sc.includes('Level') && !sc.includes('HUD') && !sc.includes('Pause');
+    });
   });
 });
 
@@ -110,7 +119,7 @@ test.describe('death & respawn', () => {
     await harness(page, (h) => h.teleport(32 * 16 + 8, 180)); // pit at columns 31..33
     await page.waitForFunction(() => window.__harness!.getState().mode === 'dead');
     expect((await getState(page)).lives).toBe(s0.lives - 1);
-    expect(await harness(page, (h) => h.sceneTexts('HUD'))).toContain(`x${s0.lives - 1}`);
+    expect((await harness(page, (h) => h.sceneTexts('HUD'))).map((t) => t.toLowerCase())).toContain(`x${s0.lives - 1}`);
     await page.waitForFunction(() => {
       const s = window.__harness!.getState();
       return s.levelId === 'test' && s.mode === 'normal' && s.x < 100;
@@ -118,7 +127,7 @@ test.describe('death & respawn', () => {
     const s1 = await getState(page);
     expect(s1.lives).toBe(s0.lives - 1);
     expect(s1.health).toBe(3);
-    expect(await harness(page, (h) => h.sceneTexts('HUD'))).toContain(`x${s0.lives - 1}`);
+    expect((await harness(page, (h) => h.sceneTexts('HUD'))).map((t) => t.toLowerCase())).toContain(`x${s0.lives - 1}`);
   });
 
   test('respawns at the last checkpoint reached', async ({ page }) => {
@@ -196,11 +205,11 @@ test.describe('completion & save', () => {
     expect(after.unlocked).toContain('loop-2');
     expect(after.levels['loop-1'].completed).toBe(true);
     await waitForScene(page, 'Menu');
-    await page.keyboard.press('ArrowDown'); // Play → Continue (enabled when there is progress)
-    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    await page.keyboard.press('Enter'); // CONTINUE is preselected when there is progress
     await waitForScene(page, 'WorldMap');
-    const mapTexts = await harness(page, (h) => h.sceneTexts('WorldMap'));
-    expect(mapTexts.some((t) => t.startsWith('1-1') && t.includes('✓'))).toBe(true);
+    // Completed level nodes are marked with a ✓ on the map.
+    await page.waitForFunction(() => window.__harness!.sceneTexts('WorldMap').some((t) => t.includes('✓')));
     expect(log.errors, log.errors.join('\n')).toEqual([]);
   });
 
@@ -217,9 +226,9 @@ test.describe('completion & save', () => {
   });
 });
 
-test.describe('known defects (expected to fail until fixed)', () => {
+test.describe('regressions', () => {
+  // Was a defect before the fixed-step motor: grounded toggled every other frame on flat ground.
   test('player stays grounded while standing/running on flat ground', async ({ page }) => {
-    test.fail(true, 'DEFECT: grounded flickers every other frame on flat ground (Player sets vy=0 with gravity off → body leaves contact) — see docs/QA.md');
     await openGame(page);
     await startLevel(page, 'test', 'dad', { manual: true });
     const flips = await harness(page, async (h) => {

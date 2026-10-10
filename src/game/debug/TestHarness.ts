@@ -5,7 +5,7 @@ import { saveSystem } from '../systems/SaveSystem';
 import { getSpawner } from '../world/registry';
 import { CHARACTER_IDS, EV, type CharacterId, type EnemyKind } from '../types';
 import { LEVELS, TEST_LEVEL, getLevel } from '../data/levels';
-import { STORAGE_KEY } from '../config';
+import { DEPTH, STORAGE_KEY } from '../config';
 import { Checkpoint, Goal } from '../entities/Triggers';
 import { Enemy } from '../entities/Enemy';
 import { PlatformBot, type BotOptions, type BotResult } from './PlatformBot';
@@ -459,14 +459,31 @@ export class TestHarness {
   sceneTexts(key: string): string[] {
     const s = this.game.scene.getScene(key);
     if (!s || !s.sys.isActive()) return [];
-    return s.children.list.filter((o): o is Phaser.GameObjects.Text => o instanceof Phaser.GameObjects.Text).map((t) => t.text);
+    const out: string[] = [];
+    const walk = (list: Phaser.GameObjects.GameObject[]) => {
+      for (const o of list) {
+        if (!o.active) continue;
+        if (o instanceof Phaser.GameObjects.Text || o instanceof Phaser.GameObjects.BitmapText) out.push(o.text);
+        else if (o instanceof Phaser.GameObjects.Container) walk(o.list);
+      }
+    };
+    walk(s.children.list);
+    return out;
   }
 
-  /** Count of game objects of a type in a scene (e.g. 'Arc' for touch buttons). */
-  sceneObjects(key: string, type: string): number {
+  /** Count of visible game objects of a type in a scene, optionally at a given depth. */
+  sceneObjects(key: string, type: string, depth?: number): number {
     const s = this.game.scene.getScene(key);
     if (!s || !s.sys.isActive()) return 0;
-    return s.children.list.filter((o) => o.type === type).length;
+    return s.children.list.filter((o) => {
+      const v = o as Phaser.GameObjects.GameObject & { visible?: boolean; depth?: number };
+      return o.type === type && v.visible !== false && (depth === undefined || v.depth === depth);
+    }).length;
+  }
+
+  /** True when the HUD's on-screen touch controls are drawn. */
+  touchControlsVisible(): boolean {
+    return this.sceneObjects('HUD', 'Graphics', DEPTH.touch) > 0;
   }
 
   pause(): void {
