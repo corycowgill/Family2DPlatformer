@@ -10,15 +10,40 @@ export const TILE_SIZE = 16;
 /** Base physics shared by all characters. Units: pixels and seconds. */
 export const PHYSICS = {
   /** Gravity while rising with jump held. */
-  gravity: 1100,
+  gravity: 1250,
   /** Gravity multiplier when falling (snappier falls). */
   fallGravityMult: 1.6,
   /** Gravity multiplier when the jump button is released while rising (variable jump height). */
-  jumpCutGravityMult: 2.6,
+  jumpCutGravityMult: 2.5,
   /** Gravity multiplier near the jump apex when jump is held (|vy| < apexThreshold). */
   apexGravityMult: 0.55,
   apexThreshold: 45,
-  maxFallSpeed: 420,
+  maxFallSpeed: 440,
+  /** Ground deceleration multiplier when reversing direction (skid). */
+  turnDecelMult: 1.6,
+  /** Fraction of airAccel applied as drag when no direction is held in the air. */
+  airDragMult: 0.35,
+  /** Upward velocity of Mom's mid-air Sparkle Jump. */
+  airJumpVelocity: 326,
+  /** Vertical speed after bonking a ceiling (small downward push so we don't stick). */
+  ceilingBonkVy: 30,
+  /** Downward velocity applied while grounded so Arcade keeps reporting ground contact. */
+  groundStickVy: 40,
+  /** Dad's ground pound: hang time before the slam, slam speed, shockwave radius. */
+  groundPoundHangMs: 120,
+  groundPoundSpeed: 560,
+  groundPoundRadius: 40,
+  /** Brennan's dash. */
+  dashSpeed: 240,
+  dashMs: 220,
+  /** Parker's energy ball. */
+  projectileSpeed: 260,
+  projectileRange: 140,
+  projectileMax: 2,
+  /** Lupin's sniff radius (px). */
+  sniffRadius: 96,
+  /** One-way platform drop-through window (ms). */
+  dropThroughMs: 200,
   /** Grace period after leaving a ledge during which a jump is still allowed (ms). */
   coyoteTimeMs: 100,
   /** A jump pressed this long before landing still fires on landing (ms). */

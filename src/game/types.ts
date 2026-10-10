@@ -139,4 +139,6 @@ export const EV = {
   SECRET_FOUND: 'secret-found', // (index: number)
   CAMERA_SHAKE: 'camera-shake', // (intensity: number, durationMs: number)
   SFX: 'sfx', // (key: string)
+  /** Lupin's Super Sniff — secrets within `radius` of (x, y) should reveal themselves. */
+  SNIFF: 'sniff', // (x: number, y: number, radius: number)
 } as const;
