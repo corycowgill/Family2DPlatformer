@@ -2,7 +2,7 @@ import type { CharacterDef } from '../types';
 
 export const Parker: CharacterDef = {
   id: 'parker',
-  name: 'Parker',
+  name: 'Bro1',
   ability: 'projectile',
   abilityName: 'Energy Blast',
   abilityDescription: 'Fire a short-range energy blast at enemies.',

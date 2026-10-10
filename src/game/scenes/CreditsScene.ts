@@ -15,7 +15,7 @@ const LINES: [string, 'h' | 't' | 's' | 'gap'][] = [
   ['CHICAGO FAMILY ADVENTURE', 'h'],
   ['', 'gap'],
   ['STARRING', 's'],
-  ['DAD · MOM · BRENNAN · PARKER', 't'],
+  ['DAD · MOM · BRO1 · BRO2', 't'],
   ['AND LUPIN THE DOG', 't'],
   ['', 'gap'],
   ['MADE WITH LOVE', 's'],

@@ -2,7 +2,7 @@ import type { CharacterDef } from '../types';
 
 export const Brennan: CharacterDef = {
   id: 'brennan',
-  name: 'Brennan',
+  name: 'Bro2',
   ability: 'dash',
   abilityName: 'Soccer Dash',
   abilityDescription: 'Burst forward in a quick dash that bowls over small enemies.',
