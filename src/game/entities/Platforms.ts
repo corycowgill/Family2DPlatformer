@@ -8,8 +8,8 @@ import { bool, hasFrame, isStandingOn, num, onPostUpdate, str, tileFrame } from 
  * Moving / falling / train platforms and bounce pads.
  *
  * Platforms are invisible Arcade Zones in `ctx.groups.platforms` (immovable, no gravity)
- * moved BY VELOCITY, so Arcade carries riders horizontally. Visuals are separate
- * images synced to the body after the physics step.
+ * moved BY VELOCITY; the Player carries itself with the platform it stands on. Visuals
+ * are separate images synced to the body after the physics step.
  */
 
 export type PlatformStyle = 'girder' | 'plank' | 'scaffold' | 'train' | 'boat';
@@ -72,6 +72,7 @@ export class PlatformBase extends Phaser.GameObjects.Zone {
     b.setImmovable(true);
     b.setVelocity(0, 0);
     b.pushable = false;
+    b.setFriction(0, 0);
     if (oneWay) {
       this.setData('oneWay', true);
       b.checkCollision.down = false;
@@ -89,37 +90,16 @@ export class PlatformBase extends Phaser.GameObjects.Zone {
   }
 
   protected readonly last = new Phaser.Math.Vector2();
-  private riding = false;
 
   /**
-   * After every physics step: carry the rider by the platform's displacement (Arcade only
-   * does this on frames with overlap, which drops riders), keep them glued to the top and
-   * report them as grounded. Then let the subclass choose the next step's velocity.
+   * After every physics step let the subclass choose the next step's velocity. Riders are
+   * carried by the Player itself (it adds the ridden platform's velocity), so friction is 0.
    */
   private onWorldStep = (delta: number): void => {
-    const b = this.body;
-    if (!b || !this.active) return;
-    const dx = b.x - this.last.x;
-    const dy = b.y - this.last.y;
-    const p = this.ctx.player;
-    if (this.riding && b.enable && p.body?.enable && p.isAlive() && this.notLeaving()) {
-      const pb = p.body;
-      pb.x += dx;
-      if (dy !== 0 || pb.bottom > b.top) pb.y = b.top - pb.height;
-      pb.blocked.down = true;
-    }
-    this.last.set(b.x, b.y);
-    const pb = p.body;
-    this.riding =
-      b.enable && !!pb?.enable && p.isAlive() && this.notLeaving() && Math.abs(pb.bottom - b.top) <= 4 && pb.right > b.left + 1 && pb.left < b.right - 1;
+    if (!this.body || !this.active) return;
+    this.last.set(this.body.x, this.body.y);
     this.step(delta);
   };
-
-  /** The player isn't jumping off (a platform rising into the player may give it a small upward velocity). */
-  private notLeaving(): boolean {
-    const p = this.ctx.player;
-    return p.body.velocity.y >= -1 || (!p.motor.jumping && p.body.velocity.y > -200);
-  }
 
   /** Subclasses set the velocity for the next physics step here. */
   protected step(_delta: number): void {}

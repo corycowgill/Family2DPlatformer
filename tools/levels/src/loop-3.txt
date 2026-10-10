@@ -103,8 +103,8 @@ movingPlatform 50 14 width=4 dx=7 dy=0 period=6 style=boat phase=0
 movingPlatform 67 14 width=4 dx=5 dy=0 period=5 style=boat phase=0.5
 sign 47 12 text=Boats_ride_the_river
 secret 95 12 width=4 height=2
-movingPlatform 106 12 width=2 dx=0 dy=-3 period=4 style=plank phase=0
-movingPlatform 110 12 width=2 dx=0 dy=-3 period=4 style=plank phase=0.5
+movingPlatform 106 12 width=2 dx=0 dy=-3 period=5 pause=0.6 style=plank phase=0
+movingPlatform 110 12 width=2 dx=0 dy=-3 period=5 pause=0.6 style=plank phase=0.5
 prop 119 12 frame=sign_wacker
 darkZone 122 12 width=44 height=4 alpha=0.4
 prop 128 3 frame=lamp

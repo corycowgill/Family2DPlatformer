@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { DEPTH } from '../config';
+import { EV } from '../types';
 import { LAYERS } from '../data/tiles';
 import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { onLevelEvent, playerRect } from '../world/worldUtil';
 
-/** Event the player's sniff ability emits on the level emitter: (x, y, radius). */
-export const SNIFF_EVENT = 'sniff';
+/** Event Lupin's sniff ability emits on the level emitter: (x, y, radius). */
+export const SNIFF_EVENT = EV.SNIFF;
 
 /**
  * secret <tx> <ty> width=<tiles> height=<tiles>

@@ -109,7 +109,7 @@ prop 110 12 frame=flag_pole
 prop 125 12 frame=hotdog_cart
 prop 138 12 frame=lamp
 secret 146 12 width=11 height=3
-movingPlatform 182 12 width=2 dx=0 dy=-5 period=5 style=plank
+movingPlatform 182 12 width=2 dx=0 dy=-5 period=6 pause=0.7 style=plank
 prop 184 11 frame=lamp
 prop 199 11 frame=trash_can
 pigeons 196 11 count=3 width=3

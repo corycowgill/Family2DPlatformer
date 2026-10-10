@@ -42,6 +42,7 @@ const PHYSICS = {
   apexGravityMult: phys('apexGravityMult', 0.55),
   apexThreshold: phys('apexThreshold', 45),
   maxFallSpeed: phys('maxFallSpeed', 420),
+  jumpCutGravityMult: phys('jumpCutGravityMult', 2.5),
   bouncePadVelocity: Math.abs(phys('bouncePadVelocity', -560)),
 };
 const chars = fs
@@ -53,8 +54,8 @@ const chars = fs
     return { walk: n('walkSpeed'), run: n('runSpeed'), airAccel: n('airAccel'), jv: n('jumpVelocity'), bonus: n('runJumpBonus'), w: n('width'), h: n('height') };
   })
   .filter((c) => Number.isFinite(c.jv));
-const MARGIN_V = 0.97; // jump velocity safety margin
-const MARGIN_H = 0.93; // horizontal speed safety margin
+const MARGIN_V = 1.0; // jump velocity margin (heights match PlayerMotor JUMP_LIMITS: 3 walk, 4 run, 5 never)
+const MARGIN_H = 0.95; // horizontal speed safety margin
 const WEAK = {
   walk: Math.min(...chars.map((c) => c.walk)) * MARGIN_H,
   run: Math.min(...chars.map((c) => c.run)) * MARGIN_H,
@@ -165,8 +166,8 @@ function trace(m, x, y, vx0, vy0, phases, hold = true) {
     vx = vx < target ? Math.min(vx + a, target) : Math.max(vx - a, target);
     // gravity (motor model, jump held)
     let g = PHYSICS.gravity;
-    if (vy > 0) g *= PHYSICS.fallGravityMult;
-    else if (jumping && !hold) g *= 2.6;
+    if (vy > 0) g *= hold && vy < PHYSICS.apexThreshold ? PHYSICS.apexGravityMult : PHYSICS.fallGravityMult;
+    else if (jumping && !hold) g *= PHYSICS.jumpCutGravityMult;
     else if (Math.abs(vy) < PHYSICS.apexThreshold) g *= PHYSICS.apexGravityMult;
     vy = Math.min(PHYSICS.maxFallSpeed, vy + g * STEP);
     if (vy > 0) jumping = false;
