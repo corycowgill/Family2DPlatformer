@@ -89,7 +89,7 @@ so every output is reproducible. Shared helpers live in `pxl.py` (palette `P`, c
 `contact_sheet` previews).
 
 ```sh
-python3 tools/art/draw_backgrounds.py   # public/assets/backgrounds/bg-<theme>-<layer>.png
+python3 tools/art/draw_backgrounds.py   # backgrounds/bg-<theme>-<layer>.png, ambient atlas, AmbientAnchors.ts
 python3 tools/art/draw_tiles.py         # public/assets/tilesets/chicago-tiles.png (+ tiles-demo uses the day bg)
 python3 tools/art/draw_items.py         # items.png/json + ui.png/json
 python3 tools/art/draw_props.py         # props.png/json
@@ -141,13 +141,32 @@ pillar (+ striped base), lit / dark curtain-wall glass and a CTA sign. The level
 Previews: `art/previews/tiles-sheet.png` (all indices), `terrain-before-after-<level>.png`.
 
 ## Backgrounds
-sky 480x270 (opaque, ordered-dither gradient + clouds); far/mid/near 960x270, drawn with
-x-wrapping so they tile seamlessly. Content: far = skyline incl. Willis, Hancock, Trump,
-Aon, crown/spire towers; mid = day/sunset: hazed mid-rises + an L line with a train,
-rooftop: neighbouring rooftops + L below, river: far bank (Marina City, Wrigley Building),
-river with bascule bridges and a tour boat; near = trees/lamps/hedge (day, sunset),
-riverwalk railing (river), parapet + HVAC/water tanks/antennas/billboards (rooftop).
-Mid/far are hazed toward the sky colour so playfield tiles stay the highest-contrast layer.
+`python3 tools/art/draw_backgrounds.py` writes, per theme (`day`, `rooftop`, `river`, `sunset`):
+sky 480x270 (opaque dithered gradient, sun + glow, distant static clouds / haze streaks),
+**clouds 640x176** (drifting cumulus — sunset: lit altostratus bands; loaded as `bg-<theme>-clouds`),
+far/mid/near 960x270, all drawn with x-wrapping so they tile seamlessly. ~4.1 MB uncompressed per theme.
+
+Atmospheric perspective is a post-process: rows are drawn in material colours, then `grade()`
+pulls them toward the theme's haze (far back row ≈ 60-95 %, far landmark row 30-90 % increasing
+toward the base, mid 15-50 %), near layers are darkened/saturated instead. Day/river get a
+cool rim light on the left, rooftop/sunset a warm one on the right (sunset: purple silhouettes,
+lit window runs).
+- far: Willis (stepped tubes, twin antennas), Aon, Two Prudential (gable + spire), Trump
+  (setbacks + spire), Crain (diamond top), Hancock (tapered, X-braced), 311 S Wacker crown,
+  Board of Trade, plus a hazier back row. Rooftop puts the base at 270 under heavy haze (high vantage).
+- mid: day/sunset — Loop mid-rises with water towers, the Chicago Theatre sign, the L structure;
+  rooftop — neighbouring roofs seen from above (tanks, AC units) + the L below; river — far bank
+  (Marina City corncobs, 330 N Wabash, Wrigley Building, Tribune Tower), bascule bridges, and the
+  river with rippled reflections of everything above it (bank at y=160 so it shows above the riverwalk).
+- near: trees, twin-globe lamps, hedge + fence (day, sunset with lamp halos), riverwalk railing (river),
+  parapet + HVAC/tanks/chimneys/vents/antenna/billboard (rooftop).
+
+The script also writes the **ambient** atlas (`public/assets/ambient.png/json`: `bird_0-3` 9x6 white
+silhouettes (tinted at runtime), `train_day|rooftop|sunset` pre-hazed 4-car L trains, `boat_tour`,
+`boat_taxi` (+ `_sunset`), `steam_0-3` 12x12, `glint_0-3` 9x9, `px` 2x2 white, `wake_0-1`),
+`public/assets/ambient-water.png` (32x8 tileable surface highlight) and the generated
+`src/game/world/AmbientAnchors.ts` (dark windows that the sunset twinkle switches on, glint spots,
+rooftop vent mouths, L-track and river lines in layer pixels). Runtime: `src/game/world/Ambient.ts`.
 
 ## Atlases (frame sizes)
 - **items**: coin_0-5, star_0-3, question_0-3, hotdog, pizza, cta_pass, one_up (red Chicago star),

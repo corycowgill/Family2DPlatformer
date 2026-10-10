@@ -1,11 +1,22 @@
 // Dev tool: screenshot N evenly spaced sections of a level.
-// Usage: node tools/dev/level-tour.mjs <levelId> <outDir> <count>   (dev server on :5180)
+// Usage: node tools/dev/level-tour.mjs <levelId|menu> <outDir> <count> [baseUrl]
+//   baseUrl defaults to $BASE_URL or http://localhost:5180 (the dev server).
+//   Extra query params (e.g. reduced motion) can be passed via $TOUR_QUERY ("&foo=1").
 import { chromium } from '@playwright/test';
-const [,, level, SP, count] = process.argv;
+const [,, level, SP, count, baseArg] = process.argv;
+const BASE = (baseArg ?? process.env.BASE_URL ?? 'http://localhost:5180').replace(/\/$/, '');
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const p = await b.newPage({ viewport: { width: 960, height: 540 } });
 const errs=[]; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type()==='error'||m.type()==='warning') if(!/WebGL|GPU stall|AudioContext/.test(m.text())) errs.push(m.text()); });
-await p.goto(`http://localhost:5180/?level=${level}`); await p.waitForTimeout(3000);
+if (level === 'menu') {
+  // Title screen: wait for boot + menu transition, then one screenshot.
+  await p.goto(`${BASE}/${(process.env.TOUR_QUERY ?? '').replace(/^&/, '?')}`); await p.waitForTimeout(6000);
+  await p.screenshot({ path: `${SP}/menu.png` });
+  console.log('menu', errs.slice(0, 10));
+  await b.close();
+  process.exit(0);
+}
+await p.goto(`${BASE}/?level=${level}${process.env.TOUR_QUERY ?? ''}`); await p.waitForTimeout(3000);
 const W = await p.evaluate(() => window.__level.ctx.map.widthInPixels);
 const n = Number(count);
 for (let i = 0; i < n; i++) {

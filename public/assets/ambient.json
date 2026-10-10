@@ -1,0 +1,455 @@
+{
+ "frames": {
+  "bird_0": {
+   "frame": {
+    "x": 40,
+    "y": 74,
+    "w": 9,
+    "h": 5
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 5
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 5
+   }
+  },
+  "bird_1": {
+   "frame": {
+    "x": 50,
+    "y": 74,
+    "w": 9,
+    "h": 5
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 5
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 5
+   }
+  },
+  "bird_2": {
+   "frame": {
+    "x": 60,
+    "y": 74,
+    "w": 9,
+    "h": 5
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 5
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 5
+   }
+  },
+  "bird_3": {
+   "frame": {
+    "x": 70,
+    "y": 74,
+    "w": 9,
+    "h": 5
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 5
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 5
+   }
+  },
+  "train_day": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 192,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 192,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 192,
+    "h": 18
+   }
+  },
+  "train_rooftop": {
+   "frame": {
+    "x": 0,
+    "y": 19,
+    "w": 192,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 192,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 192,
+    "h": 18
+   }
+  },
+  "train_sunset": {
+   "frame": {
+    "x": 0,
+    "y": 38,
+    "w": 192,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 192,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 192,
+    "h": 18
+   }
+  },
+  "boat_tour": {
+   "frame": {
+    "x": 0,
+    "y": 57,
+    "w": 64,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 16
+   }
+  },
+  "boat_taxi": {
+   "frame": {
+    "x": 130,
+    "y": 57,
+    "w": 34,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 34,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 34,
+    "h": 12
+   }
+  },
+  "boat_tour_sunset": {
+   "frame": {
+    "x": 65,
+    "y": 57,
+    "w": 64,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 16
+   }
+  },
+  "boat_taxi_sunset": {
+   "frame": {
+    "x": 165,
+    "y": 57,
+    "w": 34,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 34,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 34,
+    "h": 12
+   }
+  },
+  "steam_0": {
+   "frame": {
+    "x": 200,
+    "y": 57,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   }
+  },
+  "steam_1": {
+   "frame": {
+    "x": 213,
+    "y": 57,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   }
+  },
+  "steam_2": {
+   "frame": {
+    "x": 226,
+    "y": 57,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   }
+  },
+  "steam_3": {
+   "frame": {
+    "x": 239,
+    "y": 57,
+    "w": 12,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 12
+   }
+  },
+  "glint_0": {
+   "frame": {
+    "x": 0,
+    "y": 74,
+    "w": 9,
+    "h": 9
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 9
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 9
+   }
+  },
+  "glint_1": {
+   "frame": {
+    "x": 10,
+    "y": 74,
+    "w": 9,
+    "h": 9
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 9
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 9
+   }
+  },
+  "glint_2": {
+   "frame": {
+    "x": 20,
+    "y": 74,
+    "w": 9,
+    "h": 9
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 9
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 9
+   }
+  },
+  "glint_3": {
+   "frame": {
+    "x": 30,
+    "y": 74,
+    "w": 9,
+    "h": 9
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 9
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 9
+   }
+  },
+  "px": {
+   "frame": {
+    "x": 114,
+    "y": 74,
+    "w": 2,
+    "h": 2
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 2,
+    "h": 2
+   },
+   "sourceSize": {
+    "w": 2,
+    "h": 2
+   }
+  },
+  "wake_0": {
+   "frame": {
+    "x": 80,
+    "y": 74,
+    "w": 16,
+    "h": 3
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 3
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 3
+   }
+  },
+  "wake_1": {
+   "frame": {
+    "x": 97,
+    "y": 74,
+    "w": 16,
+    "h": 3
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 3
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 3
+   }
+  }
+ },
+ "meta": {
+  "app": "tools/art (Chicago Family Adventure)",
+  "version": "1.0",
+  "image": "ambient.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 252,
+   "h": 83
+  },
+  "scale": "1"
+ }
+}
