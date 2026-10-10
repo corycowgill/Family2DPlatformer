@@ -1,10 +1,13 @@
+import './boot-stage';
 import Phaser from 'phaser';
 import { createGameConfig } from './game/main-config';
 import { audio } from './game/systems/AudioSystem';
 import { setInputDevice } from './game/systems/InputDevice';
 import { installPlatform } from './game/platform';
 
+(window as unknown as { __cfaStage?: string }).__cfaStage = 'creating-game';
 const game = new Phaser.Game(createGameConfig('game'));
+(window as unknown as { __cfaStage?: string }).__cfaStage = 'game-created';
 // The game is running: drop the HTML loading screen (and its boot diagnostics).
 document.getElementById('boot')?.remove();
 audio.init(game);

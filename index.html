@@ -39,32 +39,63 @@
     <div id="boot">Loading Chicago…</div>
     <script>
       // Boot diagnostics: if the game can't start, say why instead of showing "Loading" forever.
+      // Errors are collected (never overwritten); a stall runs a probe of the game script.
       (function () {
         var boot = document.getElementById('boot');
-        function show(msg) {
+        var errors = [];
+        window.__cfaStage = 'html';
+        function render(title, lines) {
           if (!boot || !boot.isConnected) return;
           boot.innerHTML = '';
           var t = document.createElement('div');
-          t.textContent = "Couldn't start Chicago Family Adventure";
-          var d = document.createElement('small');
-          d.textContent = msg;
+          t.textContent = title;
           boot.appendChild(t);
-          boot.appendChild(d);
+          lines.forEach(function (line) {
+            var d = document.createElement('small');
+            d.textContent = line;
+            boot.appendChild(d);
+          });
         }
-        var hint = location.protocol === 'file:'
+        var hostHint = location.protocol === 'file:'
           ? 'The game must be served by a web server, not opened as a file. Run "npm install && npm run dev" and open the address it prints.'
-          : 'The site is serving unbuilt source code. The host must build it: run "npm ci && npm run build" and publish the "dist" folder (Render: Build Command + Publish Directory = dist; GitHub Pages: Source = GitHub Actions).';
+          : 'The host must build the game ("npm ci && npm run build") and publish the "dist" folder (Render: Build Command + Publish Directory = dist).';
+        function fail(line) {
+          if (errors.indexOf(line) === -1) errors.push(line);
+          render("Couldn't start Chicago Family Adventure", errors.concat(['Stage: ' + window.__cfaStage]));
+        }
         window.addEventListener('error', function (e) {
           var el = e.target;
-          if (el && el.tagName === 'SCRIPT') show('Game script failed to load (' + (el.src || 'module') + '). ' + hint);
-          else if (e.message) show('Error: ' + e.message);
+          if (el && el.tagName === 'SCRIPT') fail('Script failed to load: ' + (el.src || 'module') + '. ' + hostHint);
+          else if (e.message) fail('Error: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : ''));
         }, true);
         window.addEventListener('unhandledrejection', function (e) {
-          show('Error: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)));
+          fail('Error: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)));
         });
+        // Stall probe: what is the server actually returning for the game script?
         setTimeout(function () {
-          show('The game is taking too long to start. ' + hint + ' Otherwise try reloading, or a current Safari / Chrome / Edge / Firefox.');
-        }, 15000);
+          if (!boot || !boot.isConnected) return;
+          var src = '';
+          var scripts = document.querySelectorAll('script[type="module"]');
+          if (scripts.length) src = scripts[scripts.length - 1].src;
+          var lines = errors.slice();
+          var title = errors.length ? "Couldn't start Chicago Family Adventure" : 'Chicago Family Adventure is taking too long';
+          lines.push('Still starting after 20s (stage: ' + window.__cfaStage + ').');
+          if (/\/src\/main\.ts/.test(src)) lines.push('This page is the UNBUILT source (it loads /src/main.ts). ' + hostHint);
+          lines.push('Browser: ' + navigator.userAgent);
+          render(title, lines.concat(['Checking ' + src + ' …']));
+          if (!src || !window.fetch) return;
+          fetch(src, { cache: 'no-store' }).then(function (r) {
+            return r.text().then(function (body) {
+              lines.push('Script ' + src.split('/').pop() + ': HTTP ' + r.status + ', ' + (r.headers.get('content-type') || 'no content-type') + ', ' + body.length + ' bytes, starts "' + body.slice(0, 40).replace(/\s+/g, ' ') + '"');
+              if (/^\s*</.test(body)) lines.push('The server returned HTML instead of JavaScript (a rewrite/redirect rule or missing file). ' + hostHint);
+              lines.push('Try reloading. If this persists, send a screenshot of this screen.');
+              render(title, lines);
+            });
+          }).catch(function (err) {
+            lines.push('Could not fetch the script: ' + err);
+            render(title, lines);
+          });
+        }, 20000);
       })();
     </script>
     <div id="game"></div>
