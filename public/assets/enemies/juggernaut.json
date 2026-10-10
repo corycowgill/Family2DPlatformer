@@ -1,0 +1,446 @@
+{
+ "frames": {
+  "idle_0": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "idle_1": {
+   "frame": {
+    "x": 88,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "idle_2": {
+   "frame": {
+    "x": 176,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "idle_3": {
+   "frame": {
+    "x": 264,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_0": {
+   "frame": {
+    "x": 0,
+    "y": 72,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_1": {
+   "frame": {
+    "x": 88,
+    "y": 72,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_2": {
+   "frame": {
+    "x": 176,
+    "y": 72,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_3": {
+   "frame": {
+    "x": 264,
+    "y": 72,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "attack_0": {
+   "frame": {
+    "x": 0,
+    "y": 144,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "attack_1": {
+   "frame": {
+    "x": 88,
+    "y": 144,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "attack_2": {
+   "frame": {
+    "x": 176,
+    "y": 144,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "attack_3": {
+   "frame": {
+    "x": 264,
+    "y": 144,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "hit_0": {
+   "frame": {
+    "x": 0,
+    "y": 216,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "hit_1": {
+   "frame": {
+    "x": 88,
+    "y": 216,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "die_0": {
+   "frame": {
+    "x": 176,
+    "y": 216,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "die_1": {
+   "frame": {
+    "x": 264,
+    "y": 216,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "die_2": {
+   "frame": {
+    "x": 0,
+    "y": 288,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "die_3": {
+   "frame": {
+    "x": 88,
+    "y": 288,
+    "w": 88,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  }
+ },
+ "meta": {
+  "app": "tools/art (Chicago Family Adventure)",
+  "image": "juggernaut.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 352,
+   "h": 360
+  },
+  "scale": "1"
+ }
+}
