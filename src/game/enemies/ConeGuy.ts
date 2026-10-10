@@ -112,7 +112,6 @@ export class ConeGuy extends Enemy {
         if (wakeIn <= 0) {
           this.setAngle(0);
           this.resizeBody(16, 24);
-          this.body.y -= 1;
           this.setAI('walk');
           this.facePlayer();
         }

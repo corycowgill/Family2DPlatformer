@@ -26,8 +26,8 @@ export function shadowMarker(ctx: LevelContext, x: number, floorY: number, width
   g.setPosition(x, floorY - 1);
   const draw = (k: number) => {
     g.clear();
-    g.fillStyle(0x000000, 0.25 + 0.35 * k).fillEllipse(0, 0, width * (0.5 + 0.5 * k), 6);
-    g.lineStyle(1, 0xff3030, 0.5 + 0.5 * k).strokeEllipse(0, 0, width * (0.5 + 0.5 * k) + 4, 8);
+    g.fillStyle(0x000000, 0.3 + 0.4 * k).fillEllipse(0, 0, width * (0.5 + 0.5 * k), 6);
+    g.lineStyle(2, 0xff3030, 0.6 + 0.4 * k).strokeEllipse(0, 0, width * (0.5 + 0.5 * k) + 4, 8);
   };
   draw(0);
   const t = { k: 0 };

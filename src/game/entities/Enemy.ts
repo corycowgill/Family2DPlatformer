@@ -110,10 +110,9 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   /** Resize the body keeping it bottom-centre anchored. */
   protected resizeBody(w: number, h: number): void {
-    const bottom = this.body.bottom;
+    // The body position is re-derived from the sprite each physics step, so only size/offset change.
     this.body.setSize(w, h, false);
     this.syncBodyOffset();
-    if (Number.isFinite(bottom) && bottom !== 0) this.body.y = bottom - h;
   }
 
   setAI(state: string): this {
