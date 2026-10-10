@@ -15,7 +15,13 @@ export const TEST_LEVEL: LevelInfo = {
 
 export function getLevel(id: string): LevelInfo | undefined {
   if (id === TEST_LEVEL.id) return TEST_LEVEL;
-  return LEVELS.find((l) => l.id === id);
+  const found = LEVELS.find((l) => l.id === id);
+  if (found) return found;
+  // Generic developer test levels: ?level=test-<name> → levels/test-<name>.json
+  if (/^test-[\w-]+$/.test(id)) {
+    return { ...TEST_LEVEL, id, name: `Test: ${id.slice(5)}`, file: `levels/${id}.json`, boss: id.includes('boss') };
+  }
+  return undefined;
 }
 
 export const FIRST_LEVEL_ID = LEVELS[0].id;
