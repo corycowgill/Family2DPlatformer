@@ -36,6 +36,8 @@ export interface LevelContext {
   effect(anim: string, x: number, y: number, opts?: { flipX?: boolean; depth?: number; scale?: number }): void;
   sfx(key: string): void;
   shake(intensity?: number, durationMs?: number): void;
+  /** Restrict the camera to a world rectangle (boss arenas); null releases it. */
+  lockCamera(rect: Phaser.Geom.Rectangle | null): void;
   /** Level time in ms since start (paused time excluded). */
   now(): number;
 }

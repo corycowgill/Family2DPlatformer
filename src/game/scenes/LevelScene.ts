@@ -137,6 +137,7 @@ export class LevelScene extends Phaser.Scene {
       shake: (i = 0.006, d = 150) => {
         if (!saveSystem.get().settings.reducedMotion) this.cameras.main.shake(d, i);
       },
+      lockCamera: (rect) => scene.cameraSys?.lock(rect),
       now: () => scene.levelTime,
     };
     this.player.attach(this.ctx);
@@ -223,6 +224,8 @@ export class LevelScene extends Phaser.Scene {
     });
     ev.on(EV.PLAYER_DIED, () => this.onPlayerDied());
     ev.on(EV.LEVEL_COMPLETE, () => this.onLevelComplete());
+    // Boss levels complete shortly after the boss is defeated.
+    ev.on(EV.BOSS_DEFEATED, () => this.time.delayedCall(2500, () => this.events.emit(EV.LEVEL_COMPLETE)));
     ev.on(EV.CAMERA_SHAKE, (i: number, d: number) => this.ctx.shake(i, d));
   }
 
@@ -364,6 +367,7 @@ export class LevelScene extends Phaser.Scene {
     this.events.off(EV.PLAYER_DIED);
     this.events.off(EV.LEVEL_COMPLETE);
     this.events.off(EV.CAMERA_SHAKE);
+    this.events.off(EV.BOSS_DEFEATED);
     if ((window as unknown as { __level?: LevelScene }).__level === this) {
       (window as unknown as { __level?: LevelScene }).__level = undefined;
     }

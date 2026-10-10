@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run levels && tsc --noEmit && vite build",
+    "build": "npm run levels && npm run assets && tsc --noEmit && vite build",
+    "assets": "node tools/art/build-manifest.mjs",
     "preview": "vite preview --port 4173 --strictPort",
     "typecheck": "tsc --noEmit",
     "levels": "node tools/levels/build-levels.mjs",
