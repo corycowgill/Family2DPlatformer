@@ -43,6 +43,22 @@ export default defineConfig({
       name: 'mobile',
       use: { ...devices['Pixel 7 landscape'], launchOptions },
       grep: /@touch|@smoke/,
+      grepInvert: /@iphone/,
+    },
+    {
+      // iPhone 14 in landscape, emulated in Chromium (WebKit isn't installed here): iOS UA,
+      // 844x390 CSS px, DPR 3, touch. Real-iPhone checks are listed in docs/QA.md.
+      name: 'iphone',
+      use: {
+        viewport: { width: 844, height: 390 },
+        screen: { width: 844, height: 390 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+        userAgent: devices['iPhone 14 landscape'].userAgent,
+        launchOptions,
+      },
+      grep: /@touch|@iphone/,
     },
   ],
   webServer: {

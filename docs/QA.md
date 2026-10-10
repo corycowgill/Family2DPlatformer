@@ -24,7 +24,9 @@ Don't run `playwright install` in the dev container.
 
 Projects:
 - **desktop** — Desktop Chrome 1280×720, every spec except `@touch`.
-- **mobile** — Pixel 7 landscape (`hasTouch`), only tests tagged `@touch` or `@smoke`.
+- **mobile** — Pixel 7 landscape (`hasTouch`), only tests tagged `@touch` or `@smoke` (not `@iphone`).
+- **iphone** — iPhone 14 landscape emulated in **Chromium** (844×390, DPR 3, touch, iOS Safari UA; WebKit is
+  not installed in the dev container), tests tagged `@touch` or `@iphone`.
 
 ### Test inventory
 
@@ -49,7 +51,16 @@ E2E (`tests/e2e`):
   pit death & respawn (HUD lives), checkpoint respawn, game over; hazards; level completion
   ⇒ Results, unlock, save persisted across reload, Continue / world map ✓; corrupted save boot;
   touch controls hidden on desktop; grounded-on-flat-ground regression.
-- `touch.spec.ts` (`@touch`, mobile) — touch buttons shown; ▶/◀ move; jump while ▶ held (multi-touch); pause button.
+- `touch.spec.ts` (`@touch`, mobile + iphone) — DOM touch overlay: shown only in gameplay, buttons at the
+  screen edges / letterbox bars and never over the central play area; ▶ moves, sliding ▶→◀→▼ without lifting;
+  ▶ + JUMP + ABILITY three-finger multi-touch with single-finger release; touchcancel releases all; RUN latch
+  (persisted, faster); DOM pause → pause menu, canvas tap on RESUME still works; visibilitychange hidden →
+  pause menu; portrait → rotate overlay + pause + controls hidden; keyboard hides / touch re-shows; manifest +
+  icons served (relative paths). `@iphone`: Add-to-Home-Screen tip on the title screen (dismissal persists),
+  safe-area insets respected (emulated via `--cfa-safe-*` CSS vars), Lupin ↘ crawl diagonal, screenshots
+  (`iphone-gameplay*.png`, `iphone-title-tip.png` in the test output dir).
+- `touch-layout.test.ts` (unit) — overlay geometry on iPhone / Pro Max / iPad / Pixel sizes (thumb size, safe
+  area, centre kept free), d-pad angle hit test, JUMP↔ABILITY slide, iOS / standalone detection, tip rule.
 - `bot.spec.ts` — bot completes the test level with all five characters (damage on); widened
   gap; impassable wall ⇒ stuck report; every existing `LEVELS` map with every character
   (invulnerable; **warning only**, with screenshot + JSON attachments).
@@ -151,3 +162,36 @@ backtrack left.
 - Keyboard input: Phaser polls key state per frame, so specs hold keys (`holdKey`) instead of
   `keyboard.press` for in-game controls (menus use keydown events and are fine with `press`).
 - `favicon.ico` 404 is ignored by the console-error check (no favicon yet).
+
+## Mobile / iPhone
+
+Code: `src/game/platform/**` (device detection, hardening, audio lifecycle, fullscreen, home-screen tip,
+touch geometry, pixel SVG) and the DOM overlay in `src/game/ui/TouchControls.ts`.
+
+- **Touch controls** are an HTML overlay (`#touch-controls`) above the canvas, pinned to the screen edges
+  (letterbox bars on wide phones), sized from viewport height (≥ 56 px main buttons, ≥ 44 px RUN / pause),
+  inset by `env(safe-area-inset-*)`. Left: one d-pad zone (◀ ▶ ▼, slide between them, ↙/↘ = down + direction).
+  Right: JUMP (▲, A), ABILITY (★, B), RUN latch; PAUSE top-right (the HUD's canvas pause hides while the overlay
+  is up). Touch events with `passive: false`, tracked per `Touch.identifier`; touchcancel / blur / hidden
+  release everything. Visible only while the Level runs (not paused), in landscape, and when the active input
+  device is touch (Settings → Touch controls ON forces it, OFF hides it; a keypress or pad hides it). DOM is
+  only written on state changes / resize.
+- **iOS hardening**: gesture* events cancelled (pinch), double-tap + dblclick cancelled, document touchmove
+  cancelled (no rubber-band / pull-to-refresh), callout/selection/tap-highlight off, fixed body + `100dvh`,
+  debounced `game.scale.refresh()` on resize / orientationchange / visualViewport resize.
+- **Audio**: `navigator.audioSession.type = 'playback'` (iOS 17+, plays with the silent switch on); context
+  resumed on every touchend/pointerup/keydown if suspended or interrupted (+ silent buffer on the first);
+  backgrounding (visibilitychange hidden / pagehide) → `REQUEST_PAUSE` + suspend; return → resume (game stays
+  on the pause menu).
+- **Home-screen app**: `public/manifest.webmanifest` (fullscreen → standalone, landscape), icons from
+  `python3 tools/art/draw_icons.py`, apple-touch-icon + Apple meta tags. iOS Safari (not standalone) shows a
+  dismissible "Share → Add to Home Screen" tip on the title screen. Android: first gameplay touchend requests
+  fullscreen + `screen.orientation.lock('landscape')` (skipped under automation).
+
+Verified by emulation (Chromium): layout at 844×390 and 863×360, multi-touch via CDP, touchcancel, pause /
+visibility / portrait flows, manifest & icons, tip show/dismiss. **Needs a real-device check:**
+iPhone Safari pinch / double-tap / rubber-band suppression; actual safe-area insets (notch, Dynamic Island,
+home indicator) and toolbar collapse; touchcancel from the home-indicator swipe; audio with the silent
+switch and after a call / app switch / lock screen; Add to Home Screen icon + fullscreen launch; Android
+Chrome fullscreen + orientation lock; iPad (4:3, controls over the top/bottom bars); thumb comfort of the
+button sizes.

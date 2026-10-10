@@ -45,6 +45,24 @@ export class AudioSystem {
     return ctx.state === 'running';
   }
 
+  /** The WebAudio context, or null (HTML5 audio / no audio / not initialised). */
+  get context(): AudioContext | null {
+    const sm = this.game?.sound as unknown as { context?: AudioContext } | undefined;
+    return sm?.context ?? null;
+  }
+
+  /** Mobile lifecycle hook: silence everything while the app is in the background. */
+  suspend(): void {
+    const ctx = this.context;
+    if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
+  }
+
+  /** Mobile lifecycle hook: resume after returning / on a user gesture (iOS needs one). */
+  resume(): void {
+    const ctx = this.context;
+    if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {});
+  }
+
   sfx(key: string, opts: { volume?: number; detune?: number } = {}): void {
     const g = this.game;
     if (!g) return;

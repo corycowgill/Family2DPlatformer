@@ -5,7 +5,7 @@ import { saveSystem } from '../systems/SaveSystem';
 import { getSpawner } from '../world/registry';
 import { CHARACTER_IDS, EV, type CharacterId, type EnemyKind } from '../types';
 import { LEVELS, TEST_LEVEL, getLevel } from '../data/levels';
-import { DEPTH, STORAGE_KEY } from '../config';
+import { STORAGE_KEY } from '../config';
 import { Checkpoint, Goal } from '../entities/Triggers';
 import { Enemy } from '../entities/Enemy';
 import { PlatformBot, type BotOptions, type BotResult } from './PlatformBot';
@@ -483,7 +483,7 @@ export class TestHarness {
 
   /** True when the HUD's on-screen touch controls are drawn. */
   touchControlsVisible(): boolean {
-    return this.sceneObjects('HUD', 'Graphics', DEPTH.touch) > 0;
+    return document.getElementById('touch-controls')?.classList.contains('show') ?? false;
   }
 
   pause(): void {
