@@ -1,0 +1,422 @@
+{
+ "frames": {
+  "idle_0": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "idle_1": {
+   "frame": {
+    "x": 60,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "idle_2": {
+   "frame": {
+    "x": 120,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "idle_3": {
+   "frame": {
+    "x": 180,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_0": {
+   "frame": {
+    "x": 0,
+    "y": 48,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_1": {
+   "frame": {
+    "x": 60,
+    "y": 48,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_2": {
+   "frame": {
+    "x": 120,
+    "y": 48,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_3": {
+   "frame": {
+    "x": 180,
+    "y": 48,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "attack_0": {
+   "frame": {
+    "x": 0,
+    "y": 96,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "attack_1": {
+   "frame": {
+    "x": 60,
+    "y": 96,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "attack_2": {
+   "frame": {
+    "x": 120,
+    "y": 96,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "hit_0": {
+   "frame": {
+    "x": 180,
+    "y": 96,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "hit_1": {
+   "frame": {
+    "x": 0,
+    "y": 144,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "die_0": {
+   "frame": {
+    "x": 60,
+    "y": 144,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "die_1": {
+   "frame": {
+    "x": 120,
+    "y": 144,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "die_2": {
+   "frame": {
+    "x": 180,
+    "y": 144,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "die_3": {
+   "frame": {
+    "x": 0,
+    "y": 192,
+    "w": 60,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  }
+ },
+ "meta": {
+  "app": "tools/art (Chicago Family Adventure)",
+  "image": "skirmisher.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 240,
+   "h": 240
+  },
+  "scale": "1"
+ }
+}
