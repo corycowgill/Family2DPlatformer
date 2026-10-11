@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { DEPTH } from '../config';
 import type { HitInfo } from '../types';
 import { Boss, arenaFromSpawn } from '../entities/Boss';
-import { Enemy, type StompOutcome } from '../entities/Enemy';
+import type { StompOutcome } from '../entities/Enemy';
 import { EnemyProjectile } from '../entities/Projectile';
 import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { playAnim } from '../systems/AnimationSystem';
@@ -42,68 +42,6 @@ const EYE_DY = -66;
 const CORE = { width: 26, height: 18, dy: -1 };
 
 /**
- * Stompable weak spot: the glowing core under the pod. Only has a body while the pod is
- * down (vulnerable); every hit on it is forwarded to the boss.
- */
-class OverseerCore extends Enemy {
-  constructor(
-    ctx: LevelContext,
-    private readonly boss: OverseerBoss,
-  ) {
-    super(ctx, { id: -2, type: 'enemy', name: 'overseer-core', x: boss.x, y: boss.y, width: 16, height: 16, props: {} }, {
-      kind: 'overseer',
-      hp: 999,
-      contactDamage: 0,
-      stompable: true,
-      body: { width: CORE.width, height: CORE.height },
-      gravity: false,
-      frameSize: ENEMY_FRAME_SIZE.overseer,
-    });
-    this.setVisible(false);
-    this.cullMargin = 4000;
-    this.body.enable = false;
-  }
-
-  protected syncBodyOffset(): void {
-    const b = this.body;
-    b.setOffset((this.width - b.sourceWidth) / 2, this.height - b.sourceHeight);
-  }
-
-  protected think(): void {
-    const on = this.boss.vulnerable && !this.boss.dead;
-    this.setPosition(this.boss.x, this.boss.y + CORE.dy);
-    if (on !== this.body.enable) {
-      this.body.enable = on;
-      if (on) this.body.reset(this.x, this.y);
-    }
-  }
-
-  stompOutcome(): StompOutcome {
-    return this.boss.vulnerable ? 'damage' : 'none';
-  }
-
-  hurtsOnContact(): boolean {
-    return false;
-  }
-
-  isVulnerableTo(hit: HitInfo): boolean {
-    return this.boss.vulnerable && hit.amount > 0;
-  }
-
-  onStomp(): void {
-    this.boss.hitCore({ amount: 1, fromX: this.ctx.player.x, kind: 'stomp' });
-  }
-
-  takeHit(hit: HitInfo): boolean {
-    return this.boss.hitCore(hit);
-  }
-
-  die(): void {
-    /* the core never dies on its own — it goes with the pod */
-  }
-}
-
-/**
  * BOSS — THE OVERSEER: the alien mothership pod hovering over the Wrigley outfield.
  * 9 hp (3 per phase), see enemies/overseerPlan.ts for the full design:
  *  - P1 tractor-beam sweep over the player's half (floor zone telegraphed), gnat pods;
@@ -111,6 +49,8 @@ class OverseerCore extends Enemy {
  *  - P3 wasps, double slams and a spinning laser (danger zone blinks first).
  * After a beam / slam / laser the pod sinks to the grass and the core between its tentacle
  * tips glows: one stomp = 1 damage and the pod rises again. Only the core takes damage
+ * (while the pod is down its hitbox shrinks to the core, so stomp detection — and the
+ * PlatformBot — treat it like any boss weak spot: stompOutcome 'damage' only then);
  * (stomps, projectiles, abilities); the shell bounces stomps.
  *
  * Spawn: `boss <tx> <ty> width=26 height=13 kind=overseer` (the rectangle is the arena).
@@ -119,7 +59,8 @@ export class OverseerBoss extends Boss {
   readonly bossName: string;
   private readonly fx: Phaser.GameObjects.Graphics;
   private readonly glow: Phaser.GameObjects.Graphics;
-  private readonly core: OverseerCore;
+  /** Current hitbox: the pod shell, or the core while the window is open. */
+  private onCore = false;
   private attackIndex = 0;
   private forced: OverseerAttack[] = [];
   private current: OverseerAttack | null = null;
@@ -130,7 +71,6 @@ export class OverseerBoss extends Boss {
   private marker?: Phaser.GameObjects.Graphics;
   private laserAngle = 0;
   private laserZone = 0;
-  private coreHitting = false;
   private bob = 0;
   /** Attack counter (debug/tests). */
   attacks = 0;
@@ -148,7 +88,10 @@ export class OverseerBoss extends Boss {
     this.bossName = String(spawn.props.name ?? 'The Overseer');
     this.fx = ctx.scene.add.graphics().setDepth(DEPTH.projectiles).setBlendMode(Phaser.BlendModes.ADD);
     this.glow = ctx.scene.add.graphics().setDepth(DEPTH.enemies + 2);
-    this.core = new OverseerCore(ctx, this);
+    // Flies through the arena's one-way ledges (only the scripted y matters).
+    // (tile collision is per face; overlaps with the player still work — `none` would disable those too).
+    const cc = this.body.checkCollision;
+    cc.up = cc.down = cc.left = cc.right = false;
   }
 
   // ───────────── combat hooks ─────────────
@@ -163,13 +106,13 @@ export class OverseerBoss extends Boss {
     return this.current;
   }
 
-  /** World position of the core (tests / bots). */
+  /** World position of the core's bottom centre (tests / bots). */
   get corePos(): { x: number; y: number } {
     return { x: this.x, y: this.y + CORE.dy };
   }
 
   stompOutcome(): StompOutcome {
-    return 'bounce';
+    return this.vulnerable ? 'damage' : 'bounce';
   }
 
   hurtsOnContact(): boolean {
@@ -178,21 +121,16 @@ export class OverseerBoss extends Boss {
     return super.hurtsOnContact();
   }
 
+  /** Only the open core takes damage (stomps, projectiles, abilities). */
   protected blocksHit(): boolean {
-    return !this.coreHitting;
+    return !this.vulnerable;
   }
 
-  /** A hit on the core (stomp, projectile, ability). Stomps always deal exactly 1. */
-  hitCore(hit: HitInfo): boolean {
-    if (!this.vulnerable || this.defeated) return false;
+  takeHit(hit: HitInfo): boolean {
+    if (!this.vulnerable || this.defeated) return super.takeHit(hit); // blocked (spark + clink)
+    // A stomp always deals exactly 1 so the fight is the same length for every character.
     const amount = hit.kind === 'stomp' ? 1 : Math.min(hit.amount, 2);
-    this.coreHitting = true;
-    let dealt = false;
-    try {
-      dealt = super.takeHit({ ...hit, amount });
-    } finally {
-      this.coreHitting = false;
-    }
+    const dealt = super.takeHit({ ...hit, amount });
     if (!dealt) return false;
     this.invulnUntil = this.ctx.now() + (hit.kind === 'stomp' ? 250 : 600);
     this.ctx.sfx('boss-hit');
@@ -203,6 +141,28 @@ export class OverseerBoss extends Boss {
       this.startRise();
     }
     return true;
+  }
+
+  onStomp(): void {
+    if (!this.vulnerable) {
+      this.ctx.sfx('bump');
+      return;
+    }
+    this.takeHit({ amount: 1, fromX: this.player.x, kind: 'stomp' });
+  }
+
+  /** Hitbox follows the weak spot: pod shell normally, the core at the tentacle tips while open. */
+  protected syncBodyOffset(): void {
+    const b = this.body;
+    const lift = this.onCore ? -CORE.dy : POD_LIFT;
+    b.setOffset((this.width - b.sourceWidth) / 2, this.height - b.sourceHeight - lift);
+  }
+
+  private setCoreBody(on: boolean): void {
+    if (this.onCore === on) return;
+    this.onCore = on;
+    if (on) this.resizeBody(CORE.width, CORE.height);
+    else this.resizeBody(POD.width, POD.height);
   }
 
   protected onHurt(_hit: HitInfo): void {
@@ -234,6 +194,7 @@ export class OverseerBoss extends Boss {
     this.ctx.sfx('boss-roar');
     this.ctx.shake(0.01, 500);
     this.cleanupAttack();
+    this.setCoreBody(false);
     this.forced = phase === 2 ? ['slam'] : ['wasps', 'laser'];
     this.attackIndex = 0;
     this.invulnUntil = this.ctx.now() + 900;
@@ -312,6 +273,7 @@ export class OverseerBoss extends Boss {
   }
 
   private startRise(): void {
+    this.setCoreBody(false);
     this.playerGraceUntil = this.ctx.now() + 700;
     this.endTelegraph();
     this.setAI('rise');
@@ -403,7 +365,7 @@ export class OverseerBoss extends Boss {
       }
       case 'slamFall':
         this.body.setVelocity(0, 520);
-        if (this.y >= this.floorY) {
+        if (this.y >= this.floorY || this.stateTime > 1500) {
           this.body.setVelocity(0, 0);
           this.setY(this.floorY);
           this.body.reset(this.x, this.floorY);
@@ -475,6 +437,7 @@ export class OverseerBoss extends Boss {
         break;
       case 'vulnerablePrep':
         this.body.setVelocity(0, 0);
+        this.setCoreBody(true);
         this.endTelegraph();
         this.ctx.sfx('boss-vulnerable');
         this.showMark('STOMP THE CORE!', 1200, '#ffe14a');
@@ -607,14 +570,12 @@ export class OverseerBoss extends Boss {
   protected onDefeatStart(): void {
     this.cleanupAttack();
     this.glow.clear();
-    this.core.destroy();
   }
 
   destroy(fromScene?: boolean): void {
     this.cleanupAttack();
     this.fx?.destroy();
     this.glow?.destroy();
-    if (this.core?.active) this.core.destroy();
     super.destroy(fromScene);
   }
 }
