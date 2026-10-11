@@ -263,12 +263,16 @@ Time-trial targets live in `src/game/systems/Rewards.ts` (`MEDAL_TIMES`). Par = 
 cleanest invulnerable run (`h.startLevel(id, ch, { manual: true }); h.bot({ noRestart: true,
 invulnerable: true })`, sim seconds), measured 2026-10 on the shipped maps:
 
-| level | bot par (clean runs) | gold | silver | bronze |
+| level | bot par (clean invulnerable runs, 6 characters) | gold | silver | bronze |
 |---|---|---|---|---|
-| 1-1 loop-1 | 22.5 s Lupin, 27.7 s Mom, 28.9 s Grandma | 0:35 | 0:55 | 1:30 |
-| 1-2 loop-2 | bot can't clear (moving trains) — scaled from length | 0:45 | 1:10 | 1:50 |
-| 1-3 loop-3 | 26.8 s Lupin, 30.5 s Bro1, 32.1 s Dad | 0:40 | 1:00 | 1:40 |
-| 1-4 boss | bot doesn't fight — walk ≈ 30 s + 12-HP boss | 1:15 | 1:50 | 2:40 |
+| 1-1 loop-1 | 22-24 s | 0:32 | 0:50 | 1:20 |
+| 1-2 loop-2 | 31-33 s | 0:45 | 1:10 | 1:50 |
+| 1-3 loop-3 | 27-31 s | 0:40 | 1:05 | 1:40 |
+| 1-4 boss | 73-76 s (≈ 30 s run + the fight) | 1:45 | 2:30 | 3:30 |
+
+Gold ≈ 1.4 × par, silver ≈ 2.2 ×, bronze ≈ 3.5 × (boss: a little tighter — the fight's
+length is set by the boss). Measure with the bot runner in `bot.spec.ts` / `h.bot({ levelId,
+character, invulnerable: true })` → `simSeconds`.
 
 Re-measure after a level layout change. `h.setSave(data)` replaces the save (sanitised like
 a loaded one, retroactive unlocks applied) to set up progress in tests.

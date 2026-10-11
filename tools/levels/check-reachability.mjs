@@ -357,6 +357,7 @@ export function checkLevel(id, text, { verbose = false, map = false } = {}) {
       if (!ok) problems.push(`boss arena at ${o.tx},${o.ty} unreachable`);
     }
     if (o.type === 'souvenir' && !pickupReached(m, seen, o.tx, o.ty)) info.push(`souvenir ${Number(o.props.index) + 1} at ${o.tx},${o.ty} needs an ability / secret route`);
+    if (o.type === 'star' && !pickupReached(m, seen, o.tx, o.ty)) info.push(`Chicago Star at ${o.tx},${o.ty} needs an ability / secret route`);
   }
   if (isBossLevel && !m.objs.some((o) => o.type === 'boss')) problems.push('boss level without a boss object');
   const coins = m.objs.filter((o) => o.type === 'coin');
