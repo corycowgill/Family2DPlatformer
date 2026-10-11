@@ -10,6 +10,7 @@ import { PlayerRim } from './PlayerRim';
 import { Lighting } from './Lighting';
 import { PickupGlow, RARE_TINT } from './PickupGlow';
 import { fxRng, hitStopFrames, moodFor } from './fxMath';
+import { reduceFlashing } from '../systems/Accessibility';
 
 const TWINKLE = ['tw_0', 'tw_1', 'tw_2', 'tw_3'] as const;
 const RING = ['ring_0', 'ring_1', 'ring_2', 'ring_3'] as const;
@@ -301,7 +302,7 @@ export class LevelFx {
     this.lastBossHp = hp;
     if (prev < 0 || hp >= prev) return;
     this.startHitStop(hitStopFrames('bossHit'));
-    if (!this.reducedMotion) this.flash.setVisible(true).setAlpha(hp <= 0 ? 0.6 : 0.32);
+    if (!this.reducedMotion && !reduceFlashing()) this.flash.setVisible(true).setAlpha(hp <= 0 ? 0.6 : 0.32);
   }
 
   private startHitStop(frames: number): void {

@@ -7,6 +7,7 @@ import { ensureEnemyArt } from '../enemies/enemyArt';
 import { applyStatOverrides, telegraphBlink } from '../enemies/ai';
 import { EnemyProjectile, type EnemyProjectileOptions } from './Projectile';
 import { flashWhite } from '../fx/fxAnim';
+import { reduceFlashing, SOFT_HIT_TINT } from '../systems/Accessibility';
 
 export interface EnemyConfig {
   kind: EnemyKind;
@@ -301,7 +302,8 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   /** White flash for `ms`. */
   flash(ms = 80): void {
     this.flashUntil = this.ctx.now() + ms;
-    this.setTintFill(0xffffff);
+    if (reduceFlashing()) this.setTint(SOFT_HIT_TINT);
+    else this.setTintFill(0xffffff);
   }
 
   private updateFx(): void {

@@ -23,6 +23,8 @@ import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { Checkpoint } from '../entities/Triggers';
 import { LevelFx } from '../fx/LevelFx';
 import { CINEMATIC_END } from '../story/BossIntro';
+import { assistAffectsRun, canSkipBoss, livesAfterDeath, maxHealthWith, SafeGroundTracker } from '../systems/Assist';
+import { OutlineLayer, OUTLINE_ENEMY, OUTLINE_PLAYER, shakeAllowed } from '../systems/Accessibility';
 
 export interface LevelSceneData {
   levelId: string;
@@ -37,6 +39,10 @@ export interface LevelRunStats {
   stars: number;
   enemies: number;
   deaths: number;
+  /** Assist mode was used during this attempt (no gold medal; ASSIST tag on Results). */
+  assisted?: boolean;
+  /** The boss was skipped (assist). */
+  skippedBoss?: boolean;
 }
 
 /**
@@ -65,6 +71,22 @@ export class LevelScene extends Phaser.Scene {
 
   constructor() {
     super('Level');
+    // Assist "game speed": scale the delta of the whole scene update (clock, physics
+    // accumulator, sprites/anims, LevelScene.step). Arcade still steps a fixed 1/60 s of
+    // game time, so the PlayerMotor stays deterministic and jump arcs keep their shape —
+    // there are just fewer steps per real second. (The test harness wraps this step.)
+    const sys = this.sys;
+    const base = sys.step;
+    sys.step = (time: number, delta: number) => base.call(sys, time, delta * this.speed);
+  }
+
+  private syncSpeed(): void {
+    this.tweens.timeScale = this.speed;
+  }
+
+  /** Current game speed (1 = normal; assist setting). */
+  get speed(): number {
+    return saveSystem.get().settings.gameSpeed;
   }
 
   init(data: LevelSceneData): void {
@@ -75,7 +97,7 @@ export class LevelScene extends Phaser.Scene {
     this.checkpoints = [];
     this.cine = undefined;
     gameState.beginLevel(this.level.id);
-    this.stats = { levelId: this.level.id, timeMs: 0, coins: 0, souvenirs: [], stars: 0, enemies: 0, deaths: 0 };
+    this.stats = { levelId: this.level.id, timeMs: 0, coins: 0, souvenirs: [], stars: 0, enemies: 0, deaths: 0, assisted: false };
   }
 
   preload(): void {
@@ -130,6 +152,8 @@ export class LevelScene extends Phaser.Scene {
 
     const def = getCharacter(gameState.character);
     this.player = new Player(this, this.spawnPoint.x, this.spawnPoint.y, def);
+    const settings = saveSystem.get().settings;
+    this.player.maxHealth = this.player.health = maxHealthWith(this.player.maxHealth, settings);
     // Costume (cosmetic only): same frame names / anims, different atlas.
     const skin = heroTexture(this, def.id);
     if (skin !== def.id) {
@@ -152,7 +176,7 @@ export class LevelScene extends Phaser.Scene {
       effect: (anim, x, y, opts) => this.spawnEffect(anim, x, y, opts),
       sfx: (k) => audio.sfx(k),
       shake: (i = 0.006, d = 150) => {
-        if (!saveSystem.get().settings.reducedMotion) this.cameras.main.shake(d, i);
+        if (shakeAllowed()) this.cameras.main.shake(d, i);
       },
       lockCamera: (rect) => scene.cameraSys?.lock(rect),
       now: () => scene.levelTime,
@@ -168,6 +192,10 @@ export class LevelScene extends Phaser.Scene {
       else if (DEBUG) console.warn(`No spawner for object type "${o.type}"`);
     }
     this.checkpoints = groups.triggers.getChildren().filter((c): c is Checkpoint => c instanceof Checkpoint);
+    // Accessibility: high-contrast outline on the hero and every enemy (incl. later spawns).
+    if (settings.highContrast) {
+      new OutlineLayer(this).track(() => [this.player], OUTLINE_PLAYER).track(() => groups.enemies.getChildren(), OUTLINE_ENEMY);
+    }
 
     // Resume from checkpoint if we died earlier in this level.
     if (gameState.checkpointLevel === this.level.id && gameState.checkpoint >= 0) {
@@ -178,6 +206,11 @@ export class LevelScene extends Phaser.Scene {
         this.player.setPosition(cp.x, cp.y);
         this.player.body.reset(cp.x, cp.y);
       }
+    }
+    // Assist safety net: track the last safe ground (seeded with the spawn point).
+    if (settings.safetyNet) {
+      this.player.safeGround = new SafeGroundTracker();
+      this.player.safeGround.reset(this.spawnPoint.x, this.spawnPoint.y);
     }
 
     new CombatSystem(this.ctx);
@@ -196,6 +229,11 @@ export class LevelScene extends Phaser.Scene {
 
     if (DEBUG) this.setupDebug();
     this.exposeTestHooks();
+    // Tweens run on their own wall clock: scale them with the game speed (re-read after a
+    // pause, where the speed may have been changed in Settings).
+    this.tweens.timeScale = this.speed;
+    this.events.on(Phaser.Scenes.Events.RESUME, this.syncSpeed, this);
+    this.offerBossSkipSoon();
     // Pause requests from outside the scene (app backgrounded, controller disconnected…).
     const onRequestPause = () => {
       if (this.scene.isActive() && !this.finished && this.player.isAlive()) this.pauseGame();
@@ -247,6 +285,10 @@ export class LevelScene extends Phaser.Scene {
       gameState.checkpointLevel = this.level.id;
       this.spawnPoint = { x, y };
     });
+    ev.on(EV.PLAYER_RESCUED, () => {
+      this.stats.assisted = true;
+      this.cameraSys.snap();
+    });
     ev.on(EV.PLAYER_DIED, () => this.onPlayerDied());
     ev.on(EV.LEVEL_COMPLETE, () => this.onLevelComplete());
     // Boss levels complete shortly after the boss is defeated.
@@ -264,7 +306,10 @@ export class LevelScene extends Phaser.Scene {
     if (this.respawning) return;
     this.respawning = true;
     this.stats.deaths++;
-    gameState.lives--;
+    if (this.level.boss) gameState.bossDeaths[this.level.id] = (gameState.bossDeaths[this.level.id] ?? 0) + 1;
+    const settings = saveSystem.get().settings;
+    if (settings.infiniteLives) this.stats.assisted = true;
+    gameState.lives = livesAfterDeath(gameState.lives, settings);
     this.events.emit(EV.LIVES_CHANGED, gameState.lives);
     this.time.delayedCall(1200, () => {
       if (gameState.lives <= 0) {
@@ -293,6 +338,8 @@ export class LevelScene extends Phaser.Scene {
     audio.stopMusic();
     audio.sfx('victory');
     gameState.resetCheckpoint();
+    delete gameState.bossDeaths[this.level.id];
+    if (assistAffectsRun(saveSystem.get().settings)) this.stats.assisted = true;
     // World finale: no next level, or the next one opens a new world (1-4 → 2-1).
     const isLast = isWorldFinale(this.level) || (this.level.world <= 0 && !this.level.next);
     saveSystem.recordCompletion(this.level.id, {
@@ -303,6 +350,8 @@ export class LevelScene extends Phaser.Scene {
       next: this.level.next,
       world: this.level.world,
       worldComplete: isLast && this.level.world > 0,
+      assisted: this.stats.assisted,
+      skippedBoss: this.stats.skippedBoss,
     });
     this.time.delayedCall(1800, () => {
       this.cameras.main.fadeOut(400);
@@ -310,6 +359,30 @@ export class LevelScene extends Phaser.Scene {
         this.scene.stop('HUD');
         this.scene.start('Results', { gameOver: false, stats: this.stats, worldComplete: isLast });
       });
+    });
+  }
+
+  /** Assist: may this attempt skip the boss (setting on + enough deaths on this boss level)? */
+  canSkipBoss(): boolean {
+    return !this.finished && canSkipBoss(saveSystem.get().settings, !!this.level.boss, gameState.bossDeaths[this.level.id] ?? 0);
+  }
+
+  /** Assist: skip the boss — the level counts as cleared (no medal / best time). */
+  skipBoss(): void {
+    if (!this.canSkipBoss()) return;
+    this.stats.assisted = true;
+    this.stats.skippedBoss = true;
+    this.endCinematic();
+    this.events.emit(EV.LEVEL_COMPLETE);
+  }
+
+  /** Right after the death that unlocks it, a small prompt (Pause in "skip" mode) offers the skip. */
+  private offerBossSkipSoon(): void {
+    const deaths = gameState.bossDeaths[this.level.id] ?? 0;
+    if (!this.canSkipBoss() || gameState.bossSkipOffered === `${this.level.id}:${deaths}`) return;
+    gameState.bossSkipOffered = `${this.level.id}:${deaths}`;
+    this.time.delayedCall(700, () => {
+      if (this.sys.isActive() && this.canSkipBoss() && this.player.isAlive()) this.pauseGame(true);
     });
   }
 
@@ -391,6 +464,7 @@ export class LevelScene extends Phaser.Scene {
       if (this.cine || skip) input = { ...EMPTY_INPUT };
     }
     if (!this.finished) this.levelTime += dt;
+    if (saveSystem.get().settings.autoRun) input = { ...input, run: true };
     this.player.tick(input, dt);
     if (this.cine) this.updateCinematicCamera(dt);
     else this.cameraSys.update(dt);
@@ -399,9 +473,9 @@ export class LevelScene extends Phaser.Scene {
     if (this.debugGfx) this.updateDebug();
   }
 
-  pauseGame(): void {
+  pauseGame(offerSkip = false): void {
     this.scene.pause();
-    this.scene.launch('Pause', { levelId: this.level.id });
+    this.scene.launch('Pause', { levelId: this.level.id, offerSkip });
     this.scene.bringToTop('Pause');
   }
 
@@ -440,6 +514,9 @@ export class LevelScene extends Phaser.Scene {
     this.events.off(EV.LEVEL_COMPLETE);
     this.events.off(EV.CAMERA_SHAKE);
     this.events.off(EV.BOSS_DEFEATED);
+    this.events.off(EV.PLAYER_RESCUED);
+    this.events.off(Phaser.Scenes.Events.RESUME, this.syncSpeed, this);
+    this.tweens.timeScale = 1;
     if ((window as unknown as { __level?: LevelScene }).__level === this) {
       (window as unknown as { __level?: LevelScene }).__level = undefined;
     }

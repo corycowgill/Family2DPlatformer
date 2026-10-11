@@ -6,6 +6,7 @@ import { Enemy, type EnemyConfig } from './Enemy';
 import { bossPhaseForHp, propNum } from '../enemies/ai';
 import { boom } from '../enemies/fx';
 import { saveSystem } from '../systems/SaveSystem';
+import { reduceFlashing } from '../systems/Accessibility';
 
 /** Arena rectangle for a boss spawn: the Tiled object's rectangle, or props arenaX/arenaWidth (px). */
 export function arenaFromSpawn(spawn: SpawnObject): Phaser.Geom.Rectangle {
@@ -181,9 +182,11 @@ export abstract class Boss extends Enemy {
     const reduced = saveSystem.get().settings.reducedMotion;
     if (!reduced) {
       // Brief slow motion (~1 s real time).
-      scene.time.timeScale = 0.4;
-      scene.tweens.timeScale = 0.4;
-      scene.physics.world.timeScale = 2.5;
+      // Relative to the current scales (assist game speed sets tweens.timeScale).
+      this.savedTime ??= { clock: scene.time.timeScale, tweens: scene.tweens.timeScale, world: scene.physics.world.timeScale };
+      scene.time.timeScale = 0.4 * this.savedTime.clock;
+      scene.tweens.timeScale = 0.4 * this.savedTime.tweens;
+      scene.physics.world.timeScale = 2.5 * this.savedTime.world;
       window.setTimeout(() => this.restoreTime(), 1000);
     }
     const w = this.displayWidth;
@@ -197,7 +200,9 @@ export abstract class Boss extends Enemy {
         boom(this.ctx, ex, ey, 10 + Math.random() * 10);
         this.ctx.sfx('explosion');
         this.ctx.shake(0.006, 120);
-        this.setTintFill(i % 2 ? 0xffffff : 0xff5030);
+        // Reduced flashing: a steady red tint instead of a white/red strobe.
+        if (reduceFlashing()) this.setTint(0xff5030);
+        else this.setTintFill(i % 2 ? 0xffffff : 0xff5030);
       });
     }
     scene.time.delayedCall(n * 130 + 150, () => {
@@ -219,12 +224,18 @@ export abstract class Boss extends Enemy {
   protected onDefeatStart(): void {}
   protected onDefeated(): void {}
 
+  /** Time scales before the defeat slow-motion (restored afterwards). */
+  private savedTime?: { clock: number; tweens: number; world: number };
+
   private restoreTime(): void {
     const scene = this.ctx.scene;
     if (!scene || !scene.sys) return;
-    if (scene.time) scene.time.timeScale = 1;
-    if (scene.tweens) scene.tweens.timeScale = 1;
-    if (scene.physics?.world) scene.physics.world.timeScale = 1;
+    const saved = this.savedTime;
+    if (!saved) return; // no slow motion running (or already restored)
+    this.savedTime = undefined;
+    if (scene.time) scene.time.timeScale = saved.clock;
+    if (scene.tweens) scene.tweens.timeScale = saved.tweens;
+    if (scene.physics?.world) scene.physics.world.timeScale = saved.world;
   }
 
   destroy(fromScene?: boolean): void {

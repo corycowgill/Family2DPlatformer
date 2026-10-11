@@ -12,6 +12,10 @@ export class GameState {
   /** Checkpoint index reached in `checkpointLevel` (-1 = level start). */
   checkpoint = -1;
   checkpointLevel = '';
+  /** Deaths per boss level this session (assist: boss skip is offered after 3). */
+  bossDeaths: Record<string, number> = {};
+  /** `${levelId}:${deaths}` for which the boss-skip prompt was last shown (show it once). */
+  bossSkipOffered = '';
 
   selectCharacter(id: CharacterId): void {
     this.character = id;

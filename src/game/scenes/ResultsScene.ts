@@ -86,6 +86,8 @@ export class ResultsScene extends Phaser.Scene {
       this.tweens.add({ targets: title, scale: s, duration: 450, ease: 'Back.out' });
     }
     px(this, GAME_WIDTH / 2, world ? 40 : 44, lvl ? `${lvl.number} ${lvl.name.toUpperCase()}` : '', { color: COLORS.sub });
+    // Assist mode was used: small tag (the medal is capped below gold).
+    if (stats.assisted || stats.skippedBoss) this.assistTag(436, 50, stats.skippedBoss ? 'ASSIST · BOSS SKIPPED' : 'ASSIST');
 
     // Stats panel
     const top = 56;
@@ -114,7 +116,7 @@ export class ResultsScene extends Phaser.Scene {
     const coinT = px(this, valX + 14, top + 34, '0', { origin: [0, 0.5] });
     const souv = [0, 1, 2].map((i) => icon(this, valX + 6 + i * 16, top + 52, 'souvenir_icon_empty'));
     px(this, valX, top + 70, String(stats.enemies), { origin: [0, 0.5] });
-    this.medalRow(stats.levelId, stats.timeMs, valX, top + 88);
+    this.medalRow(stats.levelId, stats.timeMs, valX, top + 88, stats);
 
     // Tally animation
     const still = reducedMotion();
@@ -178,8 +180,16 @@ export class ResultsScene extends Phaser.Scene {
   }
 
   /** Time-trial medal for this run, "NEW MEDAL!" and the next target time. */
-  private medalRow(levelId: string, timeMs: number, x: number, y: number): void {
-    const medal = medalFor(levelId, timeMs);
+  /** Small right-aligned "ASSIST" chip (findable by tests as the text "ASSIST..."). */
+  private assistTag(right: number, y: number, text: string): void {
+    const t = px(this, right - 4, y, text, { origin: [1, 0.5], color: COLORS.ink, outline: false });
+    const bg = this.add.rectangle(right, y, t.width + 8, 11, COLORS.skyBlue, 1).setOrigin(1, 0.5);
+    bg.setDepth(t.depth);
+    t.setDepth(t.depth + 1);
+  }
+
+  private medalRow(levelId: string, timeMs: number, x: number, y: number, stats?: Pick<LevelRunStats, 'assisted' | 'skippedBoss'>): void {
+    const medal = stats?.skippedBoss ? null : medalFor(levelId, timeMs, !!stats?.assisted);
     const report = saveSystem.lastCompletion;
     const prev = report && report.levelId === levelId ? report.previousMedal : undefined;
     const best = saveSystem.get().levels[levelId]?.medal;

@@ -17,6 +17,7 @@ import { prompt, type PromptText } from '../ui/Prompts';
 import { mulberry32 } from '../systems/audio/notes';
 import { heroTexture } from '../ui/CharacterArt';
 import { MEDALS, medalTimes } from '../systems/Rewards';
+import { shakeAllowed } from '../systems/Accessibility';
 
 interface MapNode {
   kind: 'level' | 'hood';
@@ -418,7 +419,7 @@ export class WorldMapScene extends Phaser.Scene {
     const n = this.nodes[this.sel];
     if (n.kind !== 'level' || !saveSystem.isUnlocked(n.levelId!)) {
       audio.sfx('menu-error');
-      if (!reducedMotion()) this.cameras.main.shake(120, 0.004);
+      if (shakeAllowed()) this.cameras.main.shake(120, 0.004);
       return;
     }
     if (this.at !== this.sel) return;

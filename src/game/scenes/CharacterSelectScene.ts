@@ -26,6 +26,7 @@ import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
 import { prompt } from '../ui/Prompts';
 import { heroTexture } from '../ui/CharacterArt';
 import { UnlockScene } from './UnlockScene';
+import { reduceFlashing, shakeAllowed } from '../systems/Accessibility';
 
 const SLOT_SPACING = 56;
 const SLOT_Y = 222;
@@ -341,7 +342,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     if (this.confirmed) return;
     if (!this.unlocked()) {
       audio.sfx('menu-error');
-      if (!reducedMotion()) this.cameras.main.shake(120, 0.004);
+      if (shakeAllowed()) this.cameras.main.shake(120, 0.004);
       return;
     }
     this.confirmed = true;
@@ -355,7 +356,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     audio.sfx('confirm');
     playAnim(p, 'jump', 'idle', false);
     if (!reducedMotion()) {
-      this.cameras.main.flash(180, 255, 255, 255);
+      if (!reduceFlashing()) this.cameras.main.flash(180, 255, 255, 255);
       this.tweens.add({
         targets: p, y: 140, duration: 220, yoyo: true, ease: 'Quad.out',
         onComplete: () => playAnim(p, 'victory', 'idle', false),
