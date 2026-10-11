@@ -47,7 +47,16 @@ const FALLBACK: Record<EnemyShotStyle, [number, number, (g: Phaser.GameObjects.G
     g.fillStyle(0x8a3b22).fillRect(0, 0, 28, 8).fillStyle(0x5a2614);
     for (let x = 2; x < 28; x += 6) g.fillRect(x, 2, 3, 4);
   }],
-  shockwave: [20, 12, (g) => g.fillStyle(0x7fe8ff, 0.9).fillTriangle(0, 12, 10, 0, 20, 12).fillStyle(0xffffff).fillTriangle(5, 12, 10, 4, 15, 12)],
+  // Travelling floor wave (boss rail shockwave, Juggernaut slam): an electric crest that hugs
+  // the floor. Drawn here (not the burst-style `shockwave` effect anim, which is a one-shot impact).
+  shockwave: [24, 14, (g) => {
+    g.fillStyle(0x0b3a5a).fillTriangle(0, 14, 12, 0, 24, 14); // dark outline
+    g.fillStyle(0x2f9fd8).fillTriangle(2, 14, 12, 2, 22, 14);
+    g.fillStyle(0x7fe8ff).fillTriangle(5, 14, 12, 5, 19, 14);
+    g.fillStyle(0xffffff).fillTriangle(9, 14, 12, 8, 15, 14);
+    g.fillStyle(0xffffff).fillRect(11, 1, 2, 2); // spark tip
+    g.fillStyle(0x7fe8ff).fillRect(0, 13, 24, 1); // floor glow
+  }],
   fist: [22, 14, (g) => g.fillStyle(0x6b7684).fillRect(0, 0, 22, 14).fillStyle(0xffb020).fillRect(2, 2, 4, 10).fillStyle(0x39414a).fillRect(18, 1, 4, 12)],
   beam: [8, 8, (g) => g.fillStyle(0xff3030, 0.85).fillRect(0, 0, 8, 8).fillStyle(0xffd0d0).fillRect(2, 0, 4, 8)],
 };
@@ -57,7 +66,6 @@ const EFFECT_ANIM: Partial<Record<EnemyShotStyle, string>> = {
   alien_laser: 'alien_laser',
   plasma_shot: 'plasma_shot',
   drone_shot: 'drone_shot',
-  shockwave: 'shockwave',
 };
 
 /**
@@ -110,6 +118,12 @@ export class EnemyProjectile extends Phaser.Physics.Arcade.Sprite {
       b.setSize(Math.max(3, this.width - 2), Math.max(3, this.height - 2));
     }
     b.setVelocity(opts.vx ?? 0, opts.vy ?? 0);
+    if (opts.style === 'shockwave') {
+      // Crest stands on the floor and crackles (height flicker) as it travels.
+      this.setOrigin(0.5, 1);
+      this.y += this.height / 2;
+      scene.tweens.add({ targets: this, scaleY: { from: 0.8, to: 1.15 }, duration: 70, yoyo: true, repeat: -1 });
+    }
     if (opts.style === 'alien_laser' || opts.style === 'drone_shot' || opts.style === 'plasma_shot') {
       this.setRotation(Math.atan2(opts.vy ?? 0, opts.vx ?? 1));
     } else if ((opts.vx ?? 0) < 0 && opts.style !== 'bucket' && opts.style !== 'girder') {
