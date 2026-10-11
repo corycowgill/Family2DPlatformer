@@ -41,12 +41,13 @@ export const MEDAL_TIMES: Record<string, MedalTimes> = {
   'loop-2': { gold: 45_000, silver: 70_000, bronze: 110_000 },
   'loop-3': { gold: 40_000, silver: 65_000, bronze: 100_000 },
   'loop-boss': { gold: 105_000, silver: 150_000, bronze: 210_000 },
-  // TODO-measure: World 2 placeholders, sized for the short placeholder maps (≈90 tiles) and
-  // a ~60 s Overseer fight. Re-measure with the platform bot once the real 2-x maps land.
-  'north-1': { gold: 30_000, silver: 50_000, bronze: 85_000 },
-  'north-2': { gold: 30_000, silver: 50_000, bronze: 85_000 },
-  'north-3': { gold: 32_000, silver: 52_000, bronze: 90_000 },
-  'north-4': { gold: 70_000, silver: 105_000, bronze: 150_000 },
+  // TODO-measure (re-run when the real 2-x maps replace the placeholders): bot par on the
+  // short placeholder maps, 2026-10 — 2-1 ≈ 9.5 s, 2-2 ≈ 13 s, 2-3 ≈ 10 s, 2-4 ≈ 92 s
+  // (approach + the 9-hp Overseer). Gold ≈ 1.4×, silver ≈ 2.2×, bronze ≈ 3.5× par.
+  'north-1': { gold: 13_000, silver: 21_000, bronze: 33_000 },
+  'north-2': { gold: 18_000, silver: 29_000, bronze: 46_000 },
+  'north-3': { gold: 14_000, silver: 22_000, bronze: 35_000 },
+  'north-4': { gold: 130_000, silver: 200_000, bronze: 320_000 },
 };
 
 export function medalTimes(levelId: string): MedalTimes | undefined {

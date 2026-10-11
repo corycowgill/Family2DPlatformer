@@ -1,3 +1,4 @@
+import { queueThemeBackgrounds } from '../systems/ThemeAssets';
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { IMAGES } from '../data/assets';
@@ -93,6 +94,11 @@ export class EndingScene extends Phaser.Scene {
     this.finished = false;
     this.fireT = 0;
     this.t = 0;
+  }
+
+  /** The World 2 ending stands in the (lazily loaded) stadium. */
+  preload(): void {
+    if ((this.data0.world ?? 1) === 2) queueThemeBackgrounds(this, 'stadium');
   }
 
   create(): void {

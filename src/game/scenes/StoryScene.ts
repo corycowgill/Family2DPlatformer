@@ -1,3 +1,4 @@
+import { queueThemeBackgrounds } from '../systems/ThemeAssets';
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { audio } from '../systems/AudioSystem';
@@ -65,6 +66,11 @@ export class StoryScene extends Phaser.Scene {
     this.idleMs = 0;
     this.t = 0;
     this.dots = [];
+  }
+
+  /** World 2 panels use the lazily loaded park backgrounds (systems/ThemeAssets). */
+  preload(): void {
+    if (this.data0.story === 'world2') queueThemeBackgrounds(this, 'park');
   }
 
   create(): void {

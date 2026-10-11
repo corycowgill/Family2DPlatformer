@@ -278,6 +278,10 @@ invulnerable: true })`, sim seconds), measured 2026-10 on the shipped maps:
 | 1-2 loop-2 | 31-33 s | 0:45 | 1:10 | 1:50 |
 | 1-3 loop-3 | 27-31 s | 0:40 | 1:05 | 1:40 |
 | 1-4 boss | 73-76 s (≈ 30 s run + the fight) | 1:45 | 2:30 | 3:30 |
+| 2-1 north-1 | 8.9-12.1 s (**placeholder map — TODO re-measure**) | 0:13 | 0:21 | 0:33 |
+| 2-2 north-2 | 10.1-14.7 s (placeholder) | 0:18 | 0:29 | 0:46 |
+| 2-3 north-3 | 8.4-15.9 s (placeholder) | 0:14 | 0:22 | 0:35 |
+| 2-4 boss | 91.7-94.1 s (placeholder approach + 9-HP Overseer) | 2:10 | 3:20 | 5:20 |
 
 Gold ≈ 1.4 × par, silver ≈ 2.2 ×, bronze ≈ 3.5 × (boss: a little tighter — the fight's
 length is set by the boss). Measure with the bot runner in `bot.spec.ts` / `h.bot({ levelId,
