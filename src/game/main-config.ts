@@ -14,6 +14,8 @@ import { CreditsScene } from './scenes/CreditsScene';
 import { StoryScene } from './scenes/StoryScene';
 import { EndingScene } from './scenes/EndingScene';
 import { ExtrasScene } from './scenes/ExtrasScene';
+import { CollectionScene } from './scenes/CollectionScene';
+import { UnlockScene } from './scenes/UnlockScene';
 
 export function createGameConfig(parent: string): Phaser.Types.Core.GameConfig {
   return {
@@ -36,6 +38,10 @@ export function createGameConfig(parent: string): Phaser.Types.Core.GameConfig {
       arcade: { gravity: { x: 0, y: PHYSICS.gravity }, fps: 60, fixedStep: true, tileBias: 20, debug: false },
     },
     audio: { disableWebAudio: false },
-    scene: [BootScene, PreloadScene, MenuScene, CharacterSelectScene, WorldMapScene, LevelScene, HUDScene, PauseScene, ResultsScene, SettingsScene, CreditsScene, StoryScene, EndingScene, ExtrasScene],
+    scene: [BootScene, PreloadScene, MenuScene, CharacterSelectScene, WorldMapScene, LevelScene, HUDScene, PauseScene, ResultsScene, SettingsScene, CreditsScene,
+      // story & presentation
+      StoryScene, EndingScene, ExtrasScene,
+      // rewards & replay
+      CollectionScene, UnlockScene],
   };
 }

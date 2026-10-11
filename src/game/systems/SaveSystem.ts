@@ -1,6 +1,17 @@
 import { SAVE_VERSION, STORAGE_KEY } from '../config';
 import { CHARACTER_IDS, type CharacterId } from '../types';
 import { FIRST_LEVEL_ID } from '../data/levels';
+import {
+  betterMedal,
+  COSTUMES,
+  earnedUnlocks,
+  isCharacterUnlocked,
+  isMedal,
+  isValidUnlockKey,
+  medalFor,
+  SECRET_CHARACTERS,
+  type Medal,
+} from './Rewards';
 
 /** Pure save-data logic (no Phaser) so it can be unit tested in Node. */
 
@@ -22,6 +33,8 @@ export interface LevelRecord {
   /** Souvenir indices (0..2) collected in this level. */
   souvenirs: number[];
   stars: number;
+  /** Best time-trial medal earned on this level (systems/Rewards.ts MEDAL_TIMES). */
+  medal?: Medal;
 }
 
 export interface SaveData {
@@ -36,6 +49,25 @@ export interface SaveData {
   /** The World 1 ending has been reached — unlocks rewatching it from Extras. */
   seenEnding: boolean;
   settings: Settings;
+
+  // ── Rewards & replay (systems/Rewards.ts) ──
+  /** Secret characters unlocked so far (e.g. 'grandma'); sticky once earned. */
+  unlockedCharacters: CharacterId[];
+  /** Selected costume per character ('' = classic outfit). Cosmetic only. */
+  costumes: Partial<Record<CharacterId, string>>;
+  /** Unlock keys already earned + announced ('char:grandma', 'costume:dad-flame'). */
+  unlocks: string[];
+  /** Earned unlocks not yet looked at on Character Select ("NEW" badges). */
+  newUnlocks: string[];
+}
+
+/** Result of the last `recordCompletion` (read by the Results screen). */
+export interface CompletionReport {
+  levelId: string;
+  medal: Medal | null;
+  previousMedal?: Medal;
+  /** Unlock keys earned by this completion (popup). */
+  unlocked: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -59,7 +91,46 @@ export function defaultSave(): SaveData {
     seenIntro: false,
     seenEnding: false,
     settings: { ...DEFAULT_SETTINGS },
+    // rewards & replay
+    unlockedCharacters: [],
+    costumes: {},
+    unlocks: [],
+    newUnlocks: [],
   };
+}
+
+/** Rewards fields of an untrusted save (each malformed entry is dropped). */
+function sanitizeRewards(r: Record<string, unknown>, out: SaveData): void {
+  if (Array.isArray(r.unlockedCharacters)) {
+    out.unlockedCharacters = Array.from(
+      new Set(r.unlockedCharacters.filter((c): c is CharacterId => typeof c === 'string' && SECRET_CHARACTERS.includes(c as CharacterId))),
+    );
+  }
+  if (r.costumes && typeof r.costumes === 'object' && !Array.isArray(r.costumes)) {
+    for (const [id, c] of Object.entries(r.costumes as Record<string, unknown>)) {
+      if (!(CHARACTER_IDS as readonly string[]).includes(id) || typeof c !== 'string') continue;
+      if (c === '' || COSTUMES[id as CharacterId].some((d) => d.id === c)) out.costumes[id as CharacterId] = c;
+    }
+  }
+  for (const k of ['unlocks', 'newUnlocks'] as const) {
+    if (Array.isArray(r[k])) out[k] = Array.from(new Set((r[k] as unknown[]).filter(isValidUnlockKey)));
+  }
+  out.newUnlocks = out.newUnlocks.filter((k) => out.unlocks.includes(k));
+}
+
+/**
+ * Add every unlock the save now qualifies for to `unlocks` (+ `newUnlocks`,
+ * `unlockedCharacters`). Returns the keys that were not earned before.
+ */
+export function syncUnlocks(d: SaveData): string[] {
+  const fresh = earnedUnlocks(d).filter((k) => !d.unlocks.includes(k));
+  for (const k of fresh) {
+    d.unlocks.push(k);
+    d.newUnlocks.push(k);
+    const m = /^char:(\w+)$/.exec(k);
+    if (m && !d.unlockedCharacters.includes(m[1] as CharacterId)) d.unlockedCharacters.push(m[1] as CharacterId);
+  }
+  return fresh;
 }
 
 const clamp01 = (n: unknown, d: number) =>
@@ -93,7 +164,9 @@ export function sanitizeSave(raw: unknown): SaveData {
           ? Array.from(new Set(lr.souvenirs.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 3)))
           : [],
         stars: typeof lr.stars === 'number' && lr.stars >= 0 ? Math.floor(lr.stars) : 0,
+        medal: isMedal(lr.medal) ? lr.medal : undefined,
       };
+      if (!out.levels[id].medal) delete out.levels[id].medal;
     }
   }
   if (typeof r.totalCoins === 'number' && r.totalCoins >= 0) out.totalCoins = Math.floor(r.totalCoins);
@@ -112,6 +185,9 @@ export function sanitizeSave(raw: unknown): SaveData {
       effects: s.effects === 'low' ? 'low' : 'high',
     };
   }
+  sanitizeRewards(r, out);
+  // A secret hero can only be selected once unlocked.
+  if (!isCharacterUnlocked(out, out.selectedCharacter)) out.selectedCharacter = 'dad';
   return out;
 }
 
@@ -132,6 +208,8 @@ function defaultStorage(): KeyValueStorage | null {
 
 export class SaveSystem {
   private data: SaveData;
+  /** Set by recordCompletion for the Results screen. */
+  lastCompletion: CompletionReport | null = null;
 
   constructor(private storage: KeyValueStorage | null = defaultStorage()) {
     this.data = this.load();
@@ -148,6 +226,8 @@ export class SaveSystem {
     } catch {
       this.data = defaultSave();
     }
+    // Old saves unlock retroactively (badged NEW on Character Select, no popup).
+    syncUnlocks(this.data);
     return this.data;
   }
 
@@ -175,6 +255,14 @@ export class SaveSystem {
     return Object.values(this.data.levels).some((l) => l.completed) || this.data.unlocked.length > 1;
   }
 
+  /** Remove `keys` from the NEW badges (seen on Character Select). */
+  markSeen(keys: string[]): void {
+    if (!keys.some((k) => this.data.newUnlocks.includes(k))) return;
+    this.update((d) => {
+      d.newUnlocks = d.newUnlocks.filter((k) => !keys.includes(k));
+    });
+  }
+
   isUnlocked(levelId: string): boolean {
     return this.data.unlocked.includes(levelId);
   }
@@ -185,8 +273,13 @@ export class SaveSystem {
     result: { timeMs: number; coins: number; souvenirs: number[]; stars: number; next?: string; world?: number; worldComplete?: boolean },
   ): boolean {
     let newBest = false;
+    const medal = medalFor(levelId, result.timeMs);
+    const report: CompletionReport = { levelId, medal, unlocked: [] };
     this.update((d) => {
-      const rec = d.levels[levelId] ?? { completed: false, souvenirs: [], stars: 0 };
+      const rec: LevelRecord = d.levels[levelId] ?? { completed: false, souvenirs: [], stars: 0 };
+      report.previousMedal = rec.medal;
+      const best = betterMedal(rec.medal, medal);
+      if (best) rec.medal = best;
       rec.completed = true;
       if (rec.bestTimeMs === undefined || result.timeMs < rec.bestTimeMs) {
         rec.bestTimeMs = result.timeMs;
@@ -200,7 +293,9 @@ export class SaveSystem {
       if (result.worldComplete && result.world !== undefined && !d.worldsCompleted.includes(result.world)) {
         d.worldsCompleted.push(result.world);
       }
+      report.unlocked = syncUnlocks(d);
     });
+    this.lastCompletion = report;
     return newBest;
   }
 }

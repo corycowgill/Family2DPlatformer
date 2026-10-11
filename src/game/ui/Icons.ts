@@ -28,6 +28,11 @@ const ICONS: Record<string, string[]> = {
   hotdog: ['..kkkkkk..', '.kOOOOOOk.', 'kRRRRRRRRk', 'kOYOYOYOOk', '.kOOOOOOk.', '..kkkkkk..'],
   pizza: ['kkkkkkkk', 'kYRYYRYk', '.kYYRYk.', '.kYRYYk.', '..kYYk..', '..kYYk..', '...kk...'],
   plane: ['....k....', '...kwk...', 'kkkkwkkkk', 'kwwwwwwwk', '.kkkwkkk.', '...kwk...', '..kwwwk..', '..kkkkk..'],
+  // time-trial medals (ribbon + disc), 9x12
+  medal_gold: ['kk.....kk', 'kRk...kBk', '.kRk.kBk.', '..kRkBk..', '..kkkkk..', '.kYYYYok.', 'kYwYYYYok', 'kYwYYYYok', 'kYYYYYook', 'kYYYYoook', '.koooook.', '..kkkkk..'],
+  medal_silver: ['kk.....kk', 'kRk...kBk', '.kRk.kBk.', '..kRkBk..', '..kkkkk..', '.kSSSSsk.', 'kSwSSSSsk', 'kSwSSSSsk', 'kSSSSSssk', 'kSSSSsssk', '.ksssssk.', '..kkkkk..'],
+  medal_bronze: ['kk.....kk', 'kRk...kBk', '.kRk.kBk.', '..kRkBk..', '..kkkkk..', '.kOOOOnk.', 'kOYOOOOnk', 'kOYOOOOnk', 'kOOOOOnnk', 'kOOOOnnnk', '.knnnnnk.', '..kkkkk..'],
+  medal_empty: ['dd.....dd', 'dDd...dDd', '.dDd.dDd.', '..dDdDd..', '..ddddd..', '.dDDDDDd.', 'dDDDDDDDd', 'dDDDDDDDd', 'dDDDDDDDd', 'dDDDDDDDd', '.dDDDDDd.', '..ddddd..'],
   arrow_l: ['...k', '..kk', '.kwk', 'kwwk', '.kwk', '..kk', '...k'],
   arrow_r: ['k...', 'kk..', 'kwk.', 'kwwk', 'kwk.', 'kk..', 'k...'],
 };

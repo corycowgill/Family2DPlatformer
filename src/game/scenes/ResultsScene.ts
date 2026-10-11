@@ -12,7 +12,10 @@ import { icon, setIcon } from '../ui/Icons';
 import { Skyline } from '../ui/Skyline';
 import { COLORS, panel } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
-import { formatTime as fmt } from '../ui/format';
+import { formatTarget, formatTime as fmt } from '../ui/format';
+import { heroTexture } from '../ui/CharacterArt';
+import { medalFor, medalRank, nextMedal } from '../systems/Rewards';
+import { UnlockScene } from './UnlockScene';
 
 /** @deprecated import from ui/format */
 export const formatTime = fmt;
@@ -38,7 +41,7 @@ export class ResultsScene extends Phaser.Scene {
   }
 
   private hero(x: number, y: number, anim: string): Phaser.GameObjects.Sprite {
-    const s = this.add.sprite(x, y, gameState.character).setOrigin(0.5, 1).setScale(2);
+    const s = this.add.sprite(x, y, heroTexture(this)).setOrigin(0.5, 1).setScale(2);
     playAnim(s, anim, 'idle', false);
     return s;
   }
@@ -93,6 +96,7 @@ export class ResultsScene extends Phaser.Scene {
     row(1, 'COINS');
     row(2, 'SOUVENIRS');
     row(3, 'ENEMIES');
+    row(4, 'MEDAL');
     const timeT = px(this, valX, top + 16, fmt(stats.timeMs), { origin: [0, 0.5] });
     if (newBest) {
       const nb = px(this, valX + timeT.width + 8, top + 16, 'NEW BEST!', { origin: [0, 0.5], color: COLORS.red });
@@ -104,6 +108,7 @@ export class ResultsScene extends Phaser.Scene {
     const coinT = px(this, valX + 14, top + 34, '0', { origin: [0, 0.5] });
     const souv = [0, 1, 2].map((i) => icon(this, valX + 6 + i * 16, top + 52, 'souvenir_icon_empty'));
     px(this, valX, top + 70, String(stats.enemies), { origin: [0, 0.5] });
+    this.medalRow(stats.levelId, stats.timeMs, valX, top + 88);
 
     // Tally animation
     const still = reducedMotion();
@@ -152,6 +157,45 @@ export class ResultsScene extends Phaser.Scene {
     items.push({ label: 'REPLAY', onSelect: () => transitionTo(this, 'Level', { levelId: stats.levelId }) });
     items.push({ label: 'WORLD MAP', onSelect: () => transitionTo(this, 'WorldMap'), sound: 'menu-back' });
     createMenu(this, items, GAME_WIDTH / 2, world ? 204 : 186, 18, { width: 150, panel: true });
+
+    // Celebrate anything this clear unlocked (secret hero, outfits).
+    const report = saveSystem.lastCompletion;
+    if (report && report.levelId === stats.levelId && report.unlocked.length) {
+      const keys = report.unlocked;
+      report.unlocked = [];
+      this.time.delayedCall(still ? 300 : 1700, () => {
+        if (this.sys.isActive()) UnlockScene.show(this, keys);
+      });
+    }
+  }
+
+  /** Time-trial medal for this run, "NEW MEDAL!" and the next target time. */
+  private medalRow(levelId: string, timeMs: number, x: number, y: number): void {
+    const medal = medalFor(levelId, timeMs);
+    const report = saveSystem.lastCompletion;
+    const prev = report && report.levelId === levelId ? report.previousMedal : undefined;
+    const best = saveSystem.get().levels[levelId]?.medal;
+    const img = icon(this, x + 4, y, medal ? `medal_${medal}` : 'medal_empty');
+    const label = px(this, x + 14, y, medal ? medal.toUpperCase() : 'NONE', {
+      origin: [0, 0.5],
+      color: medal === 'gold' ? COLORS.gold : medal ? COLORS.text : COLORS.dim,
+    });
+    const tx = x + 14 + label.width + 8;
+    if (medal && medalRank(medal) > medalRank(prev)) {
+      const nm = px(this, tx, y, 'NEW MEDAL!', { origin: [0, 0.5], color: COLORS.red });
+      if (!reducedMotion()) {
+        img.setScale(0);
+        this.time.delayedCall(900, () => {
+          audio.sfx('secret');
+          this.tweens.add({ targets: img, scale: 1, duration: 300, ease: 'Back.out' });
+        });
+        this.tweens.add({ targets: nm, alpha: 0.3, duration: 300, yoyo: true, repeat: -1 });
+      }
+      return;
+    }
+    // Next target to chase (whole seconds keeps the row inside the panel).
+    const goal = nextMedal(levelId, best ?? medal);
+    if (goal) px(this, tx, y, `▶${goal.medal.toUpperCase()} ${formatTarget(goal.timeMs)}`, { origin: [0, 0.5], color: COLORS.dim });
   }
 
   update(_t: number, delta: number): void {

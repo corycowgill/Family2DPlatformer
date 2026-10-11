@@ -6,9 +6,39 @@
       "json": "assets/ambient.json"
     },
     {
+      "key": "brennan-elf",
+      "png": "assets/characters/brennan-elf.png",
+      "json": "assets/characters/brennan-elf.json"
+    },
+    {
+      "key": "brennan-knight",
+      "png": "assets/characters/brennan-knight.png",
+      "json": "assets/characters/brennan-knight.json"
+    },
+    {
+      "key": "brennan-raccoon",
+      "png": "assets/characters/brennan-raccoon.png",
+      "json": "assets/characters/brennan-raccoon.json"
+    },
+    {
       "key": "brennan",
       "png": "assets/characters/brennan.png",
       "json": "assets/characters/brennan.json"
+    },
+    {
+      "key": "dad-flame",
+      "png": "assets/characters/dad-flame.png",
+      "json": "assets/characters/dad-flame.json"
+    },
+    {
+      "key": "dad-hardhat",
+      "png": "assets/characters/dad-hardhat.png",
+      "json": "assets/characters/dad-hardhat.json"
+    },
+    {
+      "key": "dad-raccoon",
+      "png": "assets/characters/dad-raccoon.png",
+      "json": "assets/characters/dad-raccoon.json"
     },
     {
       "key": "dad",
@@ -16,14 +46,79 @@
       "json": "assets/characters/dad.json"
     },
     {
+      "key": "grandma-gardener",
+      "png": "assets/characters/grandma-gardener.png",
+      "json": "assets/characters/grandma-gardener.json"
+    },
+    {
+      "key": "grandma-princess",
+      "png": "assets/characters/grandma-princess.png",
+      "json": "assets/characters/grandma-princess.json"
+    },
+    {
+      "key": "grandma-sporty",
+      "png": "assets/characters/grandma-sporty.png",
+      "json": "assets/characters/grandma-sporty.json"
+    },
+    {
+      "key": "grandma",
+      "png": "assets/characters/grandma.png",
+      "json": "assets/characters/grandma.json"
+    },
+    {
+      "key": "lupin-bee",
+      "png": "assets/characters/lupin-bee.png",
+      "json": "assets/characters/lupin-bee.json"
+    },
+    {
+      "key": "lupin-cape",
+      "png": "assets/characters/lupin-cape.png",
+      "json": "assets/characters/lupin-cape.json"
+    },
+    {
+      "key": "lupin-firefighter",
+      "png": "assets/characters/lupin-firefighter.png",
+      "json": "assets/characters/lupin-firefighter.json"
+    },
+    {
       "key": "lupin",
       "png": "assets/characters/lupin.png",
       "json": "assets/characters/lupin.json"
     },
     {
+      "key": "mom-cat",
+      "png": "assets/characters/mom-cat.png",
+      "json": "assets/characters/mom-cat.json"
+    },
+    {
+      "key": "mom-chef",
+      "png": "assets/characters/mom-chef.png",
+      "json": "assets/characters/mom-chef.json"
+    },
+    {
+      "key": "mom-wand",
+      "png": "assets/characters/mom-wand.png",
+      "json": "assets/characters/mom-wand.json"
+    },
+    {
       "key": "mom",
       "png": "assets/characters/mom.png",
       "json": "assets/characters/mom.json"
+    },
+    {
+      "key": "parker-cap",
+      "png": "assets/characters/parker-cap.png",
+      "json": "assets/characters/parker-cap.json"
+    },
+    {
+      "key": "parker-dino",
+      "png": "assets/characters/parker-dino.png",
+      "json": "assets/characters/parker-dino.json"
+    },
+    {
+      "key": "parker-propeller",
+      "png": "assets/characters/parker-propeller.png",
+      "json": "assets/characters/parker-propeller.json"
     },
     {
       "key": "parker",
@@ -224,20 +319,96 @@
       "path": "assets/tilesets/chicago-tiles.png"
     },
     {
+      "key": "portrait-brennan-elf",
+      "path": "assets/ui/portrait-brennan-elf.png"
+    },
+    {
+      "key": "portrait-brennan-knight",
+      "path": "assets/ui/portrait-brennan-knight.png"
+    },
+    {
+      "key": "portrait-brennan-raccoon",
+      "path": "assets/ui/portrait-brennan-raccoon.png"
+    },
+    {
       "key": "portrait-brennan",
       "path": "assets/ui/portrait-brennan.png"
+    },
+    {
+      "key": "portrait-dad-flame",
+      "path": "assets/ui/portrait-dad-flame.png"
+    },
+    {
+      "key": "portrait-dad-hardhat",
+      "path": "assets/ui/portrait-dad-hardhat.png"
+    },
+    {
+      "key": "portrait-dad-raccoon",
+      "path": "assets/ui/portrait-dad-raccoon.png"
     },
     {
       "key": "portrait-dad",
       "path": "assets/ui/portrait-dad.png"
     },
     {
+      "key": "portrait-grandma-gardener",
+      "path": "assets/ui/portrait-grandma-gardener.png"
+    },
+    {
+      "key": "portrait-grandma-princess",
+      "path": "assets/ui/portrait-grandma-princess.png"
+    },
+    {
+      "key": "portrait-grandma-sporty",
+      "path": "assets/ui/portrait-grandma-sporty.png"
+    },
+    {
+      "key": "portrait-grandma",
+      "path": "assets/ui/portrait-grandma.png"
+    },
+    {
+      "key": "portrait-lupin-bee",
+      "path": "assets/ui/portrait-lupin-bee.png"
+    },
+    {
+      "key": "portrait-lupin-cape",
+      "path": "assets/ui/portrait-lupin-cape.png"
+    },
+    {
+      "key": "portrait-lupin-firefighter",
+      "path": "assets/ui/portrait-lupin-firefighter.png"
+    },
+    {
       "key": "portrait-lupin",
       "path": "assets/ui/portrait-lupin.png"
     },
     {
+      "key": "portrait-mom-cat",
+      "path": "assets/ui/portrait-mom-cat.png"
+    },
+    {
+      "key": "portrait-mom-chef",
+      "path": "assets/ui/portrait-mom-chef.png"
+    },
+    {
+      "key": "portrait-mom-wand",
+      "path": "assets/ui/portrait-mom-wand.png"
+    },
+    {
       "key": "portrait-mom",
       "path": "assets/ui/portrait-mom.png"
+    },
+    {
+      "key": "portrait-parker-cap",
+      "path": "assets/ui/portrait-parker-cap.png"
+    },
+    {
+      "key": "portrait-parker-dino",
+      "path": "assets/ui/portrait-parker-dino.png"
+    },
+    {
+      "key": "portrait-parker-propeller",
+      "path": "assets/ui/portrait-parker-propeller.png"
     },
     {
       "key": "portrait-parker",

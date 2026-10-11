@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH } from '../config';
 import { EV, type PickupKind } from '../types';
 import { gameState } from '../state/GameState';
-import { IMAGES } from '../data/assets';
+import { heroPortrait } from '../ui/CharacterArt';
 import { CHARACTERS } from '../characters';
 import type { LevelScene } from './LevelScene';
 import { TouchControls } from '../ui/TouchControls';
@@ -18,7 +18,7 @@ import { showLevelCard } from '../story/LevelCard';
 import { playBossIntro } from '../story/BossIntro';
 
 const POWERUP_ICON: Partial<Record<PickupKind, string>> = { star: 'star_icon', ctaPass: 'pass', hotdog: 'hotdog', pizza: 'pizza' };
-const ABILITY_SHORT: Record<string, string> = { groundPound: 'POUND', airJump: 'SPARKLE', dash: 'DASH', projectile: 'BLAST', sniff: 'SNIFF' };
+const ABILITY_SHORT: Record<string, string> = { groundPound: 'POUND', airJump: 'SPARKLE', dash: 'DASH', projectile: 'BLAST', sniff: 'SNIFF', panSpin: 'SPIN' };
 
 /** Heads-up display, runs above LevelScene and listens to its events. */
 export class HUDScene extends Phaser.Scene {
@@ -53,7 +53,7 @@ export class HUDScene extends Phaser.Scene {
 
     // --- Top-left: portrait, hearts, lives badge, ability gauge
     const g = this.add.graphics();
-    const portraitKey = IMAGES.portrait(gameState.character);
+    const portraitKey = heroPortrait(this);
     if (this.textures.exists(portraitKey)) this.add.image(7, 7, portraitKey).setOrigin(0).setDisplaySize(24, 24);
     const livesT = px(this, 33, 30, '', { origin: [1, 1] });
     const hearts: Phaser.GameObjects.Image[] = [];

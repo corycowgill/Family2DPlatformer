@@ -12,7 +12,8 @@ import { CameraSystem } from '../systems/CameraSystem';
 import { audio } from '../systems/AudioSystem';
 import { saveSystem } from '../systems/SaveSystem';
 import { REQUEST_PAUSE } from '../systems/InputDevice';
-import { animKey } from '../systems/AnimationSystem';
+import { animKey, playAnim } from '../systems/AnimationSystem';
+import { heroTexture } from '../ui/CharacterArt';
 import { gameState } from '../state/GameState';
 import { Parallax } from '../world/Parallax';
 import { getSpawner } from '../world/registry';
@@ -126,6 +127,12 @@ export class LevelScene extends Phaser.Scene {
 
     const def = getCharacter(gameState.character);
     this.player = new Player(this, this.spawnPoint.x, this.spawnPoint.y, def);
+    // Costume (cosmetic only): same frame names / anims, different atlas.
+    const skin = heroTexture(this, def.id);
+    if (skin !== def.id) {
+      this.player.setTexture(skin);
+      playAnim(this.player, 'idle');
+    }
 
     const scene = this;
     this.ctx = {

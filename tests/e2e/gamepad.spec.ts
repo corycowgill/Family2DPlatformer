@@ -360,7 +360,8 @@ test.describe('Xbox controller', () => {
     await waitForScene(page, 'Menu');
     await connect(page);
     await page.waitForTimeout(400);
-    // PLAY, (CONTINUE disabled), CHARACTER SELECT, SETTINGS
+    // PLAY, (CONTINUE disabled), CHARACTER SELECT, COLLECTION, SETTINGS
+    await tap(page, BTN.DOWN);
     await tap(page, BTN.DOWN);
     await tap(page, BTN.DOWN);
     await tap(page, BTN.A);
