@@ -61,7 +61,10 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Opt-in: the game is hosted on Render (render.yaml). Set the repository variable
+    # ENABLE_PAGES=true (Settings > Secrets and variables > Actions > Variables) and
+    # Pages source = GitHub Actions to also publish to GitHub Pages.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_PAGES == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write
