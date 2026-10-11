@@ -14,6 +14,8 @@ import { reducedMotion } from '../ui/Transitions';
 import { audio } from '../systems/AudioSystem';
 import { prompt } from '../ui/Prompts';
 import { attachRumble } from '../ui/PadOverlay';
+import { showLevelCard } from '../story/LevelCard';
+import { playBossIntro } from '../story/BossIntro';
 
 const POWERUP_ICON: Partial<Record<PickupKind, string>> = { star: 'star_icon', ctaPass: 'pass', hotdog: 'hotdog', pizza: 'pizza' };
 const ABILITY_SHORT: Record<string, string> = { groundPound: 'POUND', airJump: 'SPARKLE', dash: 'DASH', projectile: 'BLAST', sniff: 'SNIFF' };
@@ -29,6 +31,7 @@ export class HUDScene extends Phaser.Scene {
   private boss?: { c: Phaser.GameObjects.Container; bar: Phaser.GameObjects.Graphics; name: Phaser.GameObjects.BitmapText; hp: number; max: number; shown: number };
   private toastQueue: { text: string; color: number }[] = [];
   private toastBusy = false;
+  private inBossIntro = false;
 
   constructor() {
     super('HUD');
@@ -40,6 +43,7 @@ export class HUDScene extends Phaser.Scene {
     this.boss = undefined;
     this.toastQueue = [];
     this.toastBusy = false;
+    this.inBossIntro = false;
     this.abilityRemaining = 0;
   }
 
@@ -120,8 +124,8 @@ export class HUDScene extends Phaser.Scene {
     setCoins(lv.stats?.coins ?? 0, false);
     (lv.stats?.souvenirs ?? []).forEach((i) => setSouvenir(i, false));
 
-    // --- Level intro banner
-    this.banner(`${lv.level.number}`, lv.level.name.toUpperCase());
+    // --- Level intro card (hero portrait, level number + name, flavour line)
+    showLevelCard(this, lv.level, gameState.character);
 
     // --- Event wiring
     const ev = lv.events;
@@ -144,10 +148,19 @@ export class HUDScene extends Phaser.Scene {
       [EV.POWERUP_END, (k: PickupKind) => this.powerupEnd(k)],
       [EV.BOSS_START, (name: string, max: number) => {
         levelT.setVisible(false);
-        this.bossStart(name, max);
+        // Cinematic beat first (letterbox, camera on the boss, name card), then the HP bar.
+        this.inBossIntro = true;
+        this.touch.suppressed = true;
+        playBossIntro(this, lv, name, () => {
+          this.inBossIntro = false;
+          this.touch.suppressed = false;
+          levelT.setVisible(false);
+          if (this.sys.isActive()) this.bossStart(name, max);
+        });
       }],
       [EV.BOSS_HEALTH, (hp: number, max: number) => this.bossHealth(hp, max)],
       [EV.BOSS_PHASE, (phase: number) => {
+        if (this.inBossIntro && phase === 1) return; // the intro card already announces the fight
         this.toast(`PHASE ${phase}!`, COLORS.red);
         if (!reducedMotion()) this.cameras.main.flash(120, 255, 80, 80);
       }],
@@ -251,27 +264,6 @@ export class HUDScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.8).fillRect(x, y, Math.round((w * b.shown) / b.max), 5);
     g.fillStyle(COLORS.red, 1).fillRect(x, y, Math.round((w * b.hp) / b.max), 5);
     g.fillStyle(0xff9aa4, 1).fillRect(x, y, Math.round((w * b.hp) / b.max), 1);
-  }
-
-  private banner(big: string, small: string): void {
-    const c = this.add.container(GAME_WIDTH / 2, 92).setDepth(500);
-    const g = this.add.graphics();
-    g.fillStyle(COLORS.ink, 0.7).fillRect(-GAME_WIDTH / 2, -22, GAME_WIDTH, 44);
-    g.fillStyle(COLORS.skyBlue, 1).fillRect(-GAME_WIDTH / 2, -22, GAME_WIDTH, 1).fillRect(-GAME_WIDTH / 2, 21, GAME_WIDTH, 1);
-    c.add([g, px(this, 0, -8, `WORLD ${big}`, { scale: 2, color: COLORS.gold }), px(this, 0, 11, small, { color: COLORS.text })]);
-    if (reducedMotion()) {
-      this.tweens.add({ targets: c, alpha: 0, delay: 1600, duration: 300, onComplete: () => c.destroy() });
-      return;
-    }
-    c.setX(GAME_WIDTH * 1.5);
-    this.tweens.chain({
-      targets: c,
-      tweens: [
-        { x: GAME_WIDTH / 2, duration: 350, ease: 'Cubic.out' },
-        { x: -GAME_WIDTH / 2, duration: 350, delay: 1300, ease: 'Cubic.in' },
-      ],
-      onComplete: () => c.destroy(),
-    });
   }
 
   toast(text: string, color: number = COLORS.text): void {

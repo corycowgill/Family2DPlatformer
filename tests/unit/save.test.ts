@@ -230,3 +230,46 @@ describe('SaveSystem with throwing storage', () => {
     expect(JSON.parse(spy.mock.calls[0][1])).toEqual(defaultSave());
   });
 });
+
+describe('SaveSystem story flags (seenIntro / seenEnding)', () => {
+  it('default to false', () => {
+    const d = new SaveSystem(new MemStorage()).get();
+    expect(d.seenIntro).toBe(false);
+    expect(d.seenEnding).toBe(false);
+  });
+
+  it('round-trip through storage', () => {
+    const storage = new MemStorage();
+    const a = new SaveSystem(storage);
+    a.update((d) => {
+      d.seenIntro = true;
+      d.seenEnding = true;
+    });
+    const b = new SaveSystem(storage).get();
+    expect(b.seenIntro).toBe(true);
+    expect(b.seenEnding).toBe(true);
+  });
+
+  it('only accept real booleans', () => {
+    for (const bad of ['true', 1, null, {}, []]) {
+      const d = sanitizeSave({ ...defaultSave(), seenIntro: bad, seenEnding: bad });
+      expect(d.seenIntro).toBe(false);
+      expect(d.seenEnding).toBe(false);
+    }
+  });
+
+  it('are missing from old saves → false, other progress kept', () => {
+    const old = { version: SAVE_VERSION, unlocked: ['loop-1', 'loop-2'], totalCoins: 7 };
+    const d = new SaveSystem(withRaw(JSON.stringify(old))).get();
+    expect(d.seenIntro).toBe(false);
+    expect(d.seenEnding).toBe(false);
+    expect(d.totalCoins).toBe(7);
+  });
+
+  it('reset() clears them (a fresh save sees the intro again)', () => {
+    const sys = new SaveSystem(new MemStorage());
+    sys.update((d) => (d.seenIntro = true));
+    sys.reset();
+    expect(sys.get().seenIntro).toBe(false);
+  });
+});

@@ -31,6 +31,10 @@ export interface SaveData {
   levels: Record<string, LevelRecord>;
   totalCoins: number;
   worldsCompleted: number[];
+  /** The opening story has been shown (or skipped) once. */
+  seenIntro: boolean;
+  /** The World 1 ending has been reached — unlocks rewatching it from Extras. */
+  seenEnding: boolean;
   settings: Settings;
 }
 
@@ -52,6 +56,8 @@ export function defaultSave(): SaveData {
     levels: {},
     totalCoins: 0,
     worldsCompleted: [],
+    seenIntro: false,
+    seenEnding: false,
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -92,6 +98,8 @@ export function sanitizeSave(raw: unknown): SaveData {
   }
   if (typeof r.totalCoins === 'number' && r.totalCoins >= 0) out.totalCoins = Math.floor(r.totalCoins);
   if (Array.isArray(r.worldsCompleted)) out.worldsCompleted = r.worldsCompleted.filter((n): n is number => Number.isInteger(n));
+  out.seenIntro = r.seenIntro === true;
+  out.seenEnding = r.seenEnding === true;
   if (r.settings && typeof r.settings === 'object') {
     const s = r.settings as Record<string, unknown>;
     out.settings = {

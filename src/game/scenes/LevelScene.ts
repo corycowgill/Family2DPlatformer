@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { DEBUG, DEPTH, GAME_HEIGHT, TILE_SIZE } from '../config';
-import { EV, type LevelInfo, type PickupKind } from '../types';
+import { EMPTY_INPUT, EV, type LevelInfo, type PickupKind } from '../types';
 import { getLevel, FIRST_LEVEL_ID } from '../data/levels';
 import { LAYERS, TILESET_KEY, TILESET_NAME } from '../data/tiles';
 import { getCharacter } from '../characters';
@@ -20,6 +20,7 @@ import '../world/registerAll';
 import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { Checkpoint } from '../entities/Triggers';
 import { LevelFx } from '../fx/LevelFx';
+import { CINEMATIC_END } from '../story/BossIntro';
 
 export interface LevelSceneData {
   levelId: string;
@@ -57,6 +58,8 @@ export class LevelScene extends Phaser.Scene {
   private debugGfx?: Phaser.GameObjects.Text;
   /** When true (tests), update() steps only via `stepFrames`. */
   manualStep = false;
+  /** Active cinematic beat (boss intro): player input held, camera eased onto `focus`. */
+  private cine?: { until: number; focus?: { x: number; y: number } };
 
   constructor() {
     super('Level');
@@ -68,6 +71,7 @@ export class LevelScene extends Phaser.Scene {
     this.finished = false;
     this.respawning = false;
     this.checkpoints = [];
+    this.cine = undefined;
     gameState.beginLevel(this.level.id);
     this.stats = { levelId: this.level.id, timeMs: 0, coins: 0, souvenirs: [], stars: 0, enemies: 0, deaths: 0 };
   }
@@ -323,17 +327,62 @@ export class LevelScene extends Phaser.Scene {
     this.step(delta);
   }
 
+  /**
+   * Start a short cinematic beat (boss intro): for `ms` of level time the player's input is
+   * held (pause still works; JUMP skips) and the camera eases onto `focus`. Emits
+   * CINEMATIC_END when it ends.
+   */
+  cinematic(ms: number, focus?: { x: number; y: number }): void {
+    this.cine = { until: this.levelTime + ms, focus };
+  }
+
+  get inCinematic(): boolean {
+    return !!this.cine;
+  }
+
+  endCinematic(): void {
+    if (!this.cine) return;
+    this.cine = undefined;
+    const cam = this.cameras.main;
+    if (cam.zoom !== 1) cam.zoomTo(1, 220, 'Sine.easeInOut', true);
+    this.events.emit(CINEMATIC_END);
+  }
+
+  /** Position of the boss called `name` (boss intro camera focus). */
+  findBoss(name: string): { x: number; y: number } | undefined {
+    const e = this.ctx.groups.enemies.getChildren().find((o) => (o as unknown as { bossName?: string }).bossName === name);
+    return e ? { x: (e as Phaser.GameObjects.Sprite).x, y: (e as Phaser.GameObjects.Sprite).y } : undefined;
+  }
+
+  private updateCinematicCamera(dt: number): void {
+    const cam = this.cameras.main;
+    const f = this.cine?.focus;
+    if (!f) return;
+    const k = Math.min(1, (dt / 1000) * 5);
+    const cx = cam.midPoint.x + (f.x - cam.midPoint.x) * k;
+    const cy = cam.midPoint.y + (f.y - cam.midPoint.y) * k;
+    if (!saveSystem.get().settings.reducedMotion) cam.setZoom(cam.zoom + (1.3 - cam.zoom) * k);
+    cam.centerOn(cx, cy);
+  }
+
   /** One simulation step (also driven by the test harness). */
   step(delta: number): void {
     const dt = Math.min(delta, 1000 / 30);
-    const input = this.inputSys.update();
+    let input = this.inputSys.update();
     if (input.pausePressed && !this.finished && this.player.isAlive()) {
       this.pauseGame();
       return;
     }
+    if (this.cine) {
+      // JUMP skips the beat; that press is swallowed so the hero doesn't also jump.
+      const skip = input.jumpPressed;
+      if (skip || this.levelTime >= this.cine.until || !this.player.isAlive()) this.endCinematic();
+      if (this.cine || skip) input = { ...EMPTY_INPUT };
+    }
     if (!this.finished) this.levelTime += dt;
     this.player.tick(input, dt);
-    this.cameraSys.update(dt);
+    if (this.cine) this.updateCinematicCamera(dt);
+    else this.cameraSys.update(dt);
     this.parallax.update();
     this.fx.update(dt);
     if (this.debugGfx) this.updateDebug();

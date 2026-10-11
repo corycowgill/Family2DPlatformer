@@ -38,6 +38,9 @@ Unit (`tests/unit`):
   layers, entity objects, checkpoint indexing, `@objects`, decor grids, errors (unknown chars,
   unknown tiles, missing/duplicate playerStart, missing goal); every `tools/levels/src/*.txt`
   compiles; every registered level whose JSON exists has ground/entities/playerStart/goal.
+- `story.test.ts` — cutscene text helpers (`wrapText`, typewriter slicing), the cutscene auto-play
+  rule (`storyAllowed`: off for `?test`/`?debug`/`?level`/`?screen`/`?nointro` and automated browsers,
+  forced on by `?story`), intro panels / level taglines / boss cards / ending credits data.
 - Movement-motor tests belong to the player team (`tests/unit/motor.test.ts`).
 - `gamepad.test.ts` — controller mapping: radial dead zone, crouch angle threshold, trigger
   threshold, A/X/B/RT/Menu/View mapping, run + jump together, `resetEdges` (A held from the map
@@ -75,6 +78,11 @@ E2E (`tests/e2e`):
 - `bot.spec.ts` — bot completes the test level with all five characters (damage on); widened
   gap; impassable wall ⇒ stuck report; every existing `LEVELS` map with every character
   (invulnerable; **warning only**, with screenshot + JSON attachments).
+- `story.spec.ts` — `?story`: PLAY on a new save plays the opening comic, ENTER advances / ESC skips to
+  character select, `seenIntro` persists and PLAY skips it next time; without `?story` automation never
+  sees it; tap-through; level intro card texts; boss intro beat (letterbox card, input held, then the HP
+  bar; JUMP skips); boss clear → Results CONTINUE → ending beats (flag → credits → teaser) → world map,
+  `seenEnding`, Extras rewatch.
 - `perf.spec.ts` — FPS over 5 s of scripted play (report; warns below 50 fps);
   10 level restarts: textures / listeners / bodies / display list stable, heap growth reported.
 

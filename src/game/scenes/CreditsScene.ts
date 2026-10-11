@@ -43,9 +43,14 @@ export class CreditsScene extends Phaser.Scene {
   private roll!: Phaser.GameObjects.Container;
   private speed = 24;
   private done = false;
+  private back = 'Menu';
 
   constructor() {
     super('Credits');
+  }
+
+  init(data: { back?: string } = {}): void {
+    this.back = data?.back ?? 'Menu';
   }
 
   create(): void {
@@ -90,7 +95,7 @@ export class CreditsScene extends Phaser.Scene {
     if (this.done) return;
     this.done = true;
     audio.sfx('menu-back');
-    transitionTo(this, 'Menu');
+    transitionTo(this, this.back);
   }
 
   update(_t: number, delta: number): void {

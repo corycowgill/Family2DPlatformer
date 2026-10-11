@@ -70,7 +70,7 @@ export class ResultsScene extends Phaser.Scene {
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.ink, 0.45).setOrigin(0);
     const lvl = getLevel(stats.levelId);
     const world = !!data.worldComplete && (lvl?.world ?? 0) > 0;
-    const title = px(this, GAME_WIDTH / 2, 22, world ? 'THE LOOP IS SAVED!' : 'LEVEL CLEAR!', { scale: world ? 2 : 3, color: COLORS.gold });
+    const title = px(this, GAME_WIDTH / 2, 22, world ? `WORLD ${lvl?.world ?? 1} CLEAR!` : 'LEVEL CLEAR!', { scale: world ? 2 : 3, color: COLORS.gold });
     if (!reducedMotion()) {
       const s = title.scale;
       title.setScale(0.1);
@@ -135,8 +135,8 @@ export class ResultsScene extends Phaser.Scene {
     });
 
     if (world) {
-      px(this, GAME_WIDTH / 2, 170, 'BUT STRANGE LIGHTS ARE GATHERING OVER LINCOLN PARK...', { color: COLORS.skyBlue });
-      px(this, GAME_WIDTH / 2, 181, 'THE ALIEN INVASION HAS ONLY JUST BEGUN!', { color: COLORS.skyBlue });
+      px(this, GAME_WIDTH / 2, 170, 'THE EL-IMINATOR IS DOWN... BUT THE STORY', { color: COLORS.skyBlue });
+      px(this, GAME_WIDTH / 2, 181, "ISN'T OVER YET!", { color: COLORS.skyBlue });
       audio.stopMusic();
       audio.music('worldclear');
     } else {
@@ -147,7 +147,8 @@ export class ResultsScene extends Phaser.Scene {
 
     const items: MenuItem[] = [];
     if (lvl?.next) items.push({ label: 'NEXT LEVEL', onSelect: () => transitionTo(this, 'Level', { levelId: lvl.next }) });
-    if (world) items.push({ label: 'CREDITS', onSelect: () => transitionTo(this, 'Credits') });
+    // World complete → the ending (family on the L at sunset, credits, World 2 teaser) → world map.
+    if (world) items.push({ label: 'CONTINUE', onSelect: () => transitionTo(this, 'Ending') });
     items.push({ label: 'REPLAY', onSelect: () => transitionTo(this, 'Level', { levelId: stats.levelId }) });
     items.push({ label: 'WORLD MAP', onSelect: () => transitionTo(this, 'WorldMap'), sound: 'menu-back' });
     createMenu(this, items, GAME_WIDTH / 2, world ? 204 : 186, 18, { width: 150, panel: true });
