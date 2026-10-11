@@ -18,7 +18,7 @@ export interface ThemeAnchors {
 export const LAYER_WIDTH = 960;
 export const CLOUD_LAYER = { width: 640, height: 176 };
 
-export const AMBIENT_ANCHORS: Record<LevelTheme, ThemeAnchors> = {
+export const AMBIENT_ANCHORS: Partial<Record<LevelTheme, ThemeAnchors>> = {
   day: {
     windows: { far: [], mid: [] },
     glints: [714, 128, 755, 181, 50, 197, 547, 197, 186, 192, 858, 158, 485, 187, 265, 157, 403, 157, 4, 197],

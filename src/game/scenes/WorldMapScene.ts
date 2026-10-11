@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
-import { LEVELS } from '../data/levels';
+import { LEVELS, worldInfo } from '../data/levels';
+import { browserStoryAllowed } from '../story/storyData';
 import { saveSystem } from '../systems/SaveSystem';
 import { gameState } from '../state/GameState';
 import { audio } from '../systems/AudioSystem';
@@ -25,20 +26,44 @@ interface MapNode {
   levelId?: string;
   world?: number;
   blurb?: string;
+  /** Level number label side. */
+  labelLeft?: boolean;
+  plane?: boolean;
 }
 
-/** The Loop's elevated tracks form the World 1 path: up Wells, along Lake, down Wabash. */
-const LEVEL_POS: [number, number][] = [[268, 168], [268, 112], [352, 112], [352, 168]];
+/**
+ * Level node positions. World 1: the Loop's elevated tracks (up Wells, along Lake, down
+ * Wabash). World 2: up Lake Shore Drive into Lincoln Park, the lakefront, Wrigleyville and
+ * Wrigley Field itself.
+ */
+const LEVEL_POS: Record<string, { x: number; y: number; labelLeft?: boolean }> = {
+  'loop-1': { x: 268, y: 168, labelLeft: true },
+  'loop-2': { x: 268, y: 112, labelLeft: true },
+  'loop-3': { x: 352, y: 112 },
+  'loop-boss': { x: 352, y: 168 },
+  'north-1': { x: 346, y: 80 },
+  'north-2': { x: 360, y: 50 },
+  'north-3': { x: 314, y: 38, labelLeft: true },
+  'north-4': { x: 278, y: 20, labelLeft: true },
+};
 
+/** Waypoints walked when entering a level node from the previous one (reversed walking back). */
+const ROUTE_VIA: Record<string, [number, number][]> = {
+  // 1-4 → 2-1: east to Lake Shore Drive, north across the river mouth into Lincoln Park.
+  'north-1': [[384, 162], [386, 104], [372, 90]],
+  'north-3': [[340, 40]],
+};
+
+/** Neighbourhoods beyond the built worlds ("coming soon"). */
 const HOODS: MapNode[] = [
-  { kind: 'hood', x: 330, y: 64, name: 'LINCOLN PARK', world: 2, blurb: 'The zoo animals are acting very strange...' },
-  { kind: 'hood', x: 290, y: 26, name: 'WRIGLEYVILLE', world: 3, blurb: 'Something just landed on the scoreboard!' },
-  { kind: 'hood', x: 430, y: 128, name: 'NAVY PIER', world: 4, blurb: 'The Ferris wheel is spinning backwards.' },
-  { kind: 'hood', x: 398, y: 204, name: 'MUSEUM CAMPUS', world: 5, blurb: 'The dinosaur bones are on the move!' },
-  { kind: 'hood', x: 296, y: 214, name: 'CHINATOWN', world: 6, blurb: 'Dragon-shaped UFOs spotted overhead.' },
-  { kind: 'hood', x: 252, y: 250, name: 'THE SOUTH SIDE', world: 7, blurb: 'Rumours of an alien ground base...' },
-  { kind: 'hood', x: 66, y: 92, name: "O'HARE", world: 8, blurb: 'The mothership is coming in to land!' },
+  { kind: 'hood', x: 430, y: 128, name: 'NAVY PIER', world: 3, blurb: 'The Ferris wheel is spinning backwards.' },
+  { kind: 'hood', x: 398, y: 204, name: 'MUSEUM CAMPUS', world: 4, blurb: 'The dinosaur bones are on the move!' },
+  { kind: 'hood', x: 296, y: 214, name: 'CHINATOWN', world: 5, blurb: 'Dragon-shaped UFOs spotted overhead.' },
+  { kind: 'hood', x: 252, y: 250, name: 'THE SOUTH SIDE', world: 6, blurb: 'Rumours of an alien ground base...' },
+  { kind: 'hood', x: 66, y: 92, name: "O'HARE", world: 7, blurb: 'The mothership is coming in to land!', plane: true },
 ];
+
+const posOf = (id: string, i: number) => LEVEL_POS[id] ?? { x: 268 + (i % 4) * 20, y: 140 };
 
 const SHORE: [number, number][] = [[350, 0], [358, 40], [372, 80], [386, 104], [392, 130], [392, 172], [402, 204], [414, 240], [420, 270]];
 
@@ -72,7 +97,10 @@ export class WorldMapScene extends Phaser.Scene {
     this.walking = false;
     const save = saveSystem.get();
     this.nodes = [
-      ...LEVELS.map((l, i): MapNode => ({ kind: 'level', x: LEVEL_POS[i % 4][0], y: LEVEL_POS[i % 4][1], name: l.name.toUpperCase(), levelId: l.id })),
+      ...LEVELS.map((l, i): MapNode => {
+        const p = posOf(l.id, i);
+        return { kind: 'level', x: p.x, y: p.y, labelLeft: p.labelLeft, name: l.name.toUpperCase(), levelId: l.id, world: l.world };
+      }),
       ...HOODS,
     ];
     // Start on the furthest unlocked, not-yet-completed level (or the last remembered one).
@@ -96,7 +124,7 @@ export class WorldMapScene extends Phaser.Scene {
     const hg = this.add.graphics().setDepth(40);
     drawPanel(hg, 4, 4, 150, 30);
     px(this, 12, 13, 'CHICAGO', { scale: 2, origin: [0, 0.5], color: COLORS.gold }).setDepth(41);
-    px(this, 12, 27, save.worldsCompleted.includes(1) ? '★ THE LOOP IS SAVED!' : 'WORLD 1 · THE LOOP', { origin: [0, 0.5], color: COLORS.sub }).setDepth(41);
+    this.header = px(this, 12, 27, '', { origin: [0, 0.5], color: COLORS.sub }).setDepth(41);
     button(this, GAME_WIDTH - 30, 14, 'MENU', () => this.leave('Menu'), { sound: 'menu-back', depth: 40 });
     button(this, GAME_WIDTH - 80, 14, 'HERO', () => this.leave('CharacterSelect', { next: 'WorldMap' }), { depth: 40 });
 
@@ -167,8 +195,8 @@ export class WorldMapScene extends Phaser.Scene {
     // The Loop: dense downtown blocks + the elevated track rectangle
     g.fillStyle(0x4a5a6a, 1).fillRect(262, 106, 96, 68);
     for (let x = 266; x < 352; x += 8) for (let y = 110; y < 170; y += 8) g.fillStyle((x + y) % 16 ? 0x6b7b8c : 0x5c6b7c, 1).fillRect(x, y, 6, 6);
-    g.lineStyle(4, 0x2b2846, 1).strokeRect(LEVEL_POS[0][0], LEVEL_POS[1][1], LEVEL_POS[2][0] - LEVEL_POS[0][0], LEVEL_POS[0][1] - LEVEL_POS[1][1]);
-    g.lineStyle(1, 0x8b8fa8, 1).strokeRect(LEVEL_POS[0][0], LEVEL_POS[1][1], LEVEL_POS[2][0] - LEVEL_POS[0][0], LEVEL_POS[0][1] - LEVEL_POS[1][1]);
+    g.lineStyle(4, 0x2b2846, 1).strokeRect(268, 112, 84, 56);
+    g.lineStyle(1, 0x8b8fa8, 1).strokeRect(268, 112, 84, 56);
     px(this, 310, 140, 'THE LOOP', { color: COLORS.text });
     // Lake shimmer
     if (!reducedMotion()) {
@@ -182,11 +210,45 @@ export class WorldMapScene extends Phaser.Scene {
     }
   }
 
+  private header!: Phaser.GameObjects.BitmapText;
   private nodeGfx: Phaser.GameObjects.Graphics[] = [];
+
+  /** World 2's region: labels, the Wrigley Field ballpark and the Lake Shore Drive route. */
+  private drawNorthSide(g: Phaser.GameObjects.Graphics): void {
+    const open = saveSystem.isUnlocked('north-1');
+    // Wrigley Field: ivy-walled ballpark with an infield diamond.
+    const w = LEVEL_POS['north-4'];
+    g.fillStyle(0x1f3a26, 1).fillRect(w.x - 15, w.y - 12, 30, 24);
+    g.fillStyle(0x2f7a3a, 1).fillRect(w.x - 13, w.y - 10, 26, 20);
+    g.fillStyle(0xc89a5a, 1).fillTriangle(w.x, w.y + 9, w.x - 8, w.y + 1, w.x + 8, w.y + 1);
+    g.fillStyle(0xe8414e, 1).fillRect(w.x - 15, w.y - 12, 30, 2);
+    px(this, w.x + 18, w.y - 8, 'WRIGLEY FIELD', { origin: [0, 0.5], color: 0xd0d6e6 }).setDepth(11);
+    px(this, 302, 86, 'LINCOLN PARK', { color: 0xd0d6e6 }).setDepth(11);
+    // Route: a road when open, dashes while locked.
+    const ids = ['loop-boss', 'north-1', 'north-2', 'north-3', 'north-4'];
+    const pts: [number, number][] = [];
+    ids.forEach((id, i) => {
+      if (i > 0) for (const v of ROUTE_VIA[id] ?? []) pts.push(v);
+      pts.push([LEVEL_POS[id].x, LEVEL_POS[id].y]);
+    });
+    if (open) {
+      const vec = pts.map(([x, y]) => new Phaser.Math.Vector2(x, y));
+      g.lineStyle(4, 0x2b2846, 1).strokePoints(vec);
+      g.lineStyle(2, 0xd8c45a, 1).strokePoints(vec);
+    } else {
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, ay] = pts[i - 1];
+        const [bx, by] = pts[i];
+        const len = Math.hypot(bx - ax, by - ay);
+        for (let d = 4; d < len; d += 6) g.fillStyle(0xe8e0c8, 0.55).fillRect(Math.round(ax + ((bx - ax) * d) / len), Math.round(ay + ((by - ay) * d) / len), 2, 2);
+      }
+    }
+  }
 
   private drawNodes(): void {
     const save = saveSystem.get();
     const g = this.add.graphics().setDepth(5);
+    this.drawNorthSide(g);
     // Dashed routes from the Loop to the locked neighbourhoods
     const hub = { x: 310, y: 140 };
     for (const n of HOODS) {
@@ -210,13 +272,13 @@ export class WorldMapScene extends Phaser.Scene {
         if (done) px(this, n.x, n.y, '✓', { color: 0xffffff }).setDepth(11);
         else if (!unlocked) icon(this, n.x, n.y, 'lock').setDepth(11).setScale(0.75);
         const lvl = LEVELS[i];
-        const left = n.x < 300;
+        const left = !!n.labelLeft;
         px(this, n.x + (left ? -12 : 12), n.y, lvl.number, { origin: [left ? 1 : 0, 0.5], color: COLORS.text }).setDepth(11);
-        if (lvl.boss) px(this, n.x + 12, n.y + 10, 'BOSS', { origin: [0, 0.5], color: COLORS.red }).setDepth(11);
+        if (lvl.boss) px(this, n.x + (left ? -12 : 12), n.y + 10, 'BOSS', { origin: [left ? 1 : 0, 0.5], color: COLORS.red }).setDepth(11);
       } else {
         ng.fillStyle(COLORS.ink, 1).fillCircle(n.x, n.y, 8);
         ng.fillStyle(0x4b4466, 1).fillCircle(n.x, n.y, 7);
-        if (n.world === 8) icon(this, n.x, n.y, 'plane').setDepth(11);
+        if (n.plane) icon(this, n.x, n.y, 'plane').setDepth(11);
         else icon(this, n.x, n.y, 'lock').setDepth(11);
         const below = n.y < 230;
         px(this, n.x, n.y + (below ? 13 : -13), n.name, { color: 0xd0d6e6 }).setDepth(11);
@@ -263,9 +325,11 @@ export class WorldMapScene extends Phaser.Scene {
       const lvl = LEVELS[this.sel];
       const rec = save.levels[lvl.id];
       const unlocked = saveSystem.isUnlocked(lvl.id);
-      setPx(title, `WORLD 1-${lvl.number.split('-')[1]}${lvl.boss ? ' · BOSS' : ''}`);
+      setPx(title, `WORLD ${lvl.number}${lvl.boss ? ' · BOSS' : ''}`);
       setPx(name, n.name);
-      setPx(status, !unlocked ? `LOCKED - CLEAR ${LEVELS[this.sel - 1]?.number ?? ''} FIRST` : rec?.completed ? '✓ CLEARED' : 'NEW ADVENTURE!');
+      const prev = LEVELS[this.sel - 1];
+      const lockMsg = prev && prev.world !== lvl.world ? `LOCKED - SAVE ${worldInfo(prev.world).name} FIRST` : `LOCKED - CLEAR ${prev?.number ?? ''} FIRST`;
+      setPx(status, !unlocked ? lockMsg : rec?.completed ? '✓ CLEARED' : 'NEW ADVENTURE!');
       status.setTint(!unlocked ? COLORS.dim : rec?.completed ? COLORS.green : COLORS.gold);
       setPx(best, rec?.bestTimeMs ? `BEST TIME ${formatTime(rec.bestTimeMs)}` : 'BEST TIME --:--.--');
       setIcon(medal.setVisible(true), rec?.medal ? `medal_${rec.medal}` : 'medal_empty');
@@ -293,6 +357,9 @@ export class WorldMapScene extends Phaser.Scene {
       });
       play.container.setVisible(false);
     }
+    // Header: the selected level's world (or the one the hero stands in).
+    const w = n.kind === 'level' ? (n.world ?? 1) : (LEVELS[this.at]?.world ?? 1);
+    setPx(this.header, save.worldsCompleted.includes(w) ? worldInfo(w).savedLine : `WORLD ${w} · ${worldInfo(w).name}`);
     // Selection ring
     this.ring.clear();
     this.ring.lineStyle(2, COLORS.gold, 1).strokeCircle(n.x, n.y, n.kind === 'level' ? 10 : 11);
@@ -324,17 +391,24 @@ export class WorldMapScene extends Phaser.Scene {
         playAnim(this.walker, 'idle');
         return;
       }
+      const from = this.at;
       const t = this.nodes[k];
-      this.walker.setFlipX(t.x < this.walker.x);
-      const dist = Phaser.Math.Distance.Between(this.walker.x, this.walker.y, t.x, t.y + 3);
-      this.tweens.add({
-        targets: this.walker, x: t.x, y: t.y + 3, duration: reducedMotion() ? 1 : (dist / 110) * 1000,
-        onComplete: () => {
+      // Follow the route's waypoints (reversed when walking back down the path).
+      const via = k > from ? ROUTE_VIA[LEVELS[k].id] ?? [] : [...(ROUTE_VIA[LEVELS[from].id] ?? [])].reverse();
+      const pts = [...via.map(([x, y]) => ({ x, y })), { x: t.x, y: t.y }];
+      const leg = () => {
+        const p = pts.shift();
+        if (!p) {
           this.at = k;
           this.registry.set('mapIndex', k);
           stepNext();
-        },
-      });
+          return;
+        }
+        this.walker.setFlipX(p.x < this.walker.x);
+        const dist = Phaser.Math.Distance.Between(this.walker.x, this.walker.y, p.x, p.y + 3);
+        this.tweens.add({ targets: this.walker, x: p.x, y: p.y + 3, duration: reducedMotion() ? 1 : (dist / 110) * 1000, onComplete: leg });
+      };
+      leg();
     };
     stepNext();
   }
@@ -353,7 +427,14 @@ export class WorldMapScene extends Phaser.Scene {
     if (!reducedMotion()) this.tweens.add({ targets: this.walker, y: this.walker.y - 12, duration: 160, yoyo: true });
     this.registry.set('mapIndex', this.sel);
     gameState.resetLives();
-    this.time.delayedCall(350, () => transitionTo(this, 'Level', { levelId: n.levelId }));
+    // First time into World 2: the short North Side story, then straight into the level.
+    const lvl = LEVELS[this.sel];
+    const story = lvl.world === 2 && !saveSystem.hasSeenStory('world2-intro') && browserStoryAllowed();
+    this.time.delayedCall(350, () =>
+      story
+        ? transitionTo(this, 'Story', { story: 'world2', next: 'Level', nextData: { levelId: n.levelId } })
+        : transitionTo(this, 'Level', { levelId: n.levelId }),
+    );
   }
 
   private leave(key: string, data?: object): void {

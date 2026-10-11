@@ -288,3 +288,18 @@ describe('SaveSystem rewards fields', () => {
     expect(syncUnlocks(d)).toEqual([]);
   });
 });
+
+describe('World 2 collection', () => {
+  it('collection totals per world; Grandma still needs the World 1 boss', async () => {
+    const { collectionStats, worldBossBeaten, registeredWorlds, ruleMet } = await import('../../src/game/systems/Rewards');
+    expect(registeredWorlds()).toEqual([1, 2]);
+    const s = withLevels({ 'north-1': { souvenirs: [0, 1] }, 'loop-1': { souvenirs: [2] } });
+    expect(collectionStats(s, 2)).toMatchObject({ souvenirs: 2, souvenirsMax: 12, levelsCleared: 1, levelsTotal: 4 });
+    expect(collectionStats(s, 1)).toMatchObject({ souvenirs: 1, souvenirsMax: 12 });
+    expect(collectionStats(s)).toMatchObject({ souvenirs: 3, souvenirsMax: 24, levelsTotal: 8 });
+    const w2 = withLevels({ 'north-4': {} });
+    expect(worldBossBeaten(w2, 2)).toBe(true);
+    expect(worldBossBeaten(w2, 1)).toBe(false);
+    expect(ruleMet(w2, 'grandma')).toBe(false);
+  });
+});

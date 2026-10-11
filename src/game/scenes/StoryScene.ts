@@ -7,10 +7,13 @@ import { px } from '../ui/PixelFont';
 import { COLORS } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
 import { drawChicagoStar } from './MenuScene';
-import { INTRO_PANELS, type IntroPanel } from '../story/storyData';
+import { storyPanels, type IntroPanel, type StoryId } from '../story/storyData';
+import { isRealAsset } from '../ui/Icons';
 import { CaptionBox, CREAM, INK, cutsceneControls, drawElTrack, ensureStoryTextures, popIn, speechBubble, speedBurst, type CutsceneControls } from '../story/Cutscene';
 
 export interface StorySceneData {
+  /** Which comic: the opening story (default) or the World 2 beat. */
+  story?: StoryId;
   /** Scene to start afterwards (default: Menu). */
   next?: string;
   nextData?: object;
@@ -47,6 +50,7 @@ export class StoryScene extends Phaser.Scene {
   private finished = false;
   private data0: StorySceneData = {};
   private t = 0;
+  private panels: readonly IntroPanel[] = [];
 
   constructor() {
     super('Story');
@@ -54,6 +58,7 @@ export class StoryScene extends Phaser.Scene {
 
   init(data: StorySceneData): void {
     this.data0 = data ?? {};
+    this.panels = storyPanels(this.data0.story ?? 'intro');
     this.index = -1;
     this.current = undefined;
     this.finished = false;
@@ -68,7 +73,7 @@ export class StoryScene extends Phaser.Scene {
     this.drawPage();
     this.caption = new CaptionBox(this, PX0, PY0 + PH + 7, PW, 46);
     this.controls = cutsceneControls(this, { next: () => this.next(), skip: () => this.finish() });
-    audio.music('title');
+    audio.music(this.data0.story === 'world2' ? 'park' : 'title');
     this.goto(0);
     transitionIn(this);
     (window as unknown as { __story?: StoryScene }).__story = this;
@@ -84,7 +89,12 @@ export class StoryScene extends Phaser.Scene {
   }
 
   get panelCount(): number {
-    return INTRO_PANELS.length;
+    return this.panels.length;
+  }
+
+  /** Which story is playing (tests / debug). */
+  get storyId(): StoryId {
+    return this.data0.story ?? 'intro';
   }
 
   // ------------------------------------------------------------------ page
@@ -99,7 +109,7 @@ export class StoryScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 1).fillRect(PX0 - 3, PY0 - 3, PW + 6, PH + 6);
     g.fillStyle(INK, 1).fillRect(PX0 - 1, PY0 - 1, PW + 2, PH + 2);
     // Page dots (progress).
-    const n = INTRO_PANELS.length;
+    const n = this.panels.length;
     for (let i = 0; i < n; i++) {
       const d = this.add.graphics({ x: 22 + i * 10, y: 258 });
       this.dots.push(d);
@@ -125,17 +135,17 @@ export class StoryScene extends Phaser.Scene {
       this.caption.complete();
       return;
     }
-    if (this.index >= INTRO_PANELS.length - 1) this.finish();
+    if (this.index >= this.panels.length - 1) this.finish();
     else this.goto(this.index + 1);
   }
 
   goto(i: number): void {
-    if (i === this.index || i < 0 || i >= INTRO_PANELS.length) return;
+    if (i === this.index || i < 0 || i >= this.panels.length) return;
     const dir = i > this.index ? 1 : -1;
     const old = this.current;
     this.index = i;
     this.idleMs = 0;
-    const p = INTRO_PANELS[i];
+    const p = this.panels[i];
     this.current = this.buildPanel(p, i);
     this.drawDots();
     this.caption.say(p.caption);
@@ -165,7 +175,8 @@ export class StoryScene extends Phaser.Scene {
     this.finished = true;
     this.caption.complete();
     this.controls?.destroy();
-    saveSystem.update((d) => (d.seenIntro = true));
+    if (this.data0.story === 'world2') saveSystem.markStorySeen('world2-intro');
+    else saveSystem.update((d) => (d.seenIntro = true));
     audio.sfx('confirm');
     transitionTo(this, this.data0.next ?? 'Menu', this.data0.nextData);
   }
@@ -197,6 +208,9 @@ export class StoryScene extends Phaser.Scene {
       haywire: () => this.panelHaywire(root),
       pod: () => this.panelPod(root),
       rally: () => this.panelRally(root, p),
+      picnic: () => this.panelPicnic(root, p),
+      abduct: () => this.panelAbduct(root, p),
+      playball: () => this.panelPlayBall(root, p),
     }[p.id];
     built.update = build();
     if (p.tag) this.tag(root, p.tag);
@@ -518,6 +532,158 @@ export class StoryScene extends Phaser.Scene {
     });
     if (p.speech) {
       const b = speechBubble(this, PW / 2, 36, p.speech.text, { scale: 2, maxWidth: 400, shout: true });
+      root.add(b);
+      popIn(this, b, 700);
+      this.time.delayedCall(700, () => audio.sfx('powerup'));
+    }
+    return () => {};
+  }
+
+  // ------------------------------------------------------------------ World 2 panels
+
+  /** Park backdrop: the art agent's `park` parallax when shipped, else a drawn sunny park. */
+  private parkBackdrop(root: Phaser.GameObjects.Container, offX: number, ground = 140): void {
+    // Painted park backdrop once the art ships; generated placeholders don't count.
+    const real = isRealAsset(this, 'bg-park-sky');
+    if (real) this.bg(root, 'park', offX, -60, ['sky', 'clouds', 'far', 'mid']);
+    else {
+      const g = this.add.graphics();
+      g.fillGradientStyle(0x5aa8f0, 0x5aa8f0, 0xbfe6ff, 0xbfe6ff, 1).fillRect(0, 0, PW, ground);
+      // Distant skyline + treeline.
+      g.fillStyle(0x8fb0d0, 1);
+      for (let x = 0; x < PW; x += 26) g.fillRect(x, ground - 50 - ((x * 7) % 30), 18, 60);
+      for (let x = -10; x < PW + 20; x += 24) {
+        g.fillStyle(0x2f7a3a, 1).fillCircle(x, ground - 14 - ((x * 3) % 7), 18);
+        g.fillStyle(0x3f9a4a, 1).fillCircle(x - 4, ground - 18 - ((x * 3) % 7), 11);
+      }
+      root.add(g);
+    }
+    const lawn = this.add.graphics();
+    lawn.fillStyle(0x4f9a52, 1).fillRect(0, ground, PW, PH - ground);
+    lawn.fillStyle(0x6fbf5f, 1).fillRect(0, ground, PW, 2);
+    for (let x = 6; x < PW; x += 11) lawn.fillStyle(0x3f8a44, 1).fillRect(x, ground + 6 + ((x * 5) % 20), 2, 2);
+    root.add(lawn);
+  }
+
+  private ball(root: Phaser.GameObjects.Container, x: number, y: number): Phaser.GameObjects.Graphics {
+    const g = this.add.graphics({ x, y });
+    g.fillStyle(INK, 1).fillCircle(0, 0, 5);
+    g.fillStyle(0xd8f04a, 1).fillCircle(0, 0, 4);
+    g.lineStyle(1, 0xffffff, 1).beginPath().arc(-5, 0, 4, -0.9, 0.9).strokePath();
+    root.add(g);
+    return g;
+  }
+
+  // W2-1. Picnic in Lincoln Park.
+  private panelPicnic(root: Phaser.GameObjects.Container, p: IntroPanel): (dt: number, t: number) => void {
+    this.parkBackdrop(root, -80);
+    // Checked picnic blanket + basket.
+    const g = this.add.graphics();
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 2; j++) g.fillStyle((i + j) % 2 ? 0xe8414e : 0xfff3c4, 1).fillRect(130 + i * 14, 150 + j * 7, 14, 7);
+    g.fillStyle(0x8a5a2a, 1).fillRect(150, 138, 18, 12);
+    g.fillStyle(0xb07a3a, 1).fillRect(150, 138, 18, 3);
+    g.lineStyle(2, 0x8a5a2a, 1).strokeEllipse(159, 138, 14, 10);
+    root.add(g);
+    const xs = [140, 176, 214, 248];
+    ['dad', 'mom', 'parker', 'brennan'].forEach((id, k) => {
+      this.shadow(root, xs[k], 158, 16);
+      this.hero(root, id, xs[k], 159, 'idle', 1, k % 2 === 1);
+    });
+    this.shadow(root, 330, 161, 22);
+    const lupin = this.hero(root, 'lupin', 330, 162, 'idle', 1, true);
+    const ball = this.ball(root, 312, 150);
+    const still = reducedMotion();
+    if (!still) {
+      this.tweens.add({ targets: lupin, y: 157, duration: 200, yoyo: true, repeat: -1, repeatDelay: 600 });
+      this.tweens.add({ targets: ball, y: 120, duration: 420, yoyo: true, repeat: -1, ease: 'Quad.out' });
+    }
+    if (p.speech) {
+      const b = speechBubble(this, 360, 92, p.speech.text, { maxWidth: 120, tailRight: true });
+      root.add(b);
+      popIn(this, b, 500);
+    }
+    return () => {};
+  }
+
+  // W2-2. The tractor beam takes the ball and the Wrigley sign letters.
+  private panelAbduct(root: Phaser.GameObjects.Container, p: IntroPanel): (dt: number, t: number) => void {
+    this.parkBackdrop(root, -300, 150);
+    const dim = this.add.rectangle(0, 0, PW, PH, 0x0b2a30, 0.25).setOrigin(0);
+    root.add(dim);
+    // The famous red marquee, now missing its letters.
+    const m = this.add.graphics({ x: 96, y: 52 });
+    m.fillStyle(0x2a2a30, 1).fillRect(-4, 26, 8, 72);
+    m.fillStyle(0x6a1018, 1).fillRect(-58, -2, 116, 30);
+    m.fillStyle(0xc8202e, 1).fillRect(-56, 0, 112, 26);
+    m.fillStyle(0xffffff, 1).fillRect(-56, 0, 112, 1);
+    for (let x = -54; x <= 54; x += 6) m.fillStyle(0xffe08a, 1).fillRect(x, -2, 2, 1).fillRect(x, 27, 2, 1);
+    root.add(m);
+    const beam = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    root.add(beam);
+    const pod = this.add.sprite(300, 70, 'overseer').setOrigin(0.5, 1).setScale(0.8);
+    playAnim(pod, 'attack');
+    root.add(pod);
+    const still = reducedMotion();
+    // Letters float from the sign into the beam.
+    const letters = 'WRIGLEY'.split('').map((ch, k) => {
+      const t = px(this, 66 + k * 10, 64, ch, { scale: 2, color: 0xffffff }).setDepth(2);
+      root.add(t);
+      if (!still) {
+        this.tweens.add({ targets: t, x: 300 + (k - 3) * 14, y: 112 - Math.abs(k - 3) * 8, angle: (k % 2 ? 1 : -1) * 30, delay: 500 + k * 160, duration: 1800, ease: 'Sine.inOut' });
+      } else t.setPosition(300 + (k - 3) * 14, 112);
+      return t;
+    });
+    void letters;
+    const ball = this.ball(root, 300, 160);
+    if (!still) this.tweens.add({ targets: ball, y: 78, duration: 2200, ease: 'Sine.in', delay: 200 });
+    else ball.setY(100);
+    const lupin = this.hero(root, 'lupin', 360, 166, 'hurt', 1, true);
+    lupin.anims.pause();
+    this.hero(root, 'parker', 400, 166, 'hurt', 1, true).anims.pause();
+    this.sfxText(root, 390, 32, 'SHLOOP!', 0x7aff9a, 8, 300);
+    audio.sfx('beam');
+    if (p.speech) {
+      const b = speechBubble(this, 386, 110, p.speech.text, { maxWidth: 120, tailRight: true });
+      root.add(b);
+      popIn(this, b, 1200);
+    }
+    return (_dt, t) => {
+      pod.y = 70 + (still ? 0 : Math.sin(t / 500) * 3);
+      beam.clear();
+      const a = still ? 0.22 : 0.16 + 0.07 * Math.sin(t / 160);
+      const top = pod.y - 10;
+      beam.fillStyle(0x7aff9a, a).fillTriangle(pod.x - 6, top, pod.x + 6, top, pod.x + 40, 168);
+      beam.fillTriangle(pod.x - 6, top, pod.x + 6, top, pod.x - 40, 168);
+      beam.fillStyle(0xd0ffe0, a).fillTriangle(pod.x - 2, top, pod.x + 2, top, pod.x, 168);
+      beam.fillStyle(0x7aff9a, a * 1.4).fillEllipse(pod.x, 168, 84, 8);
+    };
+  }
+
+  // W2-3. Play ball!
+  private panelPlayBall(root: Phaser.GameObjects.Container, p: IntroPanel): (dt: number, t: number) => void {
+    const g = this.add.graphics({ x: PW / 2, y: 120 });
+    speedBurst(g, 0, 0, 340, 0x1a3a8a, 0x2f5fc0, 32);
+    root.add(g);
+    const still = reducedMotion();
+    if (!still) this.tweens.add({ targets: g, angle: 360 / 16, duration: 3000, repeat: -1 });
+    // Big white "W" flag, bottom-right corner.
+    const f = this.add.graphics({ x: PW - 70, y: 40 });
+    f.fillStyle(INK, 1).fillRect(-2, -2, 52, 34);
+    f.fillStyle(0xffffff, 1).fillRect(0, 0, 48, 30);
+    root.add(f);
+    root.add(px(this, PW - 46, 55, 'W', { scale: 3, outline: false, color: 0x1a3a8a }));
+    const ids = ['mom', 'parker', 'dad', 'brennan', 'lupin'];
+    ids.forEach((id, k) => {
+      const x = 66 + k * 80;
+      this.shadow(root, x, 172, 34);
+      const s = this.hero(root, id, x, 174, 'victory', 2);
+      if (!still) {
+        s.y = PH + 120;
+        this.tweens.add({ targets: s, y: 174, duration: 450, delay: 120 * k, ease: 'Back.out' });
+      }
+    });
+    if (p.speech) {
+      const b = speechBubble(this, PW / 2 - 40, 36, p.speech.text, { scale: 2, maxWidth: 300, shout: true });
       root.add(b);
       popIn(this, b, 700);
       this.time.delayedCall(700, () => audio.sfx('powerup'));

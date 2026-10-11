@@ -199,6 +199,8 @@ export function cutsceneControls(
 const PX = 'story-px';
 export const FLAG_TEX = 'story-flag';
 export const FLAG_FRAMES = 4;
+/** White "W" victory flag (World 2 ending), animation 'story:flag-w'. */
+export const W_FLAG_TEX = 'story-flag-w';
 
 /** Ensure the generated textures used by cutscenes exist: a 2x2 white pixel and a waving Chicago flag. */
 export function ensureStoryTextures(scene: Phaser.Scene): void {
@@ -211,6 +213,49 @@ export function ensureStoryTextures(scene: Phaser.Scene): void {
     }
   }
   if (!scene.textures.exists(FLAG_TEX)) buildFlag(scene);
+  if (!scene.textures.exists(W_FLAG_TEX)) buildWFlag(scene);
+}
+
+/** The white flag with a big blue "W" that flies over the ballpark after a win. */
+function buildWFlag(scene: Phaser.Scene): void {
+  const W = 27;
+  const H = 17;
+  const src = document.createElement('canvas');
+  src.width = W;
+  src.height = H;
+  const c = src.getContext('2d')!;
+  c.fillStyle = '#ffffff';
+  c.fillRect(0, 0, W, H);
+  c.fillStyle = '#1a3a8a';
+  // Pixel "W": two V strokes.
+  const strokes: [number, number][] = [[5, 3], [6, 6], [7, 9], [8, 12], [9, 9], [10, 6], [11, 9], [12, 12], [13, 9], [14, 6], [15, 3]];
+  for (const [x, y] of strokes) c.fillRect(x + 3, y, 2, 3);
+  waveFlag(scene, src, W, H, W_FLAG_TEX, 'story:flag-w');
+}
+
+/** Cut a flat flag image into FLAG_FRAMES waving frames + a looping animation. */
+function waveFlag(scene: Phaser.Scene, src: HTMLCanvasElement, W: number, H: number, key: string, anim: string): void {
+  const tex = scene.textures.createCanvas(key, (W + 1) * FLAG_FRAMES, H + 4);
+  if (!tex) return;
+  const ctx = tex.getContext();
+  for (let fi = 0; fi < FLAG_FRAMES; fi++) {
+    const ox = fi * (W + 1);
+    for (let x = 0; x < W; x++) {
+      const amp = 0.4 + (x / W) * 1.1;
+      const dy = Math.round(Math.sin(x * 0.3 - (fi * Math.PI) / 2) * amp) + 2;
+      ctx.drawImage(src, x, 0, 1, H, ox + x, dy, 1, H);
+      const shade = Math.cos(x * 0.3 - (fi * Math.PI) / 2);
+      if (shade < -0.4 && x > 2) {
+        ctx.fillStyle = 'rgba(11,23,48,0.18)';
+        ctx.fillRect(ox + x, dy, 1, H);
+      }
+    }
+    tex.add(fi, 0, ox, 0, W, H + 4);
+  }
+  tex.refresh();
+  if (!scene.anims.exists(anim)) {
+    scene.anims.create({ key: anim, frames: Array.from({ length: FLAG_FRAMES }, (_, i) => ({ key, frame: i })), frameRate: 8, repeat: -1 });
+  }
 }
 
 export const pixelTexture = PX;

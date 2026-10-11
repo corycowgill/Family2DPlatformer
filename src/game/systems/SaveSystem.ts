@@ -1,6 +1,6 @@
 import { SAVE_VERSION, STORAGE_KEY } from '../config';
 import { CHARACTER_IDS, type CharacterId } from '../types';
-import { FIRST_LEVEL_ID } from '../data/levels';
+import { FIRST_LEVEL_ID, LEVELS } from '../data/levels';
 import {
   betterMedal,
   COSTUMES,
@@ -48,6 +48,8 @@ export interface SaveData {
   seenIntro: boolean;
   /** The World 1 ending has been reached — unlocks rewatching it from Extras. */
   seenEnding: boolean;
+  /** Later cutscenes seen once (STORY_KEYS: 'world2-intro', 'world2-ending'). */
+  seenStories: string[];
   settings: Settings;
 
   // ── Rewards & replay (systems/Rewards.ts) ──
@@ -90,6 +92,7 @@ export function defaultSave(): SaveData {
     worldsCompleted: [],
     seenIntro: false,
     seenEnding: false,
+    seenStories: [],
     settings: { ...DEFAULT_SETTINGS },
     // rewards & replay
     unlockedCharacters: [],
@@ -133,6 +136,20 @@ export function syncUnlocks(d: SaveData): string[] {
   return fresh;
 }
 
+/** Cutscenes remembered in `seenStories`. */
+export const STORY_KEYS = ['world2-intro', 'world2-ending'] as const;
+export type StoryKey = (typeof STORY_KEYS)[number];
+
+/**
+ * Every completed level unlocks its `next` (saves from before a world existed — e.g. a
+ * World 1 save that beat the EL-iminator — open the new world retroactively).
+ */
+export function repairUnlocks(d: SaveData): void {
+  for (const l of LEVELS) {
+    if (l.next && d.levels[l.id]?.completed && !d.unlocked.includes(l.next)) d.unlocked.push(l.next);
+  }
+}
+
 const clamp01 = (n: unknown, d: number) =>
   typeof n === 'number' && Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : d;
 
@@ -173,6 +190,10 @@ export function sanitizeSave(raw: unknown): SaveData {
   if (Array.isArray(r.worldsCompleted)) out.worldsCompleted = r.worldsCompleted.filter((n): n is number => Number.isInteger(n));
   out.seenIntro = r.seenIntro === true;
   out.seenEnding = r.seenEnding === true;
+  if (Array.isArray(r.seenStories)) {
+    out.seenStories = Array.from(new Set(r.seenStories.filter((k): k is string => typeof k === 'string' && (STORY_KEYS as readonly string[]).includes(k))));
+  }
+  repairUnlocks(out);
   if (r.settings && typeof r.settings === 'object') {
     const s = r.settings as Record<string, unknown>;
     out.settings = {
@@ -261,6 +282,15 @@ export class SaveSystem {
     this.update((d) => {
       d.newUnlocks = d.newUnlocks.filter((k) => !keys.includes(k));
     });
+  }
+
+  hasSeenStory(key: StoryKey): boolean {
+    return this.data.seenStories.includes(key);
+  }
+
+  markStorySeen(key: StoryKey): void {
+    if (this.hasSeenStory(key)) return;
+    this.update((d) => d.seenStories.push(key));
   }
 
   isUnlocked(levelId: string): boolean {

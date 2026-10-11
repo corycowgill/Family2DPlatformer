@@ -15,6 +15,7 @@ import { Wasp } from './Wasp';
 import { Warlord } from './Warlord';
 import { Juggernaut } from './Juggernaut';
 import { Overseer } from './Overseer';
+import { OverseerBoss } from './OverseerBoss';
 import { Eliminator } from './Eliminator';
 
 type EnemyFactory = (ctx: LevelContext, obj: SpawnObject) => Enemy;
@@ -36,7 +37,8 @@ export const ENEMY_FACTORIES: Record<EnemyKind, EnemyFactory> = {
   wasp: (ctx, o) => new Wasp(ctx, o),
   warlord: (ctx, o) => new Warlord(ctx, o),
   juggernaut: (ctx, o) => new Juggernaut(ctx, o),
-  overseer: (ctx, o) => new Overseer(ctx, o),
+  // `boss=true` (or the boss spawner) → the full World 2 boss; otherwise the small hovering pod.
+  overseer: (ctx, o) => (o.props.boss === true ? new OverseerBoss(ctx, o) : new Overseer(ctx, o)),
   eliminator: (ctx, o) => new Eliminator(ctx, o),
 };
 
@@ -53,12 +55,16 @@ registerSpawner('enemy', (ctx, o) => {
 /**
  * Boss spawner: Tiled object type "boss". The object's rectangle is the arena (its bottom
  * edge = the floor), or use props arenaX/arenaWidth/arenaHeight (px). Prop `kind`
- * (default eliminator). A non-boss kind (e.g. warlord) is spawned with `boss=true`.
+ * (default eliminator; `overseer` = the World 2 boss). A non-boss kind (e.g. warlord) is spawned with `boss=true`.
  */
 registerSpawner('boss', (ctx, o) => {
   const kind = String(o.props.kind ?? 'eliminator') as EnemyKind;
   if (kind === 'eliminator') {
     new Eliminator(ctx, o);
+    return;
+  }
+  if (kind === 'overseer') {
+    new OverseerBoss(ctx, o);
     return;
   }
   const f = ENEMY_FACTORIES[kind];

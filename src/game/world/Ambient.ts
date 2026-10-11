@@ -26,7 +26,8 @@ const BIRD_FRAMES = ['bird_0', 'bird_1', 'bird_2', 'bird_3'] as const;
 const GLINT_SEQ = ['glint_0', 'glint_1', 'glint_2', 'glint_3', 'glint_2', 'glint_1', 'glint_0'] as const;
 const STEAM_FRAMES = ['steam_0', 'steam_1', 'steam_2', 'steam_3'] as const;
 
-const BIRD_TINT: Record<LevelTheme, number> = { day: 0x2c3444, rooftop: 0x3c3444, river: 0xf2f6fa, sunset: 0x1a1030 };
+const BIRD_TINT: Partial<Record<LevelTheme, number>> = { day: 0x2c3444, rooftop: 0x3c3444, river: 0xf2f6fa, sunset: 0x1a1030 };
+const NO_ANCHORS: ThemeAnchors = { windows: { far: [], mid: [] }, glints: [], vents: [], train: null, river: null };
 const LIT_TINTS = [0xffd27a, 0xffc060, 0xfff0b0, 0xffb070] as const;
 
 const FLOCK = 7;
@@ -116,7 +117,8 @@ export class Ambient {
   ) {
     this.scene = ctx.scene;
     this.theme = parallax.theme;
-    this.a = AMBIENT_ANCHORS[this.theme] ?? AMBIENT_ANCHORS.day;
+    // Themes without generated anchors (new worlds before their art lands) get birds only.
+    this.a = AMBIENT_ANCHORS[this.theme] ?? NO_ANCHORS;
     this.hasAtlas = this.scene.textures.exists(ATLAS) && this.scene.textures.get(ATLAS).has('bird_0');
     this.lastScrollX = this.scene.cameras.main.scrollX;
     if (this.hasAtlas) {
@@ -148,7 +150,7 @@ export class Ambient {
   }
 
   private buildBirds(): void {
-    const tint = BIRD_TINT[this.theme];
+    const tint = BIRD_TINT[this.theme] ?? 0x2c3444;
     for (let i = 0; i < FLOCK; i++) {
       // V formation: leader in front, wings trailing alternately up/down.
       const rank = Math.ceil(i / 2);

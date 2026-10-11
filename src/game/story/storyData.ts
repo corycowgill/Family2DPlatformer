@@ -62,7 +62,7 @@ export function browserStoryAllowed(): boolean {
 
 // ------------------------------------------------------------------ opening story
 
-export type IntroPanelId = 'hotdogs' | 'rumble' | 'eliminator' | 'haywire' | 'pod' | 'rally';
+export type IntroPanelId = 'hotdogs' | 'rumble' | 'eliminator' | 'haywire' | 'pod' | 'rally' | 'picnic' | 'abduct' | 'playball';
 
 export interface IntroPanel {
   id: IntroPanelId;
@@ -109,6 +109,36 @@ export const INTRO_PANELS: readonly IntroPanel[] = [
   },
 ];
 
+// ------------------------------------------------------------------ World 2 story
+
+/** Shown once, the first time the family heads into World 2 (from the world map). */
+export const WORLD2_PANELS: readonly IntroPanel[] = [
+  {
+    id: 'picnic',
+    tag: 'SUNDAY · LINCOLN PARK',
+    caption: 'With the Loop saved, the family celebrates with a picnic in Lincoln Park. Lupin brought his favourite ball!',
+    speech: { who: 'lupin', text: 'WOOF! WOOF! (THROW IT!)' },
+  },
+  {
+    id: 'abduct',
+    tag: '12:34 PM',
+    caption: "SHLOOP! A green beam swept down from the sky and slurped up Lupin's ball... and every letter off the Wrigley Field sign!",
+    speech: { who: 'parker', text: 'HEY! THOSE ARE NOT YOURS!' },
+  },
+  {
+    id: 'playball',
+    tag: '',
+    caption: 'The Overseer is heading north to Wrigley Field. Grab your mitts - Lupin wants his ball back!',
+    speech: { who: 'all', text: 'PLAY BALL, NORTH SIDE!' },
+  },
+];
+
+export type StoryId = 'intro' | 'world2';
+
+export function storyPanels(id: StoryId): readonly IntroPanel[] {
+  return id === 'world2' ? WORLD2_PANELS : INTRO_PANELS;
+}
+
 // ------------------------------------------------------------------ level intro cards
 
 /** One-line flavour subtitles for the level intro card. */
@@ -117,6 +147,10 @@ export const LEVEL_TAGLINES: Record<string, string> = {
   'loop-2': 'Mind the gap - and the robots.',
   'loop-3': "Don't fall in. The river is VERY green.",
   'loop-boss': 'End of the line, EL-iminator!',
+  'north-1': 'Something is bugging the zoo...',
+  'north-2': 'Sun, sand and saucers.',
+  'north-3': 'The bright lights of Clark and Addison.',
+  'north-4': "Bottom of the ninth. Let's win this one!",
   test: 'Testing, testing... one, two, three.',
 };
 
@@ -138,6 +172,7 @@ export interface BossCard {
 const BOSS_CARDS: Record<string, BossCard> = {
   'the el-iminator': { title: 'THE EL-IMINATOR', subtitle: 'CTA LOOP LINE - OUT OF SERVICE', line: 0x8b5a2b },
   'alien warlord': { title: 'ALIEN WARLORD', subtitle: 'ORIGIN: UNKNOWN', line: 0x7a3fb0 },
+  'the overseer': { title: 'THE OVERSEER', subtitle: 'ALIEN MOTHERSHIP POD - NOW BATTING', line: 0x2fd06a },
 };
 
 export function bossCard(name: string): BossCard {
@@ -177,3 +212,7 @@ export const ENDING_CREDITS: readonly CreditLine[] = [
 
 export const ENDING_CAPTION = 'The EL-iminator was towed back to the rail yard, and the Loop was safe once more.';
 export const TEASER_CAPTION = 'But that night, high above Lincoln Park...';
+
+/** World 2 ending (EndingScene with world 2). */
+export const ENDING2_CAPTION = "The Overseer fled into space, the sign got its letters back - and Lupin got his ball!";
+export const TEASER2_CAPTION = 'Meanwhile, out at Navy Pier, the Ferris wheel started spinning... backwards.';

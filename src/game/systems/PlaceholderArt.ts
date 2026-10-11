@@ -109,15 +109,24 @@ export function ensurePlaceholderArt(scene: Phaser.Scene): void {
   });
 
   // Parallax backgrounds
-  for (const theme of ['day', 'rooftop', 'river', 'sunset']) {
+  // World 2 themes get their own tints until their painted backgrounds ship (art pass).
+  const PLACEHOLDER_BG: Record<string, { sky: [number, number]; far: number; mid: number; near: number }> = {
+    park: { sky: [0x5aa8f0, 0xcdeeff], far: 0x7fa8a0, mid: 0x3f7a4a, near: 0x2f5a36 },
+    lakefront: { sky: [0x3f9ae8, 0xd8f2ff], far: 0x8fb4d8, mid: 0x5a86b0, near: 0xc8b07a },
+    night: { sky: [0x0b1030, 0x2a2a5e], far: 0x2a3060, mid: 0x1f2448, near: 0x14182e },
+    stadium: { sky: [0x0b1438, 0x2c3a78], far: 0x2c3350, mid: 0x245a2a, near: 0x7a3a2a },
+  };
+  const DEFAULT_BG = { sky: [0x4a90e2, 0xbfe3ff] as [number, number], far: 0x6f8fb8, mid: 0x4f6b8f, near: 0x34465e };
+  for (const theme of ['day', 'rooftop', 'river', 'sunset', 'park', 'lakefront', 'night', 'stadium']) {
+    const pal = PLACEHOLDER_BG[theme] ?? DEFAULT_BG;
     for (const layer of ['sky', 'far', 'mid', 'near'] as const) {
       const key = IMAGES.bg(theme, layer);
       if (scene.textures.exists(key)) continue;
       const g = scene.make.graphics({}, false);
       if (layer === 'sky') {
-        g.fillGradientStyle(0x4a90e2, 0x4a90e2, 0xbfe3ff, 0xbfe3ff, 1).fillRect(0, 0, 480, 270);
+        g.fillGradientStyle(pal.sky[0], pal.sky[0], pal.sky[1], pal.sky[1], 1).fillRect(0, 0, 480, 270);
       } else {
-        const c = layer === 'far' ? 0x6f8fb8 : layer === 'mid' ? 0x4f6b8f : 0x34465e;
+        const c = pal[layer];
         g.fillStyle(c, 1);
         for (let x = 0; x < 480; x += 40) {
           const h = 60 + ((x * 37) % 90) + (layer === 'far' ? 40 : 0);

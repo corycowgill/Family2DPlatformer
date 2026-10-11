@@ -280,3 +280,17 @@ describe('level sources on disk', () => {
     for (const l of LEVELS) if (l.next) expect(ids.has(l.next)).toBe(true);
   });
 });
+
+describe('World 2 registry', () => {
+  it('2-1..2-4 follow 1-4; world finales are 1-4 and 2-4', async () => {
+    const { isWorldFinale, levelsOfWorld, worldInfo } = await import('../../src/game/data/levels');
+    expect(levelsOfWorld(2).map((l) => l.number)).toEqual(['2-1', '2-2', '2-3', '2-4']);
+    expect(levelsOfWorld(2).map((l) => l.id)).toEqual(['north-1', 'north-2', 'north-3', 'north-4']);
+    expect(LEVELS.find((l) => l.id === 'loop-boss')?.next).toBe('north-1');
+    expect(LEVELS.filter(isWorldFinale).map((l) => l.id)).toEqual(['loop-boss', 'north-4']);
+    expect(isWorldFinale(TEST_LEVEL)).toBe(false);
+    expect(LEVELS.find((l) => l.id === 'north-4')?.boss).toBe(true);
+    expect(worldInfo(2).name).toBe('THE NORTH SIDE');
+    expect(new Set(levelsOfWorld(2).map((l) => l.theme))).toEqual(new Set(['park', 'lakefront', 'night', 'stadium']));
+  });
+});

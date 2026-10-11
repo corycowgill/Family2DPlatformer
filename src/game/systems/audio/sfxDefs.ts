@@ -202,6 +202,30 @@ export const SFX_DEFS: Record<string, SfxDef> = {
       { at: 0.24, wave: 'triangle', freq: n('C4'), dur: 0.22, release: 0.2, vol: 0.5 },
     ],
   },
+  // Overseer tractor beam / laser: a warbling rising hum.
+  beam: {
+    gain: 0.55,
+    tones: [
+      { wave: 'pulse', duty: 0.125, freq: 220, freqEnd: 440, slideTime: 0.6, dur: 0.6, attack: 0.04, release: 0.2, vol: 0.5, vibRate: 14, vibDepth: 0.6 },
+      { wave: 'sine', freq: 660, freqEnd: 880, slideTime: 0.6, dur: 0.6, attack: 0.04, release: 0.2, vol: 0.35, tremRate: 18, tremDepth: 0.6 },
+    ],
+  },
+  // Heavy body landing on the ground (Overseer slam, falling girders).
+  'boss-slam': {
+    gain: 0.8,
+    tones: [
+      { wave: 'sine', freq: 120, freqEnd: 34, dur: 0.25, release: 0.25, vol: 1 },
+      { wave: 'noise', freq: 3000, dur: 0.08, decay: 0.2, sustain: 0.3, release: 0.25, lpStart: 2200, lpEnd: 200, vol: 0.7 },
+    ],
+  },
+  // A boss takes a stomp.
+  'boss-hit': {
+    gain: 0.7,
+    tones: [
+      { wave: 'pulse', duty: 0.5, freq: 520, freqEnd: 160, dur: 0.14, release: 0.06, vol: 0.6 },
+      { wave: 'noise', freq: 9000, dur: 0.05, release: 0.08, lpStart: 5000, lpEnd: 1500, vol: 0.4 },
+    ],
+  },
   count: {
     gain: 0.3,
     tones: [{ wave: 'pulse', duty: 0.125, freq: n('C7'), dur: 0.015, release: 0.02 }],

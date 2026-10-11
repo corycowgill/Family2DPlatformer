@@ -17,6 +17,12 @@ import { heroTexture } from '../ui/CharacterArt';
 import { medalFor, medalRank, nextMedal } from '../systems/Rewards';
 import { UnlockScene } from './UnlockScene';
 
+/** Two-line teaser under the stats when a world is cleared. */
+const WORLD_CLEAR_LINES: Record<number, [string, string]> = {
+  1: ['THE EL-IMINATOR IS DOWN... BUT THE STORY', "ISN'T OVER YET!"],
+  2: ['THE OVERSEER IS GROUNDED AND WRIGLEY', 'IS SAFE - TIME TO RAISE THE W!'],
+};
+
 /** @deprecated import from ui/format */
 export const formatTime = fmt;
 
@@ -140,8 +146,9 @@ export class ResultsScene extends Phaser.Scene {
     });
 
     if (world) {
-      px(this, GAME_WIDTH / 2, 170, 'THE EL-IMINATOR IS DOWN... BUT THE STORY', { color: COLORS.skyBlue });
-      px(this, GAME_WIDTH / 2, 181, "ISN'T OVER YET!", { color: COLORS.skyBlue });
+      const [l1, l2] = WORLD_CLEAR_LINES[lvl?.world ?? 1] ?? WORLD_CLEAR_LINES[1];
+      px(this, GAME_WIDTH / 2, 170, l1, { color: COLORS.skyBlue });
+      px(this, GAME_WIDTH / 2, 181, l2, { color: COLORS.skyBlue });
       audio.stopMusic();
       audio.music('worldclear');
     } else {
@@ -151,9 +158,10 @@ export class ResultsScene extends Phaser.Scene {
     }
 
     const items: MenuItem[] = [];
-    if (lvl?.next) items.push({ label: 'NEXT LEVEL', onSelect: () => transitionTo(this, 'Level', { levelId: lvl.next }) });
-    // World complete → the ending (family on the L at sunset, credits, World 2 teaser) → world map.
-    if (world) items.push({ label: 'CONTINUE', onSelect: () => transitionTo(this, 'Ending') });
+    // World complete → that world's ending (World 1: flag on the L, credits, World 2 unlocked;
+    // World 2: the "W" flag over Wrigley) → world map. The next world starts from the map.
+    if (lvl?.next && !world) items.push({ label: 'NEXT LEVEL', onSelect: () => transitionTo(this, 'Level', { levelId: lvl.next }) });
+    if (world) items.push({ label: 'CONTINUE', onSelect: () => transitionTo(this, 'Ending', { world: lvl?.world ?? 1 }) });
     items.push({ label: 'REPLAY', onSelect: () => transitionTo(this, 'Level', { levelId: stats.levelId }) });
     items.push({ label: 'WORLD MAP', onSelect: () => transitionTo(this, 'WorldMap'), sound: 'menu-back' });
     createMenu(this, items, GAME_WIDTH / 2, world ? 204 : 186, 18, { width: 150, panel: true });

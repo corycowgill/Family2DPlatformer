@@ -138,7 +138,7 @@ test.describe('story & cutscenes', () => {
     await expect.poll(() => endingBeat(page)).toBe('credits');
     await page.keyboard.press('Enter');
     await expect.poll(() => endingBeat(page)).toBe('teaser');
-    await expect.poll(() => harness(page, (h) => h.sceneTexts('Ending')), { timeout: 10_000 }).toContain('COMING SOON');
+    await expect.poll(() => harness(page, (h) => h.sceneTexts('Ending')), { timeout: 10_000 }).toContain('UNLOCKED!');
     await page.keyboard.press('Escape');
     await waitForScene(page, 'WorldMap');
 

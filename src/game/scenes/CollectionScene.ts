@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
-import { LEVELS } from '../data/levels';
+import { levelsOfWorld, worldInfo } from '../data/levels';
 import { CHARACTER_IDS } from '../types';
 import { saveSystem } from '../systems/SaveSystem';
 import { audio } from '../systems/AudioSystem';
-import { collectionStats, COSTUMES, isCharacterUnlocked, isCostumeUnlocked, MEDALS, medalTimes, TIER_RULE, UNLOCK_RULES } from '../systems/Rewards';
-import { px } from '../ui/PixelFont';
+import { collectionStats, registeredWorlds, COSTUMES, isCharacterUnlocked, isCostumeUnlocked, MEDALS, medalTimes, TIER_RULE, UNLOCK_RULES } from '../systems/Rewards';
+import { px, setPx } from '../ui/PixelFont';
 import { icon } from '../ui/Icons';
 import { onNav } from '../ui/NavInput';
 import { Skyline } from '../ui/Skyline';
@@ -20,54 +20,34 @@ import { prompt } from '../ui/Prompts';
  */
 export class CollectionScene extends Phaser.Scene {
   private sky!: Skyline;
+  private world = 1;
+  private page!: Phaser.GameObjects.Container;
+  private pageLabel?: Phaser.GameObjects.BitmapText;
 
   constructor() {
     super('Collection');
   }
 
-  create(): void {
+  create(data?: { world?: number }): void {
+    this.pageLabel = undefined;
     this.sky = new Skyline(this, { train: false });
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.ink, 0.6).setOrigin(0).setDepth(-50);
     px(this, GAME_WIDTH / 2, 13, 'COLLECTION', { scale: 2, color: COLORS.gold });
     const save = saveSystem.get();
-    const stats = collectionStats(save);
 
-    // ── Levels: souvenirs, best time, medal ──
+    // ── Levels of one world (◀ ▶ pages): souvenirs, best time, medal ──
+    const worlds = registeredWorlds().filter((w) => w > 0);
+    const want = (data?.world ?? (this.registry.get('collectionWorld') as number | undefined)) ?? worlds[0];
+    this.world = worlds.includes(want) ? want : worlds[0];
     panel(this, 8, 26, 464, 116);
-    const hy = 36;
-    px(this, 18, hy, 'LEVEL', { origin: [0, 0.5], color: COLORS.dim });
-    px(this, 262, hy, 'SOUVENIRS', { color: COLORS.dim });
-    px(this, 330, hy, 'BEST', { color: COLORS.dim });
-    px(this, 378, hy, 'MEDAL', { color: COLORS.dim });
-    px(this, 432, hy, 'GOLD AT', { color: COLORS.dim });
-    LEVELS.forEach((l, i) => {
-      const y = 50 + i * 16;
-      const rec = save.levels[l.id];
-      const open = saveSystem.isUnlocked(l.id);
-      px(this, 18, y, l.number, { origin: [0, 0.5], color: open ? COLORS.gold : COLORS.dim });
-      px(this, 44, y, open ? l.name.toUpperCase() : '???', { origin: [0, 0.5], color: open ? COLORS.text : COLORS.dim });
-      for (let k = 0; k < 3; k++) icon(this, 246 + k * 16, y, rec?.souvenirs.includes(k) ? 'souvenir_icon' : 'souvenir_icon_empty');
-      px(this, 330, y, rec?.bestTimeMs ? formatTime(rec.bestTimeMs) : '--:--.--', { color: rec?.bestTimeMs ? COLORS.text : COLORS.dim });
-      icon(this, 378, y, rec?.medal ? `medal_${rec.medal}` : 'medal_empty');
-      const mt = medalTimes(l.id);
-      px(this, 432, y, mt ? formatTarget(mt.gold) : '-', { color: COLORS.dim });
-    });
-    // Totals
-    const ty = 50 + LEVELS.length * 16 + 8;
-    const g = this.add.graphics();
-    g.fillStyle(COLORS.border, 0.5).fillRect(16, ty - 9, 448, 1);
-    icon(this, 22, ty, 'souvenir_icon');
-    px(this, 32, ty, `${stats.souvenirs}/${stats.souvenirsMax} SOUVENIRS`, { origin: [0, 0.5] });
-    icon(this, 150, ty, 'star_icon');
-    px(this, 160, ty, `${stats.stars} CHICAGO STARS`, { origin: [0, 0.5] });
-    let mx = 280;
-    for (const m of MEDALS) {
-      icon(this, mx, ty, `medal_${m}`);
-      px(this, mx + 8, ty, `x${stats.medals[m]}`, { origin: [0, 0.5] });
-      mx += 36;
+    this.page = this.add.container(0, 0);
+    this.buildPage();
+    if (worlds.length > 1) {
+      button(this, 372, 13, '◀', () => this.turn(-1), { w: 18, sound: 'menu-move' });
+      button(this, 462, 13, '▶', () => this.turn(1), { w: 18, sound: 'menu-move' });
+      this.pageLabel = px(this, 417, 13, '', { color: COLORS.text });
+      this.refreshLabel();
     }
-    px(this, 462, ty, `CLEARED ${stats.levelsCleared}/${stats.levelsTotal}`, { origin: [1, 0.5], color: COLORS.sub });
-    px(this, GAME_WIDTH / 2, ty + 13, 'CHICAGO STARS COUNT AS SOUVENIRS FOR OUTFITS II', { color: COLORS.dim });
 
     // ── Unlock table ──
     panel(this, 8, 146, 464, 102);
@@ -104,10 +84,74 @@ export class CollectionScene extends Phaser.Scene {
       if (a === 'back' || a === 'confirm' || a === 'start') {
         audio.sfx('menu-back');
         this.back();
+      } else if ((a === 'left' || a === 'right') && worlds.length > 1) {
+        audio.sfx('menu-move');
+        this.turn(a === 'left' ? -1 : 1);
       }
     });
     if (!audio.musicKey) audio.music('title');
     transitionIn(this);
+  }
+
+  /** Show the previous / next world's levels. */
+  private turn(dir: number): void {
+    const worlds = registeredWorlds().filter((w) => w > 0);
+    const i = worlds.indexOf(this.world);
+    this.world = worlds[(i + dir + worlds.length) % worlds.length];
+    this.registry.set('collectionWorld', this.world);
+    this.buildPage();
+    this.refreshLabel();
+  }
+
+  private refreshLabel(): void {
+    if (this.pageLabel) setPx(this.pageLabel, `WORLD ${this.world}`);
+  }
+
+  private buildPage(): void {
+    const c = this.page;
+    c.removeAll(true);
+    const save = saveSystem.get();
+    const stats = collectionStats(save, this.world);
+    const levels = levelsOfWorld(this.world);
+    const add = <T extends Phaser.GameObjects.GameObject>(o: T): T => {
+      c.add(o);
+      return o;
+    };
+    const hy = 36;
+    add(px(this, 18, hy, `WORLD ${this.world} · ${worldInfo(this.world).name}`, { origin: [0, 0.5], color: COLORS.gold }));
+    add(px(this, 262, hy, 'SOUVENIRS', { color: COLORS.dim }));
+    add(px(this, 330, hy, 'BEST', { color: COLORS.dim }));
+    add(px(this, 378, hy, 'MEDAL', { color: COLORS.dim }));
+    add(px(this, 432, hy, 'GOLD AT', { color: COLORS.dim }));
+    levels.forEach((l, i) => {
+      const y = 50 + i * 16;
+      const rec = save.levels[l.id];
+      const open = saveSystem.isUnlocked(l.id);
+      add(px(this, 18, y, l.number, { origin: [0, 0.5], color: open ? COLORS.gold : COLORS.dim }));
+      add(px(this, 44, y, open ? l.name.toUpperCase() : '???', { origin: [0, 0.5], color: open ? COLORS.text : COLORS.dim }));
+      for (let k = 0; k < 3; k++) add(icon(this, 246 + k * 16, y, rec?.souvenirs.includes(k) ? 'souvenir_icon' : 'souvenir_icon_empty'));
+      add(px(this, 330, y, rec?.bestTimeMs ? formatTime(rec.bestTimeMs) : '--:--.--', { color: rec?.bestTimeMs ? COLORS.text : COLORS.dim }));
+      add(icon(this, 378, y, rec?.medal ? `medal_${rec.medal}` : 'medal_empty'));
+      const mt = medalTimes(l.id);
+      add(px(this, 432, y, mt ? formatTarget(mt.gold) : '-', { color: COLORS.dim }));
+    });
+    // Totals (this world)
+    const ty = 50 + Math.max(4, levels.length) * 16 + 8;
+    const g = add(this.add.graphics());
+    g.fillStyle(COLORS.border, 0.5).fillRect(16, ty - 9, 448, 1);
+    add(icon(this, 22, ty, 'souvenir_icon'));
+    add(px(this, 32, ty, `${stats.souvenirs}/${stats.souvenirsMax} SOUVENIRS`, { origin: [0, 0.5] }));
+    add(icon(this, 150, ty, 'star_icon'));
+    add(px(this, 160, ty, `${stats.stars} CHICAGO STARS`, { origin: [0, 0.5] }));
+    let mx = 280;
+    for (const m of MEDALS) {
+      add(icon(this, mx, ty, `medal_${m}`));
+      add(px(this, mx + 8, ty, `x${stats.medals[m]}`, { origin: [0, 0.5] }));
+      mx += 36;
+    }
+    add(px(this, 462, ty, `CLEARED ${stats.levelsCleared}/${stats.levelsTotal}`, { origin: [1, 0.5], color: COLORS.sub }));
+    const all = collectionStats(save);
+    add(px(this, GAME_WIDTH / 2, ty + 13, `ALL WORLDS: ${all.souvenirs}/${all.souvenirsMax} SOUVENIRS · STARS COUNT AS SOUVENIRS FOR OUTFITS II`, { color: COLORS.dim }));
   }
 
   private back(): void {

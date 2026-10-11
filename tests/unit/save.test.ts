@@ -273,3 +273,37 @@ describe('SaveSystem story flags (seenIntro / seenEnding)', () => {
     expect(sys.get().seenIntro).toBe(false);
   });
 });
+
+describe('SaveSystem World 2 (seenStories, retroactive unlocks)', () => {
+  it('seenStories defaults to empty, keeps only known keys, round-trips', async () => {
+    const { STORY_KEYS } = await import('../../src/game/systems/SaveSystem');
+    expect(defaultSave().seenStories).toEqual([]);
+    const d = sanitizeSave({ ...defaultSave(), seenStories: ['world2-intro', 'bogus', 3, 'world2-intro'] });
+    expect(d.seenStories).toEqual(['world2-intro']);
+    expect(sanitizeSave({ ...defaultSave(), seenStories: 'world2-intro' }).seenStories).toEqual([]);
+    const storage = new MemStorage();
+    const a = new SaveSystem(storage);
+    expect(a.hasSeenStory('world2-ending')).toBe(false);
+    a.markStorySeen('world2-ending');
+    a.markStorySeen('world2-ending');
+    const b = new SaveSystem(storage);
+    expect(b.get().seenStories).toEqual(['world2-ending']);
+    expect(STORY_KEYS).toContain('world2-intro');
+  });
+
+  it('beating 1-4 unlocks 2-1; an old save that already beat the boss opens World 2 on load', () => {
+    const sys = new SaveSystem(new MemStorage());
+    sys.recordCompletion('loop-boss', { timeMs: 60_000, coins: 0, souvenirs: [], stars: 0, next: 'north-1', world: 1, worldComplete: true });
+    expect(sys.isUnlocked('north-1')).toBe(true);
+    expect(sys.get().worldsCompleted).toEqual([1]);
+    const old = {
+      version: SAVE_VERSION,
+      unlocked: ['loop-1', 'loop-2', 'loop-3', 'loop-boss'],
+      levels: { 'loop-boss': { completed: true, souvenirs: [], stars: 0 } },
+      worldsCompleted: [1],
+    };
+    const d = new SaveSystem(withRaw(JSON.stringify(old))).get();
+    expect(d.unlocked).toContain('north-1');
+    expect(d.unlocked).not.toContain('north-2');
+  });
+});

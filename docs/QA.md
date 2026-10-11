@@ -75,6 +75,9 @@ E2E (`tests/e2e`):
   (`iphone-gameplay*.png`, `iphone-title-tip.png` in the test output dir).
 - `touch-layout.test.ts` (unit) — overlay geometry on iPhone / Pro Max / iPad / Pixel sizes (thumb size, safe
   area, centre kept free), d-pad angle hit test, JUMP↔ABILITY slide, iOS / standalone detection, tip rule.
+- `overseer.test.ts` (unit) — Overseer phases from hp (9 → 6/3 thresholds, overrides), per-phase timing
+  (telegraphs ≥ 0.7 s, windows ≥ 2 s), attack rotation + summon caps, weak-spot attacks per cycle, beam
+  sweep plan (player half, wall → middle, a walking player always escapes), laser reach, segment hits.
 - `rewards.test.ts` (unit) — medal targets ordered for every level, `medalFor` boundaries,
   `nextMedal`; unlock tiers (clear 1-2 / 6 souvenirs incl. Chicago Stars / 3 golds / boss → Grandma);
   costume fallback to classic when locked; every costume atlas + portrait in the manifest; save
@@ -92,6 +95,12 @@ E2E (`tests/e2e`):
   sees it; tap-through; level intro card texts; boss intro beat (letterbox card, input held, then the HP
   bar; JUMP skips); boss clear → Results CONTINUE → ending beats (flag → credits → teaser) → world map,
   `seenEnding`, Extras rewatch.
+- `world2.spec.ts` — World 2 locked until 1-4 is beaten (old World 1 saves open 2-1 retroactively, map
+  opens on 2-1, PLAY enters north-1); `?story` World 2 comic plays once before 2-1; beating 1-4 → ending
+  teaser "WORLD 2 / UNLOCKED! / THE NORTH SIDE" → map on 2-1; beating 2-4 → WORLD 2 CLEAR → W-flag
+  ending → World 3 teaser → map, Extras rewatch; every placeholder 2-x map loads; **THE OVERSEER is
+  defeated by a scripted stomp-only run for every character** (manual stepping, invulnerable, all three
+  phases' signature attacks seen) → Results.
 - `perf.spec.ts` — FPS over 5 s of scripted play (report; warns below 50 fps);
   10 level restarts: textures / listeners / bodies / display list stable, heap growth reported.
 
@@ -240,6 +249,8 @@ invulnerable: true })`, sim seconds), measured 2026-10 on the shipped maps:
 | 1-2 loop-2 | bot can't clear (moving trains) — scaled from length | 0:45 | 1:10 | 1:50 |
 | 1-3 loop-3 | 26.8 s Lupin, 30.5 s Bro1, 32.1 s Dad | 0:40 | 1:00 | 1:40 |
 | 1-4 boss | bot doesn't fight — walk ≈ 30 s + 12-HP boss | 1:15 | 1:50 | 2:40 |
+| 2-1..2-3 | **TODO-measure** — placeholder maps (≈96 tiles) | 0:30–0:32 | 0:50–0:52 | 1:25–1:30 |
+| 2-4 boss | **TODO-measure** — short approach + 9-HP Overseer | 1:10 | 1:45 | 2:30 |
 
 Re-measure after a level layout change. `h.setSave(data)` replaces the save (sanitised like
 a loaded one, retroactive unlocks applied) to set up progress in tests.

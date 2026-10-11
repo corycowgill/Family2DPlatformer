@@ -93,3 +93,26 @@ describe('story data', () => {
     expect(ENDING_CREDITS.some(([, k]) => k === 'family')).toBe(true);
   });
 });
+
+describe('World 2 story data', () => {
+  it('World 2 beat: 2-3 panels, captions fit the caption box, ends on a rally cry', async () => {
+    const { WORLD2_PANELS, storyPanels, ENDING2_CAPTION, TEASER2_CAPTION } = await import('../../src/game/story/storyData');
+    expect(WORLD2_PANELS.length).toBeGreaterThanOrEqual(2);
+    expect(WORLD2_PANELS.length).toBeLessThanOrEqual(3);
+    expect(storyPanels('world2')).toBe(WORLD2_PANELS);
+    expect(storyPanels('intro')).toBe(INTRO_PANELS);
+    expect(WORLD2_PANELS[WORLD2_PANELS.length - 1].speech?.who).toBe('all');
+    for (const p of WORLD2_PANELS) {
+      const lines = wrapText(p.caption, 452 - 16);
+      expect(lines.length, p.id).toBeLessThanOrEqual(3);
+    }
+    // Ending captions use the ending's 30 px caption box (2 lines).
+    for (const c of [ENDING2_CAPTION, TEASER2_CAPTION]) expect(wrapText(c, 360 - 16).length).toBeLessThanOrEqual(2);
+  });
+
+  it('the Overseer gets its own boss card', () => {
+    const c = bossCard('The Overseer');
+    expect(c.title).toBe('THE OVERSEER');
+    expect(c.subtitle).not.toBe('');
+  });
+});

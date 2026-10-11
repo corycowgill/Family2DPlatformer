@@ -6,15 +6,18 @@ import { audio } from '../systems/AudioSystem';
 import { saveSystem } from '../systems/SaveSystem';
 import { playAnim } from '../systems/AnimationSystem';
 import { px } from '../ui/PixelFont';
+import { isRealAsset } from '../ui/Icons';
 import { prompt } from '../ui/Prompts';
 import { COLORS } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
-import { ENDING_CAPTION, ENDING_CREDITS, FAMILY, TEASER_CAPTION } from '../story/storyData';
+import { ENDING_CAPTION, ENDING_CREDITS, ENDING2_CAPTION, FAMILY, TEASER_CAPTION, TEASER2_CAPTION } from '../story/storyData';
+import { LEVELS } from '../data/levels';
 import {
   CONFETTI_COLORS,
   CaptionBox,
   FLAG_TEX,
   INK,
+  W_FLAG_TEX,
   confetti,
   cutsceneControls,
   ensureStoryTextures,
@@ -27,6 +30,8 @@ import type { CharacterId } from '../types';
 export interface EndingSceneData {
   /** Rewatching from Extras: return there instead of the world map. */
   replay?: boolean;
+  /** Which world was just completed (default 1). */
+  world?: number;
 }
 
 type Beat = 'flag' | 'credits' | 'teaser' | 'done';
@@ -39,6 +44,10 @@ const ROLL_TOP = 12;
 const ROLL_BOTTOM = 172;
 
 /**
+ * World 2 ending (`world: 2`): the family raises the white "W" flag over Wrigley Field at
+ * night (fireworks), then a short teaser of Navy Pier's Ferris wheel spinning backwards —
+ * "WORLD 3: COMING SOON". No credits roll. Ends at the world map.
+ *
  * World 1 ending: the family raises a Chicago flag on the L platform at sunset (confetti +
  * fireworks), "THE LOOP IS SAVED!", a credits roll, then a night-time teaser of the alien
  * Overseer over Lincoln Park / Wrigleyville — "WORLD 2: COMING SOON". Ends at the world map.
@@ -63,6 +72,7 @@ export class EndingScene extends Phaser.Scene {
   private beatMs = 0;
   private finished = false;
   private t = 0;
+  private world = 1;
 
   constructor() {
     super('Ending');
@@ -70,6 +80,7 @@ export class EndingScene extends Phaser.Scene {
 
   init(data: EndingSceneData): void {
     this.data0 = data ?? {};
+    this.world = this.data0.world ?? 1;
     this.beat = 'flag';
     this.family = [];
     this.flagUp = false;
@@ -86,8 +97,13 @@ export class EndingScene extends Phaser.Scene {
 
   create(): void {
     ensureStoryTextures(this);
-    saveSystem.update((d) => (d.seenEnding = true));
-    this.buildSunset();
+    if (this.world === 2) {
+      saveSystem.markStorySeen('world2-ending');
+      this.buildStadium();
+    } else {
+      saveSystem.update((d) => (d.seenEnding = true));
+      this.buildSunset();
+    }
     this.caption = new CaptionBox(this, 60, 234, GAME_WIDTH - 120, 30, { depth: 60 });
     this.caption.setVisible(false);
     this.controls = cutsceneControls(this, { next: () => this.next(), skip: () => this.finish() }, 13, 900);
@@ -105,6 +121,11 @@ export class EndingScene extends Phaser.Scene {
   /** Current beat (tests / debug). */
   get currentBeat(): Beat {
     return this.beat;
+  }
+
+  /** Which world's ending is playing (tests / debug). */
+  get endingWorld(): number {
+    return this.world;
   }
 
   // ------------------------------------------------------------------ scene building
@@ -162,6 +183,59 @@ export class EndingScene extends Phaser.Scene {
     if (!reducedMotion()) this.flag.play('story:flag');
   }
 
+  /** Wrigley Field at night: light towers, bleachers, the ivy wall and the marquee; a W flag on the pole. */
+  private buildStadium(): void {
+    this.cameras.main.setBackgroundColor(0x0b1438);
+    // Painted stadium backdrop once the art ships; generated placeholders don't count.
+    if (isRealAsset(this, IMAGES.bg('stadium', 'sky'))) {
+      this.img(IMAGES.bg('stadium', 'sky'), 0, 0, 0);
+      this.img(IMAGES.bg('stadium', 'far'), -140, 0, 2);
+      this.img(IMAGES.bg('stadium', 'mid'), -60, 6, 3);
+    } else {
+      const g = this.add.graphics().setDepth(0);
+      g.fillGradientStyle(0x070c28, 0x070c28, 0x24306a, 0x24306a, 1).fillRect(0, 0, GAME_WIDTH, DECK_Y);
+      for (let k = 0; k < 60; k++) g.fillStyle(k % 5 ? 0x8fa6d8 : 0xffffff, 1).fillRect((k * 131) % GAME_WIDTH, (k * 37) % 110, 1, 1);
+      // Light towers with glowing banks.
+      for (const x of [40, 250, 452]) {
+        g.fillStyle(0x2a2f48, 1).fillRect(x - 1, 40, 3, DECK_Y - 40);
+        g.fillStyle(0x3a4060, 1).fillRect(x - 12, 30, 25, 12);
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) g.fillStyle(0xfff6c8, 1).fillRect(x - 10 + i * 6, 32 + j * 5, 4, 3);
+      }
+      // Bleachers: grey tiers under the lights.
+      g.fillStyle(0x2c3350, 1).fillRect(0, 128, GAME_WIDTH, 50);
+      for (let y = 132; y < 176; y += 6) g.fillStyle(0x3a4266, 1).fillRect(0, y, GAME_WIDTH, 2);
+      for (let k = 0; k < 140; k++) g.fillStyle([0xe8414e, 0x2f5fc0, 0xfff3c4, 0x5aa0e0][k % 4], 0.9).fillRect((k * 53) % GAME_WIDTH, 131 + ((k * 7) % 7) * 6, 2, 2);
+      // Brick wall with ivy.
+      g.fillStyle(0x7a3a2a, 1).fillRect(0, 178, GAME_WIDTH, 26);
+      g.fillStyle(0x245a2a, 1).fillRect(0, 180, GAME_WIDTH, 22);
+      for (let x = 0; x < GAME_WIDTH; x += 5) g.fillStyle(x % 15 ? 0x2f7a3a : 0x3f9a4a, 1).fillRect(x, 180 + ((x * 3) % 8), 4, 5);
+      const glow = this.add.graphics().setDepth(1).setBlendMode(Phaser.BlendModes.ADD);
+      for (const x of [40, 250, 452]) glow.fillStyle(0xfff2b0, 0.12).fillCircle(x, 36, 34).fillStyle(0xfff2b0, 0.2).fillCircle(x, 36, 16);
+    }
+    this.dusk = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0b1030, 0).setOrigin(0).setDepth(4);
+    // Outfield grass the family stands on, warning track below.
+    const g = this.add.graphics().setDepth(10);
+    g.fillStyle(0x2f8a3a, 1).fillRect(0, DECK_Y - 18, GAME_WIDTH, 18);
+    for (let x = 0; x < GAME_WIDTH; x += 32) g.fillStyle(0x3a9a46, 1).fillRect(x, DECK_Y - 18, 16, 18);
+    g.fillStyle(0xb07a4a, 1).fillRect(0, DECK_Y, GAME_WIDTH, GAME_HEIGHT - DECK_Y);
+    g.fillStyle(0xc8925a, 1).fillRect(0, DECK_Y, GAME_WIDTH, 2);
+    // The red marquee.
+    const sx = 70;
+    const sy = DECK_Y - 70;
+    g.fillStyle(0x2a2a30, 1).fillRect(sx - 3, sy + 24, 6, 46);
+    g.fillStyle(0x6a1018, 1).fillRect(sx - 46, sy - 2, 92, 28);
+    g.fillStyle(0xc8202e, 1).fillRect(sx - 44, sy, 88, 24);
+    for (let x = sx - 42; x <= sx + 42; x += 6) g.fillStyle(0xffe08a, 1).fillRect(x, sy - 2, 2, 1).fillRect(x, sy + 25, 2, 1);
+    px(this, sx, sy + 7, 'WRIGLEY', { outline: false, color: 0xffffff }).setDepth(11);
+    px(this, sx, sy + 17, 'FIELD', { outline: false, color: 0xffffff }).setDepth(11);
+    // Flagpole + rising W flag.
+    g.fillStyle(0x6a7180, 1).fillRect(POLE_X, POLE_TOP, 3, DECK_Y - POLE_TOP);
+    g.fillStyle(0xd8dde8, 1).fillRect(POLE_X, POLE_TOP, 1, DECK_Y - POLE_TOP);
+    g.fillStyle(0xffd25a, 1).fillRect(POLE_X - 1, POLE_TOP - 4, 5, 4);
+    this.flag = this.add.sprite(POLE_X + 3, FLAG_BOTTOM, W_FLAG_TEX, 0).setOrigin(0, 0).setScale(2).setDepth(9);
+    if (!reducedMotion()) this.flag.play('story:flag-w');
+  }
+
   // ------------------------------------------------------------------ beats
 
   private startFlagBeat(): void {
@@ -193,7 +267,7 @@ export class EndingScene extends Phaser.Scene {
     this.time.delayedCall(still ? 300 : 2100, () => this.raiseFlag());
     this.time.delayedCall(still ? 300 : 900, () => {
       this.caption.setVisible(true);
-      this.caption.say(ENDING_CAPTION);
+      this.caption.say(this.world === 2 ? ENDING2_CAPTION : ENDING_CAPTION);
     });
   }
 
@@ -216,9 +290,10 @@ export class EndingScene extends Phaser.Scene {
     audio.sfx('oneup');
     for (const s of this.family) playAnim(s, 'victory', 'idle', false);
     const still = reducedMotion();
-    this.title = px(this, GAME_WIDTH / 2, 38, 'THE LOOP IS SAVED!', { scale: 3, color: COLORS.gold }).setDepth(50);
+    const w2 = this.world === 2;
+    this.title = px(this, GAME_WIDTH / 2, 38, w2 ? 'WRIGLEY IS SAVED!' : 'THE LOOP IS SAVED!', { scale: 3, color: COLORS.gold }).setDepth(50);
     popIn(this, this.title);
-    const sub = px(this, GAME_WIDTH / 2, 62, 'WORLD 1 COMPLETE', { color: COLORS.sub }).setDepth(50);
+    const sub = px(this, GAME_WIDTH / 2, 62, w2 ? 'WORLD 2 COMPLETE · FLY THE W!' : 'WORLD 1 COMPLETE', { color: COLORS.sub }).setDepth(50);
     popIn(this, sub, 250);
     this.title.setData('sub', sub);
     this.confettiE = confetti(this, 0, -6, GAME_WIDTH, 45);
@@ -319,7 +394,8 @@ export class EndingScene extends Phaser.Scene {
       fillAlpha: 1,
       duration: 500,
       onComplete: () => {
-        this.buildTeaser();
+        if (this.world === 2) this.buildTeaser3();
+        else this.buildTeaser();
         this.tweens.add({ targets: cover, fillAlpha: 0, duration: 600, onComplete: () => cover.destroy() });
       },
     });
@@ -432,11 +508,14 @@ export class EndingScene extends Phaser.Scene {
     if (this.teaserReady || this.beat !== 'teaser') return;
     this.teaserReady = true;
     const still = reducedMotion();
-    const w = px(this, 160, 34, 'WORLD 2', { scale: 3, color: 0x7aff9a });
-    const s = px(this, 160, 60, 'COMING SOON', { scale: 2, color: 0xff6aa8 });
-    c.add([w, s]);
+    // World 2 is playable now: the teaser opens it instead of promising it.
+    const w = px(this, 160, 30, 'WORLD 2', { scale: 3, color: 0x7aff9a });
+    const s = px(this, 160, 54, 'UNLOCKED!', { scale: 2, color: 0xff6aa8 });
+    const n = px(this, 160, 70, 'THE NORTH SIDE', { color: 0xffffff });
+    c.add([w, s, n]);
     popIn(this, w);
     popIn(this, s, 300);
+    popIn(this, n, 500);
     audio.sfx('powerup');
     if (!still) {
       // A little alien glitch on the title.
@@ -451,9 +530,76 @@ export class EndingScene extends Phaser.Scene {
         },
       });
     }
-    const end = prompt(this, 160, 80, (d) => (d === 'touch' ? 'TAP TO CONTINUE' : '{CONFIRM} CONTINUE'), { color: COLORS.sub });
+    const end = prompt(this, 160, 86, (d) => (d === 'touch' ? 'TAP TO CONTINUE' : '{CONFIRM} CONTINUE'), { color: COLORS.sub });
     c.add(end);
     popIn(this, end, 900);
+  }
+
+  /** World 2 teaser: Navy Pier at night, the Ferris wheel turning the wrong way. */
+  private buildTeaser3(): void {
+    const c = this.add.container(0, 0).setDepth(70);
+    const still = reducedMotion();
+    const sky = this.add.graphics();
+    sky.fillGradientStyle(0x040818, 0x040818, 0x1b2a5a, 0x1b2a5a, 1).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    for (let k = 0; k < 60; k++) sky.fillStyle(k % 6 ? 0x8fa6d8 : 0xffffff, 1).fillRect((k * 131) % GAME_WIDTH, (k * 37) % 140, 1, 1);
+    // Lake + pier.
+    sky.fillStyle(0x0c2a5a, 1).fillRect(0, 196, GAME_WIDTH, GAME_HEIGHT - 196);
+    for (let k = 0; k < 24; k++) sky.fillStyle(0x3a6ab0, 0.8).fillRect((k * 97) % GAME_WIDTH, 204 + ((k * 13) % 50), 6, 1);
+    sky.fillStyle(0x6a7180, 1).fillRect(0, 190, 330, 8);
+    sky.fillStyle(0x3a3f50, 1);
+    for (let x = 6; x < 330; x += 24) sky.fillRect(x, 198, 3, 16);
+    c.add(sky);
+    // Ferris wheel (spinning backwards).
+    const cx = 210;
+    const cy = 120;
+    const wheel = this.add.graphics({ x: cx, y: cy });
+    const r = 62;
+    wheel.lineStyle(2, 0xe8414e, 1).strokeCircle(0, 0, r);
+    wheel.lineStyle(1, 0xe8414e, 0.8).strokeCircle(0, 0, r - 8);
+    for (let a = 0; a < 16; a++) {
+      const ang = (a * Math.PI) / 8;
+      wheel.lineStyle(1, 0xc8c8d8, 0.7).lineBetween(0, 0, Math.cos(ang) * r, Math.sin(ang) * r);
+      wheel.fillStyle([0xffd25a, 0x7aff9a, 0x5aa0e0, 0xff6aa8][a % 4], 1).fillRect(Math.round(Math.cos(ang) * r) - 3, Math.round(Math.sin(ang) * r) - 2, 6, 5);
+    }
+    const legs = this.add.graphics();
+    legs.lineStyle(3, 0x9aa4b0, 1).lineBetween(cx, cy, cx - 34, 190).lineBetween(cx, cy, cx + 34, 190);
+    c.add([legs, wheel]);
+    if (!still) this.tweens.add({ targets: wheel, angle: -360, duration: 5200, repeat: -1 });
+    const swirl = px(this, cx, cy, '?', { scale: 2, color: 0x7aff9a });
+    c.add(swirl);
+    // A couple of gnats buzz around the wheel.
+    const gnats = [0, 1, 2].map(() => {
+      const s = this.add.sprite(cx, cy, 'gnat').setOrigin(0.5);
+      playAnim(s, 'move');
+      c.add(s);
+      return s;
+    });
+    this.caption.setVisible(true);
+    this.caption.container.setDepth(90);
+    this.caption.say(TEASER2_CAPTION);
+    audio.sfx('secret');
+    let tt = 0;
+    this.teaserUpdate = (dt) => {
+      tt += dt;
+      gnats.forEach((g, k) => {
+        const ph = -tt / 700 + (k * Math.PI * 2) / 3;
+        g.setPosition(cx + Math.cos(ph) * 84, cy + Math.sin(ph) * 30);
+        g.setFlipX(Math.sin(ph) > 0);
+      });
+    };
+    this.time.delayedCall(still ? 300 : 1600, () => {
+      if (this.teaserReady || this.beat !== 'teaser') return;
+      this.teaserReady = true;
+      const w = px(this, 380, 40, 'WORLD 3', { scale: 3, color: 0x7aff9a });
+      const s = px(this, 380, 66, 'COMING SOON', { scale: 2, color: 0xff6aa8 });
+      c.add([w, s]);
+      popIn(this, w);
+      popIn(this, s, 300);
+      audio.sfx('powerup');
+      const end = prompt(this, 380, 88, (d) => (d === 'touch' ? 'TAP TO CONTINUE' : '{CONFIRM} CONTINUE'), { color: COLORS.sub });
+      c.add(end);
+      popIn(this, end, 900);
+    });
   }
 
   // ------------------------------------------------------------------ flow
@@ -465,7 +611,8 @@ export class EndingScene extends Phaser.Scene {
       else if (!this.flagUp) {
         this.tweens.killTweensOf(this.flag);
         this.flagRaised();
-      } else this.startCredits();
+      } else if (this.world === 2) this.startTeaser();
+      else this.startCredits();
     } else if (this.beat === 'credits') this.startTeaser();
     else if (this.beat === 'teaser') {
       if (!this.caption.done) this.caption.complete();
@@ -480,7 +627,14 @@ export class EndingScene extends Phaser.Scene {
     this.controls?.destroy();
     audio.sfx('confirm');
     if (this.data0.replay) transitionTo(this, 'Extras');
-    else transitionTo(this, 'WorldMap');
+    else {
+      // After World 1 the map opens on 2-1 (World 2 is unlocked by then).
+      if (this.world === 1) {
+        const i = LEVELS.findIndex((l) => l.id === 'north-1');
+        if (i >= 0 && saveSystem.isUnlocked('north-1')) this.registry.set('mapIndex', i);
+      }
+      transitionTo(this, 'WorldMap');
+    }
   }
 
   update(_t: number, delta: number): void {
@@ -488,7 +642,10 @@ export class EndingScene extends Phaser.Scene {
     this.beatMs += delta;
     this.caption.update(delta);
     if (this.beat === 'flag') {
-      if (this.flagUp && this.caption.done && this.beatMs > 9000) this.startCredits();
+      if (this.flagUp && this.caption.done && this.beatMs > 9000) {
+        if (this.world === 2) this.startTeaser();
+        else this.startCredits();
+      }
       if (this.flagUp) this.fireworks(delta, 700);
     } else if (this.beat === 'credits') {
       this.fireworks(delta, 1600);

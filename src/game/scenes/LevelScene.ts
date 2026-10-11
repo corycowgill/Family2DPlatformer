@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { DEBUG, DEPTH, GAME_HEIGHT, TILE_SIZE } from '../config';
 import { EMPTY_INPUT, EV, type LevelInfo, type PickupKind } from '../types';
-import { getLevel, FIRST_LEVEL_ID } from '../data/levels';
+import { getLevel, FIRST_LEVEL_ID, isWorldFinale } from '../data/levels';
 import { LAYERS, TILESET_KEY, TILESET_NAME } from '../data/tiles';
 import { getCharacter } from '../characters';
 import { Player } from '../entities/Player';
@@ -290,7 +290,8 @@ export class LevelScene extends Phaser.Scene {
     audio.stopMusic();
     audio.sfx('victory');
     gameState.resetCheckpoint();
-    const isLast = !this.level.next;
+    // World finale: no next level, or the next one opens a new world (1-4 → 2-1).
+    const isLast = isWorldFinale(this.level) || (this.level.world <= 0 && !this.level.next);
     saveSystem.recordCompletion(this.level.id, {
       timeMs: this.stats.timeMs,
       coins: this.stats.coins,

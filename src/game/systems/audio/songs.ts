@@ -336,9 +336,173 @@ function worldclear(): Song {
   };
 }
 
+// ------------------------------------------------------------------ World 2: the North Side
+
+/** Ballpark organ: square wave with a Leslie-ish tremolo, no attack. */
+const ORGAN = { wave: 'pulse', duty: 0.5, attack: 0.004, decay: 0.03, sustain: 0.95, release: 0.05, vol: 0.2, tremRate: 6.2, tremDepth: 0.28, gate: 0.92 } satisfies Instrument;
+
+/** 2-1 Lincoln Park: bright and bouncy (dotted rhythms, G major). */
+function park(): Song {
+  const prog = ['G', 'C', 'D', 'G', 'Em', 'C', 'A7', 'D', 'G', 'C', 'D', 'Bm', 'Em', 'C', 'D', 'G'];
+  return {
+    bpm: 136, bars: 16, loop: true,
+    tracks: [
+      track({ ...INST.lead, vol: 0.26 }, melody([
+        'D5:3 G5:1 B5:2 G5:2 D6:4 B5:4',
+        'C6:3 B5:1 A5:2 G5:2 E5:4 G5:4',
+        'F#5:3 A5:1 D6:2 C6:2 B5:2 A5:2 F#5:4',
+        'G5:6 .:2 B5:2 D6:2 G6:4',
+        'E6:3 D6:1 B5:2 G5:2 E5:4 G5:4',
+        'A5:3 G5:1 E5:2 G5:2 C6:4 E6:4',
+        'C#6:2 E6:2 G6:2 E6:2 C#6:2 A5:2 G5:4',
+        'F#5:4 A5:4 D6:6 .:2',
+        'B5:2 B5:1 B5:1 D6:2 B5:2 G5:4 D5:4',
+        'E5:2 G5:2 C6:4 B5:2 A5:2 G5:4',
+        'A5:2 F#5:2 D5:2 F#5:2 A5:4 D6:4',
+        'B5:3 A5:1 F#5:2 D5:2 B4:4 D5:4',
+        'G5:2 B5:2 E6:4 D6:2 B5:2 G5:4',
+        'E6:3 D6:1 C6:2 B5:2 A5:2 G5:2 E5:4',
+        'F#5:2 A5:2 D6:2 F#6:2 E6:4 C6:4',
+        'G6:8 D6:2 B5:2 G5:4',
+      ])),
+      track(INST.bass, chordRhythm(prog, 'R..5R..5R..5O.5.', 2)),
+      track({ ...INST.arp, vol: 0.1 }, chordRhythm(prog, 'x.x.x.x.x.x.x.x.', 4, 'arp')),
+      track({ ...INST.stab, vol: 0.07 }, chordRhythm(prog, '..x...x...x...x.', 3, 'stab')),
+    ],
+    drums: drums(16, {
+      k: 'x.....x.x.......',
+      s: ['....x.......x...', '....x.......x...', '....x.......x...', '....x.......x.xx'],
+      h: 'x.xxx.xxx.xxx.xx',
+    }),
+  };
+}
+
+/** 2-2 Lakefront Trail: breezy summer bossa (F major sevenths, flute + echo). */
+function lakefront(): Song {
+  const prog = ['Fmaj7', 'Am7', 'Bbmaj7', 'C7', 'Fmaj7', 'Dm7', 'Gm7', 'C7', 'Bbmaj7', 'Am7', 'Gm7', 'C7', 'Fmaj7', 'Dm7', 'Gm7 C7', 'F'];
+  const lead = melody([
+    'A5:6 C6:2 E6:4 C6:4',
+    'C6:6 A5:2 E5:4 G5:4',
+    'F5:4 A5:2 D6:6 C6:4',
+    'Bb5:6 G5:2 E5:8',
+    'A5:4 C6:2 F6:6 E6:4',
+    'D6:6 C6:2 A5:4 F5:4',
+    'G5:4 Bb5:2 D6:6 C6:2 Bb5:2',
+    'G5:12 .:4',
+    'D6:4 F6:2 E6:2 D6:4 A5:4',
+    'C6:4 E6:2 G6:6 E6:4',
+    'D6:3 C6:1 Bb5:4 G5:4 Bb5:4',
+    'C6:12 .:4',
+    'A5:2 C6:2 F6:4 E6:2 C6:2 A5:4',
+    'D6:2 F6:2 A6:4 G6:2 F6:2 D6:4',
+    'Bb5:4 D6:4 C6:4 E6:4',
+    'F6:12 .:4',
+  ]);
+  return {
+    bpm: 108, bars: 16, loop: true,
+    tracks: [
+      track(INST.flute, lead),
+      track(INST.echo, delayed(lead, 3, 16 * 16, 0.7)),
+      track({ ...INST.pad, vol: 0.1 }, chordRhythm(prog, 'R-------3-------', 4)),
+      track(INST.bass, chordRhythm(prog, 'R..5..5.R..5..5.', 2)),
+      track({ ...INST.stab, vol: 0.06 }, chordRhythm(prog, '..x..x....x..x..', 3, 'stab')),
+    ],
+    drums: drums(16, {
+      k: 'x..x....x..x....',
+      s: '...g..g....g..g.',
+      h: 'gxgxgxgxgxgxgxgx',
+    }),
+    gain: 0.75,
+  };
+}
+
+/** 2-3 Wrigleyville Nights: cool, groovy A-minor bassline under neon. */
+function night(): Song {
+  const prog = ['Am7', 'Am7', 'D7', 'D7', 'Am7', 'Am7', 'Fmaj7', 'E7', 'Fmaj7', 'G', 'Am7', 'Am7', 'Dm7', 'G', 'Fmaj7', 'E7'];
+  const lead = melody([
+    '.:4 E5:2 G5:2 A5:3 G5:1 E5:4',
+    'C6:2 B5:2 A5:2 G5:2 A5:8',
+    '.:4 F#5:2 A5:2 C6:3 A5:1 F#5:4',
+    'D6:2 C6:2 A5:2 F#5:2 A5:8',
+    'E6:3 D6:1 C6:2 A5:2 G5:2 A5:2 C6:4',
+    'A5:12 .:4',
+    'A5:2 C6:2 E6:4 D6:2 C6:2 A5:4',
+    'G#5:4 B5:4 D6:4 E6:4',
+    'F5:2 A5:2 C6:2 E6:2 .:2 E6:2 C6:4',
+    'D6:4 B5:2 G5:2 D6:4 B5:4',
+    'C6:3 B5:1 A5:2 E5:2 G5:4 A5:4',
+    'E6:8 .:8',
+    'F5:2 A5:2 D6:4 C6:2 A5:2 F5:4',
+    'G5:2 B5:2 D6:4 F6:4 D6:4',
+    'E6:3 D6:1 C6:2 A5:2 C6:4 E6:4',
+    'G#5:4 B5:4 E6:6 .:2',
+  ]);
+  return {
+    bpm: 112, bars: 16, loop: true,
+    tracks: [
+      track({ ...INST.lead, duty: 0.25, vol: 0.2, vibDepth: 0.25 }, lead),
+      track({ ...INST.echo, vol: 0.08 }, delayed(lead, 3, 16 * 16, 0.7)),
+      track({ ...INST.pulseBass, vol: 0.24 }, chordRhythm(prog, 'R.RO.R5.R.R7.5O.', 2)),
+      track(INST.bass, chordRhythm(prog, 'R.......R.....5.', 1)),
+      track({ ...INST.stab, vol: 0.07 }, chordRhythm(prog, '....x.......x.x.', 3, 'stab')),
+    ],
+    drums: drums(16, {
+      k: 'x.....x...x.....',
+      s: ['....x.......x..g', '....x.......x..g', '....x.......x..g', '....x.......x.gx'],
+      h: 'xgxgxgxgxgxgxgxg',
+      o: '......x.......x.',
+    }),
+    gain: 0.78,
+  };
+}
+
+/** 2-4 Battle at Wrigley: a ballpark-organ cheer that turns into a tense C-minor alien fight. */
+function wrigley(): Song {
+  const prog = ['C', 'F', 'G', 'C', 'Cm', 'Cm', 'Ab', 'G', 'Cm', 'Fm', 'Ab', 'G', 'Fm', 'Cm', 'Ab G', 'G'];
+  const lead = melody([
+    // Organ cheer (major)...
+    'E5:2 G5:2 A5:2 C6:4 A5:2 G5:4',
+    'F5:2 A5:2 C6:2 D6:4 C6:2 A5:4',
+    'B5:2 D6:2 G6:4 F6:2 D6:2 B5:4',
+    'C6:4 E6:4 G6:4 .:4',
+    // ...then the pod attacks (minor).
+    'C5:2 Eb5:2 G5:2 C6:2 Bb5:2 G5:2 Eb5:2 G5:2',
+    'C6:4 D6:2 Eb6:2 D6:4 C6:4',
+    'Ab5:2 C6:2 Eb6:2 C6:2 Ab5:2 Eb5:2 C5:2 Eb5:2',
+    'D6:4 B5:4 G5:4 B5:4',
+    'Eb6:2 D6:2 C6:2 G5:2 Eb6:2 D6:2 C6:2 G5:2',
+    'F5:2 Ab5:2 C6:2 F6:2 Eb6:2 C6:2 Ab5:4',
+    'Eb6:4 C6:4 Ab5:4 C6:4',
+    'B5:2 D6:2 F6:2 D6:2 G6:8',
+    'Ab5:2 C6:2 F6:4 Eb6:2 C6:2 Ab5:4',
+    'G5:2 C6:2 Eb6:4 D6:2 C6:2 G5:4',
+    'Ab5:4 C6:4 B5:4 D6:4',
+    'G5:2 B5:2 D6:2 F6:2 G6:4 .:4',
+  ]);
+  return {
+    bpm: 150, bars: 16, loop: true,
+    tracks: [
+      track(ORGAN, lead),
+      track({ ...ORGAN, duty: 0.25, vol: 0.09 }, lead.map((e) => ({ ...e, midi: e.midi - 12 }))),
+      track({ ...ORGAN, vol: 0.08 }, chordRhythm(prog, '..x...x...x...x.', 3, 'stab')),
+      track(INST.pulseBass, chordRhythm(prog, 'RRORRRORRRORRROR', 2)),
+      track(INST.bass, chordRhythm(prog, 'R...R...R...R...', 1)),
+      track({ ...INST.arp, vol: 0.07 }, chordRhythm(prog, 'x.xxx.xxx.xxx.xx', 4, 'arp')),
+    ],
+    // Bars 1-4 organ cheer, 5-16 the fight.
+    drums: drums(16, {
+      k: [...Array(4).fill('x.....x.x.......'), ...Array(12).fill('x..x..x.x..x..x.')],
+      s: ['....x.......x...', '....x.......x...', '....x.......x...', '....x...x.x.xxxx', ...Array(11).fill('....x.......x...'), '....x.......x.xx'],
+      h: 'x.x.x.x.x.x.x.x.',
+      c: ['................', '................', '................', '................', 'x...............', ...Array(11).fill('................')],
+    }),
+  };
+}
+
 /** Song factories by music key (built lazily). */
 export const SONGS: Record<string, () => Song> = {
   title, streets, elevated, riverwalk, boss, map, victory, gameover, worldclear,
+  park, lakefront, night, wrigley,
 };
 
 /** Music keys that should not loop. */

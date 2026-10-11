@@ -40,6 +40,12 @@ export const MEDAL_TIMES: Record<string, MedalTimes> = {
   'loop-2': { gold: 45_000, silver: 70_000, bronze: 110_000 },
   'loop-3': { gold: 40_000, silver: 60_000, bronze: 100_000 },
   'loop-boss': { gold: 75_000, silver: 110_000, bronze: 160_000 },
+  // TODO-measure: World 2 placeholders, sized for the short placeholder maps (≈90 tiles) and
+  // a ~60 s Overseer fight. Re-measure with the platform bot once the real 2-x maps land.
+  'north-1': { gold: 30_000, silver: 50_000, bronze: 85_000 },
+  'north-2': { gold: 30_000, silver: 50_000, bronze: 85_000 },
+  'north-3': { gold: 32_000, silver: 52_000, bronze: 90_000 },
+  'north-4': { gold: 70_000, silver: 105_000, bronze: 150_000 },
 };
 
 export function medalTimes(levelId: string): MedalTimes | undefined {
@@ -91,12 +97,17 @@ export interface CollectionStats {
   bossBeaten: boolean;
 }
 
-export function collectionStats(save: SaveData): CollectionStats {
+/**
+ * Totals over every registered level, or only `world`'s levels. `bossBeaten` is always the
+ * World 1 boss (it gates Grandma); per-world boss state is `worldBossBeaten`.
+ */
+export function collectionStats(save: SaveData, world?: number): CollectionStats {
   const medals: Record<Medal, number> = { gold: 0, silver: 0, bronze: 0 };
   let souvenirs = 0;
   let stars = 0;
   let cleared = 0;
-  for (const l of LEVELS) {
+  const levels = world === undefined ? LEVELS : LEVELS.filter((l) => l.world === world);
+  for (const l of levels) {
     const r = save.levels[l.id];
     if (!r) continue;
     souvenirs += r.souvenirs.length;
@@ -107,13 +118,25 @@ export function collectionStats(save: SaveData): CollectionStats {
   const boss = LEVELS.find((l) => l.boss);
   return {
     souvenirs,
-    souvenirsMax: LEVELS.length * 3,
+    souvenirsMax: levels.length * 3,
     stars,
     levelsCleared: cleared,
-    levelsTotal: LEVELS.length,
+    levelsTotal: levels.length,
     medals,
     bossBeaten: save.worldsCompleted.includes(1) || (!!boss && !!save.levels[boss.id]?.completed),
   };
+}
+
+/** Has the boss level of `world` been cleared? */
+export function worldBossBeaten(save: SaveData, world: number): boolean {
+  if (save.worldsCompleted.includes(world)) return true;
+  const boss = LEVELS.find((l) => l.world === world && l.boss);
+  return !!boss && !!save.levels[boss.id]?.completed;
+}
+
+/** Worlds that have registered levels, ascending. */
+export function registeredWorlds(): number[] {
+  return Array.from(new Set(LEVELS.map((l) => l.world))).sort((a, b) => a - b);
 }
 
 // ───────────────────────── unlock rules ─────────────────────────

@@ -89,7 +89,7 @@ export type EnemyKind =
 
 export type PickupKind = 'coin' | 'hotdog' | 'pizza' | 'ctaPass' | 'star' | 'souvenir' | 'oneUp';
 
-export type LevelTheme = 'day' | 'rooftop' | 'river' | 'sunset';
+export type LevelTheme = 'day' | 'rooftop' | 'river' | 'sunset' | 'park' | 'lakefront' | 'night' | 'stadium';
 
 export interface LevelInfo {
   id: string;
