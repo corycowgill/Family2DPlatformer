@@ -179,11 +179,16 @@ rooftop vent mouths, L-track and river lines in layer pixels). Runtime: `src/gam
   cta_entrance 48x48, bus_shelter 48x40, steam_vent 16x8, mailbox 16x22, tree 32x48.
   Anims: pigeon_idle_0-3 / pigeon_fly_0-3 16x16, steam_0-5 16x32 (rising puffs, loop),
   train_light_0-5 16x24 (railroad-crossing flasher, alternates every 3 frames).
-- **effects** (centred): dust 16x16x5, spark 16x16x4, explosion_small 24x24x6, explosion_large 48x48x8,
-  smoke 24x24x6, coin_burst 24x24x5, poof 24x24x5, energy_shot 16x16x4, alien_laser 24x8x4,
-  plasma_shot 16x16x4, drone_shot 12x12x4, shockwave 64x24x6, sniff 16x16x6, air_puff 24x16x5,
-  dash_trail 24x16x4, spawn_ring 32x32x6; debris_0/1 8x8; bolt 12x16 (lightning bolt).
-  Projectiles face right.
+- **effects** (centred; dust bottom-centred): dust 24x16x6, spark 24x24x5, explosion_small 32x32x8,
+  explosion_large 64x64x10, smoke 32x32x8, coin_burst 24x24x6, poof 32x32x7, energy_shot 16x16x4,
+  alien_laser 24x8x4, plasma_shot 16x16x4, drone_shot 12x12x4, shockwave 64x24x7 (ground row y=17),
+  sniff 24x24x8, air_puff 32x20x6, dash_trail 32x24x5, spawn_ring 40x40x8; debris_0/1 8x8; bolt 12x16.
+  Projectile frame sizes are unchanged on purpose (enemy hitboxes derive from them). Projectiles face right.
+  Style: puffs/fireballs are unions of spheres lit from the upper left and quantised into 3-5 bands;
+  effects fade by shape (shrink / split / bitten away / streaks shorten), never by dither. fps per anim
+  live in `src/game/systems/AnimationSystem.ts`. `python3 tools/art/preview_effects.py [anim..]` writes
+  `art/previews/fx-anim-<anim>.gif` (4x, day | sunset backdrop, real timing), `fx-strip-<anim>.png`
+  and `fx-strips.png`.
 - **platforms**: girder_2/3/4 32/48/64x16, plank_2/3 32/48x**8**, scaffold_3 48x16,
   train_car 128x40, train_front 128x40 (lead car, cab on the right), boat 112x36 (top deck at y≈5-10),
   bus 104x40, taxi 56x26, cop_car 56x26. Vehicles face right.

@@ -9,7 +9,10 @@ import Phaser from 'phaser';
 const FPS: Record<string, number> = {
   idle: 6, walk: 10, run: 14, jump: 8, fall: 8, land: 14, crouch: 8, attack: 16, hurt: 10,
   victory: 8, defeat: 8, ability: 14, move: 10, hit: 12, die: 10, coin: 10, star: 8, question: 6,
-  dust: 18, spark: 20, explosion_small: 18, explosion_large: 16, smoke: 10, coin_burst: 20, poof: 16,
+  // effects atlas (frame counts in tools/art/draw_effects.py ANIMS)
+  dust: 18, spark: 24, explosion_small: 18, explosion_large: 16, smoke: 12, coin_burst: 20, poof: 18,
+  energy_shot: 12, alien_laser: 14, plasma_shot: 12, drone_shot: 12, shockwave: 16, sniff: 14,
+  air_puff: 18, dash_trail: 20, spawn_ring: 14,
   pigeon_idle: 4, pigeon_fly: 14, steam: 10,
 };
 const DEFAULT_FPS = 10;
