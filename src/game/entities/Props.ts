@@ -61,8 +61,7 @@ export class Sign extends Phaser.GameObjects.Image {
   }
 
   preUpdate(): void {
-    const p = this.ctx.player;
-    const near = Math.abs(p.x - this.x) < 40 && Math.abs(p.y - this.y) < 48;
+    const near = this.ctx.players.some((p) => Math.abs(p.x - this.x) < 40 && Math.abs(p.y - this.y) < 48);
     if (near !== this.shown) {
       this.shown = near;
       this.scene.tweens.killTweensOf(this.bubble);
@@ -102,8 +101,8 @@ export class PigeonFlock extends Phaser.GameObjects.Zone {
 
   preUpdate(): void {
     if (this.scattered) return;
-    const p = this.ctx.player;
-    if (Math.abs(p.x - this.x) > 56 + this.width / 2 || Math.abs(p.y - this.y) > 64) return;
+    const p = this.ctx.players.find((pl) => Math.abs(pl.x - this.x) <= 56 + this.width / 2 && Math.abs(pl.y - this.y) <= 64);
+    if (!p) return;
     this.scattered = true;
     this.ctx.sfx('pigeon-flap');
     const fly = animKey('props', 'pigeon_fly');
@@ -157,18 +156,20 @@ export class TrashCan extends Phaser.Physics.Arcade.Sprite {
   preUpdate(time: number, delta: number): void {
     super.preUpdate(time, delta);
     if (this.broken) return;
-    const p = this.ctx.player;
-    if (!p.isAlive()) return;
-    const pr = playerRect(p);
-    const r = new Phaser.Geom.Rectangle(this.body.left, this.body.top, this.body.width, this.body.height);
-    if (!Phaser.Geom.Rectangle.Overlaps(pr, r)) return;
-    const pb = p.body;
-    const stomp = pb.velocity.y > 0 && pb.prev.y + pb.height <= this.body.top + 8;
-    if (stomp) {
-      p.bounce(p.lastInput.jump);
-      this.smash();
-    } else if (p.attacking) {
-      this.smash();
+    for (const p of this.ctx.players) {
+      if (this.broken) return;
+      if (!p.isAlive()) continue;
+      const pr = playerRect(p);
+      const r = new Phaser.Geom.Rectangle(this.body.left, this.body.top, this.body.width, this.body.height);
+      if (!Phaser.Geom.Rectangle.Overlaps(pr, r)) continue;
+      const pb = p.body;
+      const stomp = pb.velocity.y > 0 && pb.prev.y + pb.height <= this.body.top + 8;
+      if (stomp) {
+        p.bounce(p.lastInput.jump);
+        this.smash();
+      } else if (p.attacking) {
+        this.smash();
+      }
     }
   }
 
@@ -208,8 +209,7 @@ export class Newspapers extends Phaser.GameObjects.Image {
   preUpdate(): void {
     const now = this.ctx.now();
     if (now < this.rearmAt) return;
-    const p = this.ctx.player;
-    if (Math.abs(p.x - this.x) < 10 && Math.abs(p.y - this.y) < 6 && Math.abs(p.body.velocity.x) > 20) {
+    if (this.ctx.players.some((p) => Math.abs(p.x - this.x) < 10 && Math.abs(p.y - this.y) < 6 && Math.abs(p.body.velocity.x) > 20)) {
       this.rearmAt = now + 3000;
       const paper = ensureTexture(this.scene, 'world-paper', 5, 4, (g) => g.fillStyle(0xe8e4d8).fillRect(0, 0, 5, 4));
       burst(this.scene, this.x, this.y - 4, paper, [undefined], 6, { spread: 26, up: 22, duration: 900 });

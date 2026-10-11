@@ -63,6 +63,31 @@ export interface HarnessState {
   checkpoint: number;
   manual: boolean;
   frame: number;
+  /** Local co-op Player 2 (null in single player). */
+  p2: PlayerSnapshot | null;
+}
+
+export interface PlayerSnapshot {
+  character: CharacterId;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  grounded: boolean;
+  mode: string;
+  health: number;
+}
+
+export interface CoopState {
+  active: boolean;
+  picking: boolean;
+  players: number;
+  p1: PlayerSnapshot | null;
+  p2: PlayerSnapshot | null;
+  /** Leash warps so far this level. */
+  warps: number;
+  /** Camera centre (world px) and view rectangle. */
+  camera: { x: number; y: number; left: number; right: number; top: number; bottom: number };
 }
 
 export interface HarnessStats {
@@ -98,10 +123,24 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+function snapshot(p: LevelScene['player']): PlayerSnapshot {
+  return {
+    character: p.def.id,
+    x: p.x,
+    y: p.y,
+    vx: p.body?.velocity.x ?? 0,
+    vy: p.body?.velocity.y ?? 0,
+    grounded: p.grounded,
+    mode: p.mode,
+    health: p.health,
+  };
+}
+
 export class TestHarness {
   readonly version = 1;
   private manual = false;
   private input: HarnessInput | null = null;
+  private inputP2: HarnessInput | null = null;
   private invulnerable = false;
   private simTime = 0;
   private stepDt = 1000 / 60;
@@ -205,6 +244,9 @@ export class TestHarness {
     this.frame = 0;
     this.simTime = 0;
     this.input = null;
+    this.inputP2 = null;
+    // Every harness level starts single player; co-op tests call joinP2().
+    gameState.coop = null;
     if (opts.seed !== undefined || opts.manual) this.seed(opts.seed ?? 1);
     else this.unseed();
     gameState.character = character;
@@ -297,7 +339,7 @@ export class TestHarness {
   setInvulnerable(on: boolean): void {
     this.invulnerable = on;
     const lv = this.level();
-    if (lv && !on) lv.player.invulnUntil = 0;
+    if (lv && !on) for (const p of lv.players) p.invulnUntil = 0;
     this.applySticky();
   }
 
@@ -305,7 +347,9 @@ export class TestHarness {
     const lv = this.level();
     if (!lv) return;
     if (lv.inputSys) lv.inputSys.override = this.input ? { ...this.input } : this.manual ? {} : null;
-    if (this.invulnerable) lv.player.invulnUntil = Number.MAX_SAFE_INTEGER;
+    const p2in = lv.coop?.p2Input;
+    if (p2in) p2in.override = this.inputP2 ? { ...this.inputP2 } : this.manual || p2in.source.harness ? {} : null;
+    if (this.invulnerable) for (const p of lv.players) p.invulnUntil = Number.MAX_SAFE_INTEGER;
     if (lv.player !== this.lastPlayer) {
       this.lastPlayer = lv.player;
       this.frame = 0;
@@ -319,7 +363,7 @@ export class TestHarness {
       return {
         scenes, levelId: null, character: null, x: 0, y: 0, vx: 0, vy: 0, grounded: false, mode: 'none', health: 0,
         lives: gameState.lives, coins: 0, levelTimeMs: 0, finished: false, enemies: 0, deaths: 0,
-        checkpoint: gameState.checkpoint, manual: this.manual, frame: this.frame,
+        checkpoint: gameState.checkpoint, manual: this.manual, frame: this.frame, p2: null,
       };
     }
     const p = lv.player;
@@ -343,6 +387,68 @@ export class TestHarness {
       checkpoint: gameState.checkpoint,
       manual: this.manual,
       frame: this.frame,
+      p2: lv.coop?.p2 ? snapshot(lv.coop.p2) : null,
+    };
+  }
+
+  // ───────────────────────── local co-op ─────────────────────────
+
+  /**
+   * Drop Player 2 in right now as `character` (must differ from P1's), next to Player 1,
+   * skipping the in-game picker. P2 reads no physical device; drive it with setInputP2.
+   */
+  joinP2(character: CharacterId): CoopState {
+    const lv = this.requireLevel();
+    if (!CHARACTER_IDS.includes(character)) throw new Error(`unknown character ${character}`);
+    this.inputP2 = null;
+    lv.coop.join(character);
+    this.applySticky();
+    return this.coopState();
+  }
+
+  /** Player 2 drops out. */
+  leaveP2(): CoopState {
+    const lv = this.requireLevel();
+    lv.coop.leave();
+    this.inputP2 = null;
+    return this.coopState();
+  }
+
+  /** Player 2's held buttons (null = none). */
+  setInputP2(input: HarnessInput | null): void {
+    this.inputP2 = input ? { ...input } : null;
+    this.applySticky();
+  }
+
+  killP2(): void {
+    const p2 = this.requireLevel().coop.p2;
+    if (!p2) throw new Error('no player 2');
+    p2.die('pit');
+  }
+
+  /** Move Player 2 (bottom-centre anchor) to world x,y and stop it. */
+  teleportP2(x: number, y: number): void {
+    const p2 = this.requireLevel().coop.p2;
+    if (!p2) throw new Error('no player 2');
+    p2.setPosition(x, y);
+    p2.body.reset(x, y);
+    p2.body.setVelocity(0, 0);
+    p2.motor.vx = 0;
+    p2.motor.vy = 0;
+  }
+
+  coopState(): CoopState {
+    const lv = this.requireLevel();
+    const cam = lv.cameras.main;
+    const v = cam.worldView;
+    return {
+      active: lv.coop.active,
+      picking: lv.coop.picking,
+      players: lv.players.length,
+      p1: snapshot(lv.player),
+      p2: lv.coop.p2 ? snapshot(lv.coop.p2) : null,
+      warps: lv.coop.warps,
+      camera: { x: cam.scrollX + cam.width / 2, y: cam.scrollY + cam.height / 2, left: v.x, right: v.right, top: v.y, bottom: v.bottom },
     };
   }
 

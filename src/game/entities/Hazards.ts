@@ -62,7 +62,7 @@ export class SteamVent extends Phaser.GameObjects.Zone {
     const prev = this.phaseAt(this.t);
     this.t += delta / 1000;
     const phase = this.phaseAt(this.t);
-    const onScreen = Math.abs(this.ctx.player.x - this.x) < 320;
+    const onScreen = this.ctx.players.some((pl) => Math.abs(pl.x - this.x) < 320);
     if (phase !== prev && phase === 'active' && onScreen) this.ctx.sfx('steam');
     this.puffs.forEach((p, i) => {
       if (phase === 'active') {
@@ -75,13 +75,14 @@ export class SteamVent extends Phaser.GameObjects.Zone {
       }
     });
     if (phase !== 'active') return;
-    const player = this.ctx.player;
-    if (!player.isAlive()) return;
-    if (!Phaser.Geom.Rectangle.Overlaps(this.zoneRect, playerRect(player))) return;
-    if (this.lift) {
-      if (player.body.velocity.y > -240) player.bounce(true, 430);
-    } else {
-      player.hurt({ amount: 1, fromX: this.x, kind: 'hazard' });
+    for (const player of this.ctx.players) {
+      if (!player.isAlive()) continue;
+      if (!Phaser.Geom.Rectangle.Overlaps(this.zoneRect, playerRect(player))) continue;
+      if (this.lift) {
+        if (player.body.velocity.y > -240) player.bounce(true, 430);
+      } else {
+        player.hurt({ amount: 1, fromX: this.x, kind: 'hazard' });
+      }
     }
   }
 }
@@ -167,12 +168,13 @@ export class PassingTrain extends Phaser.GameObjects.Zone {
   }
 
   private playerNear(): boolean {
-    const p = this.ctx.player;
     if (!this.hazard) {
       const cam = this.ctx.scene.cameras.main.worldView;
       return this.lane.bottom > cam.top && this.lane.bottom - 60 < cam.bottom;
     }
-    return p.x > this.lane.left - 120 && p.x < this.lane.right + 120 && p.y > this.lane.top - 120 && p.y < this.lane.bottom + 80;
+    return this.ctx.players.some(
+      (p) => p.x > this.lane.left - 120 && p.x < this.lane.right + 120 && p.y > this.lane.top - 120 && p.y < this.lane.bottom + 80,
+    );
   }
 
   preUpdate(_time: number, delta: number): void {
@@ -235,12 +237,13 @@ export class PassingTrain extends Phaser.GameObjects.Zone {
     this.trainX += this.dir * this.speed * (delta / 1000);
     this.placeTrain();
     if (this.hazard) {
-      const p = this.ctx.player;
       const r = new Phaser.Geom.Rectangle(this.trainX, this.lane.bottom - Math.min(this.train.height, this.lane.height), this.train.width, Math.min(this.train.height, this.lane.height));
-      if (p.isAlive() && Phaser.Geom.Rectangle.Overlaps(r, playerRect(p))) {
-        p.hurt({ amount: 1, fromX: p.x - this.dir * 10, kind: 'hazard' });
+      for (const p of this.ctx.players) {
+        if (p.isAlive() && Phaser.Geom.Rectangle.Overlaps(r, playerRect(p))) {
+          p.hurt({ amount: 1, fromX: p.x - this.dir * 10, kind: 'hazard' });
+        }
       }
-      if (Math.abs(p.x - this.trainX) < 300) this.ctx.shake(0.002, 60);
+      if (this.ctx.players.some((p) => Math.abs(p.x - this.trainX) < 300)) this.ctx.shake(0.002, 60);
     }
     const cam = this.ctx.scene.cameras.main.worldView;
     const end = this.hazard ? (this.dir > 0 ? Math.max(cam.right, this.lane.right) : Math.min(cam.left, this.lane.left) - this.train.width) : this.dir > 0 ? cam.right + 32 : cam.left - this.train.width - 32;
@@ -270,7 +273,8 @@ export class KillZone extends Phaser.GameObjects.Zone {
     this.rect = new Phaser.Geom.Rectangle(o.x - o.width / 2, o.y - o.height, o.width, o.height);
   }
   preUpdate(): void {
-    const p = this.ctx.player;
-    if (p.isAlive() && Phaser.Geom.Rectangle.Overlaps(this.rect, playerRect(p))) p.die('pit');
+    for (const p of this.ctx.players) {
+      if (p.isAlive() && Phaser.Geom.Rectangle.Overlaps(this.rect, playerRect(p))) p.die('pit');
+    }
   }
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DEPTH } from '../config';
 import { EV } from '../types';
 import type { LevelContext, SpawnObject, Trigger } from '../world/LevelContext';
+import type { Player } from './Player';
 
 /** Base for static overlap zones/sprites the player can touch. */
 export abstract class TriggerSprite extends Phaser.Physics.Arcade.Sprite implements Trigger {
@@ -16,7 +17,7 @@ export abstract class TriggerSprite extends Phaser.Physics.Arcade.Sprite impleme
     this.setOrigin(0.5, 1);
     this.setDepth(DEPTH.props);
   }
-  abstract onPlayerOverlap(ctx: LevelContext): void;
+  abstract onPlayerOverlap(ctx: LevelContext, player?: Player): void;
 }
 
 /** Chicago-flag checkpoint. `index` property orders checkpoints within a level. */
@@ -34,12 +35,14 @@ export class Checkpoint extends TriggerSprite {
     this.activated = true;
     this.setFrame('checkpoint_on');
   }
-  onPlayerOverlap(ctx: LevelContext): void {
-    if (this.activated || !ctx.player.isAlive()) return;
+  onPlayerOverlap(ctx: LevelContext, player?: Player): void {
+    const p = player ?? ctx.player;
+    if (this.activated || !p.isAlive()) return;
     this.setReached();
     ctx.sfx('checkpoint');
     ctx.effect('spark', this.x, this.y - this.height);
-    ctx.player.heal(ctx.player.maxHealth);
+    // Co-op: the flag heals the whole family.
+    for (const pl of ctx.players) if (pl.isAlive()) pl.heal(pl.maxHealth);
     ctx.events.emit(EV.CHECKPOINT, this.index, this.x, this.y);
   }
 }
@@ -53,8 +56,8 @@ export class Goal extends TriggerSprite {
     this.body.setSize(12, Math.max(48, this.height));
     this.body.setOffset((this.width - 12) / 2, this.height - Math.max(48, this.height));
   }
-  onPlayerOverlap(ctx: LevelContext): void {
-    if (this.reached || !ctx.player.isAlive()) return;
+  onPlayerOverlap(ctx: LevelContext, player?: Player): void {
+    if (this.reached || !(player ?? ctx.player).isAlive()) return;
     this.reached = true;
     ctx.sfx('goal');
     ctx.events.emit(EV.LEVEL_COMPLETE);

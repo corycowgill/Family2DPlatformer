@@ -37,6 +37,8 @@ export abstract class Boss extends Enemy {
   private walls: Phaser.GameObjects.Zone[] = [];
   private wallGfx?: Phaser.GameObjects.Graphics;
   private colliders: Phaser.Physics.Arcade.Collider[] = [];
+  /** Stops adding arena-wall colliders for co-op players who drop in later. */
+  private offPlayers: (() => void)[] = [];
   /** Extra objects (drones, markers…) destroyed when the boss is defeated or the scene ends. */
   protected minions: Enemy[] = [];
 
@@ -94,7 +96,7 @@ export abstract class Boss extends Enemy {
     this.ctx.sfx('boss-roar');
     this.ctx.shake(0.008, 600);
     // Brief safety during the intro.
-    this.player.invulnUntil = Math.max(this.player.invulnUntil, this.ctx.now() + this.introMs);
+    for (const p of this.ctx.players) p.invulnUntil = Math.max(p.invulnUntil, this.ctx.now() + this.introMs);
     this.onIntroStart();
   }
 
@@ -116,7 +118,16 @@ export abstract class Boss extends Enemy {
       const z = scene.add.zone(x, a.bottom - h / 2, 16, h);
       scene.physics.add.existing(z, true);
       this.walls.push(z);
-      this.colliders.push(scene.physics.add.collider(this.player, z));
+      // Every player (co-op P2 too, even one dropping in mid-fight) is walled in.
+      this.offPlayers.push(
+        this.ctx.eachPlayer((p) => {
+          const c = scene.physics.add.collider(p, z);
+          this.colliders.push(c);
+          return () => {
+            if (c.world) c.destroy();
+          };
+        }),
+      );
       this.colliders.push(scene.physics.add.collider(this.ctx.groups.enemies, z));
       // Visual barrier: hazard-striped energy gate.
       const gx = x < a.centerX ? a.x : a.right - 4;
@@ -130,7 +141,9 @@ export abstract class Boss extends Enemy {
   }
 
   private openArena(): void {
-    for (const c of this.colliders) c.destroy();
+    for (const off of this.offPlayers) off();
+    this.offPlayers = [];
+    for (const c of this.colliders) if (c.world) c.destroy();
     for (const z of this.walls) z.destroy();
     this.colliders = [];
     this.walls = [];
@@ -228,7 +241,9 @@ export abstract class Boss extends Enemy {
   }
 
   destroy(fromScene?: boolean): void {
-    for (const c of this.colliders) c.destroy();
+    for (const off of this.offPlayers) off();
+    this.offPlayers = [];
+    for (const c of this.colliders) if (c.world) c.destroy();
     for (const z of this.walls) z.destroy();
     this.colliders = [];
     this.walls = [];

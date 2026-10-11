@@ -110,6 +110,26 @@ New levels are covered automatically: anything listed in `src/game/data/levels.t
 real `LEVELS` entry (menu flow, unlocks) fall back to `test.json` for maps that don't exist yet
 (`harness.aliasMissingLevels()`), noted as a test annotation.
 
+## Local co-op (2 players, same screen)
+
+Drop-in / drop-out during any level. Code: `systems/Coop.ts` (pure rules, `tests/unit/coop.test.ts`),
+`systems/CoopSystem.ts` (Phaser glue), `InputSystem` sources (`primary` / `keys2` / `pad`),
+HUD P2 panel; e2e `tests/e2e/coop.spec.ts`.
+
+- **Join:** A or Start on a second controller (a lone controller always stays P1's, so its Start
+  keeps pausing), or **U** on the keyboard (one keyboard + one controller: P2 takes the keys). A picker appears beside P1: left/right picks a hero (never P1's;
+  Grandma only once unlocked), jump/ability confirms. P2 keyboard set: **IJKL** move, **U** jump,
+  **O** ability, **H** run; while it's in use P1 keeps Arrows/WASD, Space/Z jump, X ability (J/K go to P2).
+- **Leave:** View/Back on P2's controller, **Backspace** on the keyboard, or unplug P2's pad.
+- **Camera:** midpoint of the living players, clamped to the world/arena. If they can't fit on one
+  screen the camera follows the player furthest right, and a player who stays off-screen for 0.7 s
+  warps (poof) next to the partner's last safe footing.
+- **Deaths / lives / coins:** shared lives and coins. A player who falls while the partner is alive
+  respawns next to them after 1.5 s at full health — no life lost. Only when both are down is a
+  life lost (restart at the checkpoint, P2 comes back too). Checkpoint flags heal everyone; either
+  player can reach the goal; boss arenas wall in both.
+- P2 persists for the session (next levels, restarts) via `gameState.coop`. Touch stays P1-only.
+
 ## Controller (Xbox) support
 
 Browser Gamepad API, W3C "standard" layout (Chrome/Edge/Firefox on Windows/macOS, Safari on
@@ -201,6 +221,7 @@ h.getState();  // { scenes, levelId, character, x, y, vx, vy, grounded, mode, he
 | `stats()` | textures, display-list sizes, bodies, tweens, listener counts, JS heap. |
 | `measureFps(ms)` | Real render frame times. |
 | `bot(options)` | Runs the platforming bot (below). |
+| `joinP2(character)`, `leaveP2()`, `setInputP2(input \| null)`, `killP2()`, `teleportP2(x, y)`, `coopState()` | Local co-op (below). `startLevel` always starts single player; `getState().p2` is P2's snapshot or null. |
 
 **Player motor and stepping:** the player motor advances on the Arcade world's
 `WORLD_STEP` event; `Player.tick()` only latches input. `stepFrames` runs the scene's whole

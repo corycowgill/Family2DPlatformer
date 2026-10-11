@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DEPTH } from '../config';
 import { EV, type PickupKind } from '../types';
 import type { Collectible, LevelContext } from '../world/LevelContext';
+import type { Player } from './Player';
 import { playAnim } from '../systems/AnimationSystem';
 import { desyncAnim } from '../fx/fxAnim';
 
@@ -52,11 +53,11 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite implements Collectible 
     }
   }
 
-  collect(ctx: LevelContext): void {
+  collect(ctx: LevelContext, player?: Player): void {
     if (this.taken) return;
     this.taken = true;
     this.body.enable = false;
-    const p = ctx.player;
+    const p = player ?? ctx.player;
     switch (this.kind) {
       case 'hotdog':
         p.heal(1);

@@ -1,6 +1,7 @@
 import { PLAYER_DEFAULTS } from '../config';
 import type { CharacterId } from '../types';
 import { saveSystem } from '../systems/SaveSystem';
+import type { CoopSession } from '../systems/CoopSystem';
 
 /**
  * Session (non-persistent) state that survives scene transitions:
@@ -12,6 +13,8 @@ export class GameState {
   /** Checkpoint index reached in `checkpointLevel` (-1 = level start). */
   checkpoint = -1;
   checkpointLevel = '';
+  /** Local co-op Player 2 for this session (null = single player). See systems/CoopSystem.ts. */
+  coop: CoopSession | null = null;
 
   selectCharacter(id: CharacterId): void {
     this.character = id;

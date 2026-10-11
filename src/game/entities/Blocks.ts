@@ -4,6 +4,7 @@ import type { PickupKind } from '../types';
 import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { Pickup } from './Collectible';
 import type { Enemy } from './Enemy';
+import type { Player } from './Player';
 import { playAnim } from '../systems/AnimationSystem';
 import { burst, hasFrame, str } from '../world/worldUtil';
 
@@ -22,7 +23,8 @@ export type BlockContents = PickupKind | 'coins5' | 'none';
 
 interface BlockSystem {
   group: Phaser.Physics.Arcade.StaticGroup;
-  candidates: Block[];
+  /** Blocks hit from below this frame, per player (co-op: each player bumps one). */
+  candidates: Map<Player, Block[]>;
 }
 const systems = new WeakMap<LevelContext, BlockSystem>();
 
@@ -31,25 +33,36 @@ function blockSystem(ctx: LevelContext): BlockSystem {
   if (sys) return sys;
   const scene = ctx.scene;
   const group = scene.physics.add.staticGroup();
-  const s: BlockSystem = { group, candidates: [] };
+  const s: BlockSystem = { group, candidates: new Map() };
   systems.set(ctx, s);
-  const player = ctx.player;
-  scene.physics.add.collider(player, group, (_p, blk) => {
-    const b = blk as Block;
-    const pb = player.body;
-    if (!player.isAlive()) return;
-    if ((pb.blocked.up || pb.touching.up) && b.body.bottom <= pb.top + 3) s.candidates.push(b);
+  ctx.eachPlayer((player) => {
+    const c = scene.physics.add.collider(player, group, (_p, blk) => {
+      const b = blk as Block;
+      const pb = player.body;
+      if (!player.isAlive()) return;
+      if ((pb.blocked.up || pb.touching.up) && b.body.bottom <= pb.top + 3) {
+        let list = s.candidates.get(player);
+        if (!list) s.candidates.set(player, (list = []));
+        list.push(b);
+      }
+    });
+    return () => {
+      if (c.world) c.destroy();
+      s.candidates.delete(player);
+    };
   });
   scene.physics.add.collider(ctx.groups.enemies, group);
   scene.physics.add.collider(ctx.groups.pickups, group);
-  // Resolve once per frame: only the block nearest the player's head gets bumped.
+  // Resolve once per frame: only the block nearest each player's head gets bumped.
   const resolve = () => {
-    if (!s.candidates.length) return;
-    const px = player.body.center.x;
-    let best: Block | null = null;
-    for (const c of s.candidates) if (c.active && (!best || Math.abs(c.x - px) < Math.abs(best.x - px))) best = c;
-    s.candidates.length = 0;
-    best?.bump();
+    for (const [player, list] of s.candidates) {
+      if (!list.length) continue;
+      const px = player.body.center.x;
+      let best: Block | null = null;
+      for (const c of list) if (c.active && (!best || Math.abs(c.x - px) < Math.abs(best.x - px))) best = c;
+      list.length = 0;
+      best?.bump(player);
+    }
   };
   scene.events.on(Phaser.Scenes.Events.POST_UPDATE, resolve);
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => scene.events.off(Phaser.Scenes.Events.POST_UPDATE, resolve));
@@ -88,7 +101,7 @@ export class Block extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** Hit from below. */
-  bump(): void {
+  bump(by?: Player): void {
     const now = this.ctx.now();
     if (now < this.bumpReadyAt || !this.active) return;
     this.bumpReadyAt = now + 220;
@@ -103,7 +116,7 @@ export class Block extends Phaser.Physics.Arcade.Sprite {
     }
     this.ctx.sfx('bump');
     this.wobble();
-    this.release();
+    this.release(by);
   }
 
   private wobble(): void {
@@ -112,7 +125,7 @@ export class Block extends Phaser.Physics.Arcade.Sprite {
     this.scene.tweens.add({ targets: this, y: this.homeY - 5, duration: 70, yoyo: true, ease: 'Quad.easeOut' });
   }
 
-  private release(): void {
+  private release(by?: Player): void {
     const ctx = this.ctx;
     const top = this.body.top;
     const c = this.contents;
@@ -123,7 +136,7 @@ export class Block extends Phaser.Physics.Arcade.Sprite {
     } else if (c !== 'none') {
       const item = new Pickup(ctx, this.x, top - 2, c, 0, true);
       // Pop up, then slide off toward the player so it never strands on top of a block row.
-      const dir = Math.sign(ctx.player.x - this.x) || 1;
+      const dir = Math.sign((by ?? ctx.player).x - this.x) || 1;
       item.body.setVelocity(dir * 70, -170);
       item.body.setDragX(35);
       item.setDepth(DEPTH.pickups);

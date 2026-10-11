@@ -9,7 +9,21 @@ import type { Player } from '../entities/Player';
 export interface LevelContext {
   scene: Phaser.Scene;
   level: LevelInfo;
+  /** Player 1 (always present). In co-op, prefer `players` / `nearestPlayer` / `eachPlayer`. */
   player: Player;
+  /**
+   * Every player in the level: `[player]` in single player, `[player, p2]` while local co-op
+   * is active. Live array (P2 drops in/out) — don't cache a copy.
+   */
+  players: Player[];
+  /** The living player nearest to (x, y); falls back to `player` when nobody qualifies. */
+  nearestPlayer(x: number, y: number): Player;
+  /**
+   * Run `fn` for every current player and for each player that joins later (co-op drop-in),
+   * e.g. to add physics colliders. `fn` may return a cleanup, run if that player leaves.
+   * Returns an unsubscribe (stops future calls; doesn't run cleanups).
+   */
+  eachPlayer(fn: (p: Player) => void | (() => void)): () => void;
   map: Phaser.Tilemaps.Tilemap;
   /** Collidable tile layers. */
   ground: Phaser.Tilemaps.TilemapLayer;
@@ -44,12 +58,13 @@ export interface LevelContext {
 
 /** Implemented by anything in `groups.pickups`. */
 export interface Collectible {
-  collect(ctx: LevelContext): void;
+  /** `player` is who touched it (omitted = P1, e.g. coins popped out of a block). */
+  collect(ctx: LevelContext, player?: Player): void;
 }
 
-/** Implemented by anything in `groups.triggers`. Called every frame the player overlaps it. */
+/** Implemented by anything in `groups.triggers`. Called every frame a player overlaps it (`player` = who). */
 export interface Trigger {
-  onPlayerOverlap(ctx: LevelContext): void;
+  onPlayerOverlap(ctx: LevelContext, player?: Player): void;
 }
 
 /** Implemented by player projectiles. */
