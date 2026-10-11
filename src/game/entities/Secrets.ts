@@ -66,9 +66,9 @@ export class Secret extends Phaser.GameObjects.Zone {
   }
 
   preUpdate(): void {
-    const p = this.ctx.player;
-    const b = p.body;
-    const inside = p.isAlive() && Phaser.Geom.Rectangle.Overlaps(this.rect, playerRect(p)) && this.rect.contains(b.center.x, b.center.y);
+    const inside = this.ctx.players.some(
+      (p) => p.isAlive() && Phaser.Geom.Rectangle.Overlaps(this.rect, playerRect(p)) && this.rect.contains(p.body.center.x, p.body.center.y),
+    );
     if (inside === this.inside) return;
     this.inside = inside;
     if (inside && !this.discovered) {
@@ -96,8 +96,9 @@ export class CameraZone extends Phaser.GameObjects.Zone {
     this.rect = new Phaser.Geom.Rectangle(o.x - o.width / 2, o.y - o.height, o.width, o.height);
   }
   preUpdate(): void {
-    const p = this.ctx.player;
-    const inside = this.rect.contains(p.x, p.y - 4);
+    // Co-op: clamp only while every living player is inside (the camera frames them all).
+    const ps = this.ctx.players.length > 1 ? this.ctx.players.filter((p) => p.isAlive()) : this.ctx.players;
+    const inside = ps.length > 0 && ps.every((p) => this.rect.contains(p.x, p.y - 4));
     if (inside === this.inside) return;
     this.inside = inside;
     this.ctx.lockCamera(inside ? this.rect : null);

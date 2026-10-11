@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { DEPTH, PHYSICS, PLAYER_DEFAULTS } from '../config';
-import { EV, EMPTY_INPUT, type CharacterDef, type HitInfo, type InputState, type PickupKind } from '../types';
+import { EV, EMPTY_INPUT, playerEvent, type CharacterDef, type HitInfo, type InputState, type PickupKind } from '../types';
 import {
   bonkCeiling,
   canGroundJump,
@@ -80,6 +80,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   groundPlatform: Phaser.Physics.Arcade.Body | null = null;
   /** Mom's attack-button air jump: holding attack counts as holding jump (variable height). */
   jumpHeldByAttack = false;
+  /** 0 = Player 1, 1 = Player 2 (local co-op). P2's own events get a suffix — see `playerEvent`. */
+  slot = 0;
+  /** Last position where the player stood on solid ground (co-op respawns / warps land here). */
+  readonly lastSafe = { x: 0, y: 0 };
   private wasGrounded = false;
   private landTimer = 0;
   /** Extra downward velocity we added last tick (ground stick + platform), excluded from motor readback. */
@@ -106,6 +110,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     readonly def: CharacterDef,
   ) {
     super(scene, x, y, def.id);
+    this.lastSafe.x = x;
+    this.lastSafe.y = y;
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setOrigin(0.5, 1);
@@ -124,6 +130,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   attach(ctx: LevelContext): void {
     this.ctx = ctx;
+  }
+
+  /**
+   * Emit one of this player's own events (health, death, power-ups, cooldown…). Player 1 uses
+   * the plain EV names (HUD, LevelScene); Player 2's carry a suffix so they don't touch P1's HUD.
+   */
+  emitOwn(ev: string, ...args: unknown[]): void {
+    this.ctx.events.emit(playerEvent(ev, this.slot), ...args);
   }
 
   get stats() {
@@ -175,6 +189,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     b.setSize(w, h, false);
     b.setOffset((CHARACTER_FRAME_SIZE - w) / 2, CHARACTER_FRAME_SIZE - h);
     if (Number.isFinite(prevBottom) && prevBottom !== 0) b.y = prevBottom - h;
+  }
+
+  /** A hazard tile overlaps the feet (not a safe place to come back to). */
+  private onHazardTile(): boolean {
+    const hz = this.ctx.hazards;
+    if (!hz) return false;
+    const b = this.body;
+    for (const x of [b.left - 8, b.center.x, b.right + 8]) {
+      const t = hz.getTileAtWorldXY(x, b.bottom - 2) ?? hz.getTileAtWorldXY(x, b.bottom + 2);
+      if (t && t.index > 0) return true;
+    }
+    return false;
   }
 
   /** True if standing up (from a crouch) would hit a ceiling. */
@@ -303,6 +329,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.stuckToGround = m.grounded && m.vy >= 0;
     this.appliedCarryVx = carryVx;
     b.setVelocity(m.vx + carryVx, m.vy + extraVy);
+
+    // Remember solid footing (not moving platforms, not while hurt) for co-op respawns.
+    if (m.grounded && !ridden && this.mode === 'normal' && b.blocked.down && !this.onHazardTile()) {
+      this.lastSafe.x = this.x;
+      this.lastSafe.y = this.y;
+    }
 
     // Landing feedback
     if (m.grounded && !this.wasGrounded) this.onLand();
@@ -437,7 +469,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const q = Math.round(cd * 50) / 50;
     if (q !== this.lastCooldown) {
       this.lastCooldown = q;
-      this.ctx.events.emit(EV.ABILITY_COOLDOWN, q);
+      this.emitOwn(EV.ABILITY_COOLDOWN, q);
     }
   }
 
@@ -590,7 +622,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
     if (kind === 'star' && this.mode !== 'ability') this.attacking = false;
     if (this.powerups.size === 0) this.clearTint();
-    this.ctx.events.emit(EV.POWERUP_END, kind);
+    this.emitOwn(EV.POWERUP_END, kind);
   }
 
   // ───────────── game rules ─────────────
@@ -616,8 +648,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.isInvulnerable() || this.mode === 'dead') return;
     if (this.powerups.has('star') && hit.kind !== 'pit') return;
     this.health = Math.max(0, this.health - hit.amount);
-    this.ctx.events.emit(EV.HEALTH_CHANGED, this.health, this.maxHealth);
-    this.ctx.events.emit(EV.PLAYER_HURT, hit);
+    this.emitOwn(EV.HEALTH_CHANGED, this.health, this.maxHealth);
+    this.emitOwn(EV.PLAYER_HURT, hit);
     if (this.health <= 0) {
       this.die(hit.kind);
       return;
@@ -650,7 +682,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   heal(amount: number): void {
     this.health = Math.min(this.maxHealth, this.health + amount);
-    this.ctx.events.emit(EV.HEALTH_CHANGED, this.health, this.maxHealth);
+    this.emitOwn(EV.HEALTH_CHANGED, this.health, this.maxHealth);
   }
 
   die(cause: HitInfo['kind'] | 'pit' = 'contact'): void {
@@ -667,14 +699,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.health = 0;
     this.attacking = false;
     this.clearTint();
-    this.ctx.events.emit(EV.HEALTH_CHANGED, 0, this.maxHealth);
+    this.emitOwn(EV.HEALTH_CHANGED, 0, this.maxHealth);
     this.body.setVelocity(0, 0);
     this.body.enable = false;
     this.setAlpha(1);
     this.ctx.sfx('die');
     playAnim(this, 'defeat', 'hurt', false);
     this.scene.tweens.add({ targets: this, y: this.y - 24, duration: 300, yoyo: true, ease: 'Quad.easeOut' });
-    this.ctx.events.emit(EV.PLAYER_DIED);
+    this.emitOwn(EV.PLAYER_DIED);
   }
 
   /**
@@ -734,9 +766,33 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.mods.jumpMult = 1;
     this.clearTint();
     this.setScale(1);
-    this.ctx.events.emit(EV.HEALTH_CHANGED, this.health, this.maxHealth);
-    this.ctx.events.emit(EV.PLAYER_RESPAWN);
+    this.emitOwn(EV.HEALTH_CHANGED, this.health, this.maxHealth);
+    this.emitOwn(EV.PLAYER_RESPAWN);
     playAnim(this, 'idle');
+  }
+
+  /**
+   * Co-op leash: move instantly to (x, y) keeping health and power-ups (a fallen-behind
+   * partner catching up). Cancels abilities/knockback and grants brief invulnerability.
+   */
+  warpTo(x: number, y: number, invulnMs: number): void {
+    if (this.mode === 'dead') return;
+    this.ability?.cancel?.();
+    if (this.mode === 'ability' || this.mode === 'hurt') this.mode = 'normal';
+    this.knockbackUntil = 0;
+    this.body.reset(x, y);
+    this.setPosition(x, y);
+    Object.assign(this.motor, createMotorState(), { facing: this.motor.facing });
+    this.crouching = false;
+    this.attacking = false;
+    this.actionAnim = null;
+    this.groundPlatform = null;
+    this.appliedExtraVy = 0;
+    this.stuckToGround = false;
+    this.appliedCarryVx = 0;
+    this.applyBodySize(false);
+    this.invulnUntil = Math.max(this.invulnUntil, this.ctx.now() + invulnMs);
+    this.setScale(1);
   }
 
   celebrate(): void {
@@ -756,6 +812,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
     if (kind === 'star') this.invulnUntil = Math.max(this.invulnUntil, this.ctx.now());
     this.squash(1.2, 1.2, 200);
-    this.ctx.events.emit(EV.POWERUP_START, kind, durationMs);
+    this.emitOwn(EV.POWERUP_START, kind, durationMs);
   }
 }

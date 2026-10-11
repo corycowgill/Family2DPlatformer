@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { DEBUG, DEPTH, GAME_HEIGHT, TILE_SIZE } from '../config';
-import { EMPTY_INPUT, EV, type LevelInfo, type PickupKind } from '../types';
+import { EMPTY_INPUT, EV, playerEvent, type LevelInfo, type PickupKind } from '../types';
 import { getLevel, FIRST_LEVEL_ID, isWorldFinale } from '../data/levels';
 import { LAYERS, TILESET_KEY, TILESET_NAME } from '../data/tiles';
 import { getCharacter } from '../characters';
@@ -9,6 +9,8 @@ import { attachAbilities } from '../systems/Abilities';
 import { InputSystem } from '../systems/InputSystem';
 import { CombatSystem } from '../systems/CombatSystem';
 import { CameraSystem } from '../systems/CameraSystem';
+import { CoopSystem } from '../systems/CoopSystem';
+import { deathOutcome } from '../systems/Coop';
 import { audio } from '../systems/AudioSystem';
 import { saveSystem } from '../systems/SaveSystem';
 import { REQUEST_PAUSE } from '../systems/InputDevice';
@@ -53,6 +55,12 @@ export class LevelScene extends Phaser.Scene {
   level!: LevelInfo;
   ctx!: LevelContext;
   player!: Player;
+  /** Every player: `[player]`, plus Player 2 while local co-op is active (live array, = ctx.players). */
+  players: Player[] = [];
+  /** Local co-op (Player 2 drop-in/out, leash, respawn next to the partner). */
+  coop!: CoopSystem;
+  private playerHooks: ((p: Player) => void | (() => void))[] = [];
+  private playerCleanups = new Map<Player, (() => void)[]>();
   inputSys!: InputSystem;
   cameraSys!: CameraSystem;
   private parallax!: Parallax;
@@ -96,6 +104,9 @@ export class LevelScene extends Phaser.Scene {
     this.respawning = false;
     this.checkpoints = [];
     this.cine = undefined;
+    this.players = [];
+    this.playerHooks = [];
+    this.playerCleanups = new Map();
     gameState.beginLevel(this.level.id);
     this.stats = { levelId: this.level.id, timeMs: 0, coins: 0, souvenirs: [], stars: 0, enemies: 0, deaths: 0, assisted: false };
   }
@@ -162,10 +173,14 @@ export class LevelScene extends Phaser.Scene {
     }
 
     const scene = this;
+    this.players = [this.player];
     this.ctx = {
       scene: this,
       level: this.level,
       player: this.player,
+      players: this.players,
+      nearestPlayer: (x, y) => scene.nearestPlayer(x, y),
+      eachPlayer: (fn) => scene.eachPlayer(fn),
       map,
       ground,
       oneway,
@@ -217,8 +232,25 @@ export class LevelScene extends Phaser.Scene {
     this.fx = new LevelFx(this.ctx);
     this.inputSys = new InputSystem(this);
     this.inputSys.resetEdges();
-    this.cameraSys = new CameraSystem(this.cameras.main, this.player, map.widthInPixels, map.heightInPixels);
+    this.cameraSys = new CameraSystem(this.cameras.main, this.player, map.widthInPixels, map.heightInPixels, this.players);
     this.cameras.main.setBackgroundColor('#0b1730');
+    this.coop = new CoopSystem({
+      scene: this,
+      players: this.players,
+      get player() {
+        return scene.player;
+      },
+      get finished() {
+        return scene.finished;
+      },
+      addPlayer: (p) => scene.addPlayer(p),
+      removePlayer: (p) => scene.removePlayer(p),
+      loseLife: () => scene.loseLife(),
+      snapCamera: () => scene.cameraSys.snap(),
+    });
+    // Co-op session from an earlier level / restart: Player 2 is back next to Player 1.
+    this.coop.restore();
+    if (this.coop.active) this.cameraSys.snap();
 
     this.wireEvents();
 
@@ -236,7 +268,7 @@ export class LevelScene extends Phaser.Scene {
     this.offerBossSkipSoon();
     // Pause requests from outside the scene (app backgrounded, controller disconnected…).
     const onRequestPause = () => {
-      if (this.scene.isActive() && !this.finished && this.player.isAlive()) this.pauseGame();
+      if (this.scene.isActive() && !this.finished && this.anyAlive()) this.pauseGame();
     };
     this.game.events.on(REQUEST_PAUSE, onRequestPause);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.game.events.off(REQUEST_PAUSE, onRequestPause));
@@ -289,7 +321,8 @@ export class LevelScene extends Phaser.Scene {
       this.stats.assisted = true;
       this.cameraSys.snap();
     });
-    ev.on(EV.PLAYER_DIED, () => this.onPlayerDied());
+    ev.on(EV.PLAYER_DIED, () => this.onPlayerDied(this.player));
+    ev.on(playerEvent(EV.PLAYER_DIED, 1), () => this.coop.p2 && this.onPlayerDied(this.coop.p2));
     ev.on(EV.LEVEL_COMPLETE, () => this.onLevelComplete());
     // Boss levels complete shortly after the boss is defeated.
     ev.on(EV.BOSS_DEFEATED, () => this.time.delayedCall(2500, () => this.events.emit(EV.LEVEL_COMPLETE)));
@@ -302,7 +335,21 @@ export class LevelScene extends Phaser.Scene {
     audio.sfx('oneup');
   }
 
-  private onPlayerDied(): void {
+  private onPlayerDied(who: Player): void {
+    if (this.players.length > 1 && !this.finished) {
+      // Co-op: with a partner still standing, come back next to them — no life lost.
+      const partners = this.players.filter((p) => p !== who && p.isAlive()).length;
+      if (deathOutcome(partners) === 'respawnAtPartner') {
+        this.stats.deaths++;
+        this.coop.scheduleRespawn(who);
+        return;
+      }
+    }
+    this.loseLife();
+  }
+
+  /** Everyone is down: lose a life and restart from the checkpoint (or game over). */
+  private loseLife(): void {
     if (this.respawning) return;
     this.respawning = true;
     this.stats.deaths++;
@@ -334,7 +381,8 @@ export class LevelScene extends Phaser.Scene {
     if (this.finished) return;
     this.finished = true;
     this.stats.timeMs = this.levelTime;
-    this.player.celebrate();
+    this.coop.reviveAll();
+    for (const p of this.players) p.celebrate();
     audio.stopMusic();
     audio.sfx('victory');
     gameState.resetCheckpoint();
@@ -452,25 +500,89 @@ export class LevelScene extends Phaser.Scene {
   /** One simulation step (also driven by the test harness). */
   step(delta: number): void {
     const dt = Math.min(delta, 1000 / 30);
+    // Co-op joins/leaves first, so a joining controller is claimed before P1 reads input.
+    this.coop.detect(this.inputSys.override === null);
     let input = this.inputSys.update();
-    if (input.pausePressed && !this.finished && this.player.isAlive()) {
+    const p2Pause = this.coop.readInput();
+    if ((input.pausePressed || p2Pause) && !this.finished && this.anyAlive()) {
       this.pauseGame();
       return;
     }
+    let hold = false;
     if (this.cine) {
       // JUMP skips the beat; that press is swallowed so the hero doesn't also jump.
       const skip = input.jumpPressed;
-      if (skip || this.levelTime >= this.cine.until || !this.player.isAlive()) this.endCinematic();
-      if (this.cine || skip) input = { ...EMPTY_INPUT };
+      if (skip || this.levelTime >= this.cine.until || !this.anyAlive()) this.endCinematic();
+      if (this.cine || skip) {
+        input = { ...EMPTY_INPUT };
+        hold = true;
+      }
     }
     if (!this.finished) this.levelTime += dt;
     if (saveSystem.get().settings.autoRun) input = { ...input, run: true };
     this.player.tick(input, dt);
+    this.coop.tick(dt, hold);
     if (this.cine) this.updateCinematicCamera(dt);
     else this.cameraSys.update(dt);
     this.parallax.update();
     this.fx.update(dt);
     if (this.debugGfx) this.updateDebug();
+  }
+
+  /** Is any player alive? (single player: Player 1.) */
+  anyAlive(): boolean {
+    return this.players.length > 1 ? this.players.some((p) => p.isAlive()) : this.player.isAlive();
+  }
+
+  /** The living player nearest to (x, y); Player 1 when nobody else qualifies. */
+  nearestPlayer(x: number, y: number): Player {
+    const ps = this.players;
+    if (ps.length < 2) return this.player;
+    let best: Player | null = null;
+    let bestD = Infinity;
+    for (const p of ps) {
+      if (!p.isAlive() || !p.active) continue;
+      const d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    }
+    return best ?? this.player;
+  }
+
+  /** LevelContext.eachPlayer: run `fn` for current and future players. */
+  private eachPlayer(fn: (p: Player) => void | (() => void)): () => void {
+    this.playerHooks.push(fn);
+    for (const p of [...this.players]) this.runPlayerHook(fn, p);
+    return () => {
+      const i = this.playerHooks.indexOf(fn);
+      if (i >= 0) this.playerHooks.splice(i, 1);
+    };
+  }
+
+  private runPlayerHook(fn: (p: Player) => void | (() => void), p: Player): void {
+    const cleanup = fn(p);
+    if (!cleanup) return;
+    let list = this.playerCleanups.get(p);
+    if (!list) this.playerCleanups.set(p, (list = []));
+    list.push(cleanup);
+  }
+
+  /** Co-op: a player joined (after picking a hero). */
+  private addPlayer(p: Player): void {
+    if (this.players.includes(p)) return;
+    this.players.push(p);
+    for (const fn of [...this.playerHooks]) this.runPlayerHook(fn, p);
+  }
+
+  /** Co-op: a player left — undo everything `eachPlayer` set up for them. */
+  private removePlayer(p: Player): void {
+    const i = this.players.indexOf(p);
+    if (i <= 0) return; // Player 1 never leaves
+    this.players.splice(i, 1);
+    for (const c of this.playerCleanups.get(p) ?? []) c();
+    this.playerCleanups.delete(p);
   }
 
   pauseGame(offerSkip = false): void {
@@ -484,7 +596,7 @@ export class LevelScene extends Phaser.Scene {
     this.physics.world.drawDebug = true;
     this.debugGfx = this.add.text(4, GAME_HEIGHT - 12, '', { fontFamily: 'monospace', fontSize: '8px', color: '#0f0' }).setScrollFactor(0).setDepth(DEPTH.overlay);
     const kb = this.input.keyboard;
-    kb?.on('keydown-I', () => (this.player.invulnUntil = this.player.invulnUntil > 1e12 ? 0 : Number.MAX_SAFE_INTEGER));
+    kb?.on('keydown-I', () => !this.coop.active && (this.player.invulnUntil = this.player.invulnUntil > 1e12 ? 0 : Number.MAX_SAFE_INTEGER));
     kb?.on('keydown-C', () => this.respawnAtCheckpoint());
     kb?.on('keydown-B', () => {
       this.physics.world.drawDebug = !this.physics.world.drawDebug;
@@ -511,6 +623,7 @@ export class LevelScene extends Phaser.Scene {
     this.events.off(EV.ENEMY_DEFEATED);
     this.events.off(EV.CHECKPOINT);
     this.events.off(EV.PLAYER_DIED);
+    this.events.off(playerEvent(EV.PLAYER_DIED, 1));
     this.events.off(EV.LEVEL_COMPLETE);
     this.events.off(EV.CAMERA_SHAKE);
     this.events.off(EV.BOSS_DEFEATED);

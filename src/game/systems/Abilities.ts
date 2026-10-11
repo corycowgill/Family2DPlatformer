@@ -97,7 +97,7 @@ abstract class BaseAbility implements AbilityController {
   }
 
   protected used(): void {
-    this.p.ctx.events.emit(EV.ABILITY_USED, this.p.def.ability);
+    this.p.emitOwn(EV.ABILITY_USED, this.p.def.ability);
   }
 
   /** Begin a short melee window; returns false if the melee is still cooling down. */
@@ -416,7 +416,7 @@ class Projectile extends BaseAbility {
     }
     const dir = p.facing;
     const y = p.body.bottom - p.body.height * 0.6;
-    new EnergyBall(p.ctx, p.x + dir * 10, y, dir);
+    new EnergyBall(p.ctx, p.x + dir * 10, y, dir).owner = p;
     sparkles(p.scene, p.x + dir * 10, y, 0x7cff8a, 4, 6);
     p.playAction('ability', 200);
     p.ctx.sfx('shoot');

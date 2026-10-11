@@ -144,4 +144,15 @@ export const EV = {
   SFX: 'sfx', // (key: string)
   /** Lupin's Super Sniff — secrets within `radius` of (x, y) should reveal themselves. */
   SNIFF: 'sniff', // (x: number, y: number, radius: number)
+  /** Local co-op: Player 2 dropped in / out (after picking a hero). */
+  PLAYER_JOINED: 'player-joined', // (player: Player)
+  PLAYER_LEFT: 'player-left', // (player: Player)
 } as const;
+
+/** Suffix on Player 2's own events (HEALTH_CHANGED, PLAYER_DIED, POWERUP_*, ABILITY_*…). */
+export const P2_EVENT_SUFFIX = ':p2';
+
+/** Name of a player's own event: P1 (slot 0) uses the plain EV name, P2 gets `P2_EVENT_SUFFIX`. */
+export function playerEvent(ev: string, slot: number): string {
+  return slot === 0 ? ev : `${ev}${P2_EVENT_SUFFIX}`;
+}

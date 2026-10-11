@@ -54,8 +54,7 @@ export class Shadows {
     const view = cam.worldView;
     const left = view.x - 24;
     const right = view.right + 24;
-    const p = this.ctx.player;
-    if (p.isAlive() && p.visible) this.cast(p as unknown as Caster, 110, 0.55, 1);
+    for (const p of this.ctx.players) if (p.isAlive() && p.visible) this.cast(p as unknown as Caster, 110, 0.55, 1);
     for (const e of this.ctx.groups.enemies.getChildren() as Caster[]) {
       if (!e.active || !e.visible || e.x < left || e.x > right) continue;
       this.cast(e, 140, 0.5, 1);

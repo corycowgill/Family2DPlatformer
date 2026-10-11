@@ -35,6 +35,27 @@ export const KEY_BINDINGS: Record<keyof RawButtons, readonly string[]> = {
 };
 
 /**
+ * Co-op Player 2 keyboard set (right hand): IJKL move, U jump, O ability, H run.
+ * While P2 plays on the keyboard, Player 1 loses the keys this set shares (J attack, K jump).
+ */
+export const KEY_BINDINGS_P2: Record<keyof RawButtons, readonly string[]> = {
+  left: ['J'],
+  right: ['L'],
+  up: ['I'],
+  down: ['K'],
+  jump: ['U'],
+  run: ['H'],
+  attack: ['O'],
+  pause: [],
+};
+/** P2 keyboard: join (when nobody is P2) and leave keys. */
+export const KEY_P2_JOIN = 'U';
+export const KEY_P2_LEAVE = 'BACKSPACE';
+
+/** Every key name used by the P2 keyboard set (P1 ignores these while it is claimed). */
+export const P2_KEY_NAMES: ReadonlySet<string> = new Set(Object.values(KEY_BINDINGS_P2).flat());
+
+/**
  * Xbox / W3C "standard" gamepad layout (buttons are indices into `Gamepad.buttons`):
  *   0 A · 1 B · 2 X · 3 Y · 4 LB · 5 RB · 6 LT · 7 RT · 8 View · 9 Menu · 10 LS · 11 RS
  *   12-15 d-pad up/down/left/right · 16 Xbox (guide, normally captured by the OS)
@@ -127,10 +148,18 @@ export function padToRaw(buttons: readonly (boolean | number)[], stickX: number,
   };
 }
 
-/** Decode the keyboard: `isDown(name)` answers for a KeyCodes name. */
-export function keysToRaw(isDown: (key: string) => boolean): RawButtons {
+/**
+ * Decode the keyboard: `isDown(name)` answers for a KeyCodes name. `exclude` drops keys
+ * (P1 while the co-op P2 keyboard set is in use); `bindings` picks the key set.
+ */
+export function keysToRaw(
+  isDown: (key: string) => boolean,
+  exclude?: ReadonlySet<string> | null,
+  bindings: Record<keyof RawButtons, readonly string[]> = KEY_BINDINGS,
+): RawButtons {
   const out = { ...EMPTY_RAW };
-  for (const k of Object.keys(KEY_BINDINGS) as (keyof RawButtons)[]) out[k] = KEY_BINDINGS[k].some(isDown);
+  const test = exclude && exclude.size ? (name: string) => !exclude.has(name) && isDown(name) : isDown;
+  for (const k of Object.keys(bindings) as (keyof RawButtons)[]) out[k] = bindings[k].some(test);
   return out;
 }
 

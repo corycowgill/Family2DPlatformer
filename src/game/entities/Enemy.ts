@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DEPTH } from '../config';
 import { EV, type EnemyKind, type HitInfo } from '../types';
 import type { LevelContext, SpawnObject } from '../world/LevelContext';
+import type { Player } from './Player';
 import { playAnim } from '../systems/AnimationSystem';
 import { ensureEnemyArt } from '../enemies/enemyArt';
 import { applyStatOverrides, telegraphBlink } from '../enemies/ai';
@@ -64,6 +65,12 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   protected stateTime = 0;
   /** Level ms until which contact with this enemy can't hurt the player (set after a stomp). */
   playerGraceUntil = 0;
+  /**
+   * Co-op: the player currently touching / stomping this enemy, set by CombatSystem around its
+   * contact rules so hooks (onStomp, onPlayerContact…) act on the right player. Otherwise
+   * `player` is the nearest living player.
+   */
+  contactPlayer: Player | null = null;
   /** How far outside the camera the enemy keeps thinking (px). */
   protected cullMargin = 160;
   /** Spawn position. */
@@ -167,7 +174,7 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.ctx.sfx('bump');
       return;
     }
-    this.takeHit({ amount: this.ctx.player.attackPower ?? 1, fromX: this.ctx.player.x, kind: 'stomp' });
+    this.takeHit({ amount: this.player.attackPower ?? 1, fromX: this.player.x, kind: 'stomp' });
   }
 
   /**
@@ -346,9 +353,9 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   // ───────────── utilities ─────────────
 
-  /** Utility: the player, if alive. */
-  protected get player() {
-    return this.ctx.player;
+  /** The player this enemy cares about: the one touching it, else the nearest living player (P1 in single player). */
+  protected get player(): Player {
+    return this.contactPlayer ?? this.ctx.nearestPlayer(this.x, this.y);
   }
 
   protected playerAlive(): boolean {

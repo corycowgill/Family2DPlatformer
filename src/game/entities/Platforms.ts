@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DEPTH, PHYSICS, TILE_SIZE } from '../config';
 import { TILE, TILESET_KEY } from '../data/tiles';
 import type { LevelContext, SpawnObject, Trigger } from '../world/LevelContext';
+import type { Player } from './Player';
 import { bool, hasFrame, isStandingOn, num, onPostUpdate, str, tileFrame } from '../world/worldUtil';
 
 /**
@@ -118,7 +119,7 @@ export class PlatformBase extends Phaser.GameObjects.Zone {
 
   /** True while the player stands on this platform. */
   hasRider(): boolean {
-    return this.body.enable && isStandingOn(this.ctx.player, this.body);
+    return this.body.enable && this.ctx.players.some((p) => isStandingOn(p, this.body));
   }
 }
 
@@ -289,9 +290,11 @@ export class FallingPlatform extends PlatformBase {
   }
 
   private tryRespawn(): void {
-    const p = this.ctx.player.body;
     const r = new Phaser.Geom.Rectangle(this.home.x, this.home.y - 4, this.width, this.height + 8);
-    if (Phaser.Geom.Rectangle.Overlaps(r, new Phaser.Geom.Rectangle(p.left, p.top, p.width, p.height))) return;
+    for (const pl of this.ctx.players) {
+      const p = pl.body;
+      if (Phaser.Geom.Rectangle.Overlaps(r, new Phaser.Geom.Rectangle(p.left, p.top, p.width, p.height))) return;
+    }
     this.body.enable = true;
     this.body.reset(this.home.x, this.home.y);
     this.body.setVelocity(0, 0);
@@ -309,7 +312,8 @@ export class FallingPlatform extends PlatformBase {
 /** bouncePad <tx> <ty> [power=560] — springboard that launches the player when landed on. */
 export class BouncePad extends Phaser.Physics.Arcade.Sprite implements Trigger {
   declare body: Phaser.Physics.Arcade.Body;
-  private cooldownUntil = 0;
+  /** Per-player cooldown (co-op: both players can use the pad at once). */
+  private readonly cooldownUntil = new Map<Player, number>();
   private readonly power: number;
 
   constructor(ctx: LevelContext, o: SpawnObject) {
@@ -326,14 +330,14 @@ export class BouncePad extends Phaser.Physics.Arcade.Sprite implements Trigger {
     this.power = num(o, 'power', -PHYSICS.bouncePadVelocity);
   }
 
-  onPlayerOverlap(ctx: LevelContext): void {
-    const p = ctx.player;
+  onPlayerOverlap(ctx: LevelContext, player?: Player): void {
+    const p = player ?? ctx.player;
     const now = ctx.now();
-    if (now < this.cooldownUntil || !p.isAlive()) return;
+    if (now < (this.cooldownUntil.get(p) ?? 0) || !p.isAlive()) return;
     const b = p.body;
     const descending = b.velocity.y > 0 || b.y > b.prev.y + 0.01;
     if (!descending || b.bottom > this.body.bottom + 2) return;
-    this.cooldownUntil = now + 250;
+    this.cooldownUntil.set(p, now + 250);
     p.bounce(true, this.power);
     ctx.sfx('bounce');
     if (hasFrame(this.scene, 'items', 'bounce_pad_1')) {

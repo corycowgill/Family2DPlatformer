@@ -1,6 +1,7 @@
 import { PLAYER_DEFAULTS } from '../config';
 import type { CharacterId } from '../types';
 import { saveSystem } from '../systems/SaveSystem';
+import type { CoopSession } from '../systems/CoopSystem';
 
 /**
  * Session (non-persistent) state that survives scene transitions:
@@ -16,6 +17,8 @@ export class GameState {
   bossDeaths: Record<string, number> = {};
   /** `${levelId}:${deaths}` for which the boss-skip prompt was last shown (show it once). */
   bossSkipOffered = '';
+  /** Local co-op Player 2 for this session (null = single player). See systems/CoopSystem.ts. */
+  coop: CoopSession | null = null;
 
   selectCharacter(id: CharacterId): void {
     this.character = id;

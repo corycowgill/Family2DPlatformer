@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../config';
-import { EV, type PickupKind } from '../types';
+import { EV, playerEvent, type PickupKind } from '../types';
+import { P2_COLOR } from '../systems/CoopSystem';
 import { gameState } from '../state/GameState';
 import { heroPortrait } from '../ui/CharacterArt';
 import { CHARACTERS } from '../characters';
@@ -125,6 +126,45 @@ export class HUDScene extends Phaser.Scene {
     setCoins(lv.stats?.coins ?? 0, false);
     (lv.stats?.souvenirs ?? []).forEach((i) => setSouvenir(i, false));
 
+    // --- Co-op: Player 2 panel under P1's (portrait, "P2" tag, hearts) while P2 plays
+    const p2Box = this.add.container(0, 0).setVisible(false);
+    const p2Hearts: Phaser.GameObjects.Image[] = [];
+    let p2Portrait: Phaser.GameObjects.Image | null = null;
+    const p2g = this.add.graphics();
+    p2Box.add(p2g);
+    const p2Tag = px(this, 21, 44, 'P2', { color: P2_COLOR, origin: [0, 0.5] });
+    p2Box.add(p2Tag);
+    const setP2Health = (h: number, max: number) => {
+      while (p2Hearts.length < max) {
+        const img = icon(this, 41 + p2Hearts.length * 10, 44, 'heart_full');
+        p2Hearts.push(img);
+        p2Box.add(img);
+      }
+      p2Hearts.forEach((img, i) => {
+        img.setVisible(i < max);
+        setIcon(img, i < h ? 'heart_full' : 'heart_empty');
+      });
+    };
+    const showP2 = () => {
+      const p2 = lv.coop?.p2;
+      p2Box.setVisible(!!p2);
+      if (!p2) return;
+      const def2 = CHARACTERS[p2.def.id];
+      p2g.clear();
+      drawPanel(p2g, 3, 36, 41 + p2.maxHealth * 10, 17, { alpha: 0.7 });
+      p2g.fillStyle(COLORS.ink, 1).fillRect(5, 38, 13, 13);
+      p2g.fillStyle(def2.color, 1).fillRect(6, 39, 11, 11);
+      p2Portrait?.destroy();
+      p2Portrait = null;
+      const key = heroPortrait(this, p2.def.id);
+      if (this.textures.exists(key)) {
+        p2Portrait = this.add.image(6, 39, key).setOrigin(0).setDisplaySize(11, 11);
+        p2Box.add(p2Portrait);
+      }
+      setP2Health(p2.health, p2.maxHealth);
+    };
+    showP2();
+
     // --- Level intro card (hero portrait, level number + name, flavour line)
     showLevelCard(this, lv.level, gameState.character);
 
@@ -172,6 +212,16 @@ export class HUDScene extends Phaser.Scene {
       }],
       // Generic sound requests from gameplay code.
       [EV.SFX, (key: string) => audio.sfx(key)],
+      // Local co-op
+      [EV.PLAYER_JOINED, () => {
+        showP2();
+        this.toast('PLAYER 2 JOINED!', P2_COLOR);
+      }],
+      [EV.PLAYER_LEFT, () => {
+        p2Box.setVisible(false);
+        this.toast('PLAYER 2 LEFT', COLORS.sub);
+      }],
+      [playerEvent(EV.HEALTH_CHANGED, 1), (h: number, max: number) => setP2Health(h, max)],
     ];
     for (const [e, fn] of handlers) ev.on(e, fn);
     const offRumble = attachRumble(ev);

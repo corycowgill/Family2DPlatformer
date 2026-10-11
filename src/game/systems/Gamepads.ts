@@ -186,6 +186,8 @@ export function pickActivePad(pads: readonly { index: number; lastActive: number
 export class GamepadManager {
   private tracks = new Map<number, Track>();
   private pressed = new Set<number>();
+  /** Buttons that went down during the latest poll, per pad index. */
+  private pressedBy = new Map<number, Set<number>>();
   private activeIdx: number | null = null;
   private seq = 0;
   private listeners = { connect: new Set<PadListener>(), disconnect: new Set<PadListener>(), activity: new Set<() => void>() };
@@ -201,6 +203,7 @@ export class GamepadManager {
       list = [];
     }
     this.pressed.clear();
+    this.pressedBy.clear();
     const seen = new Set<number>();
     let activity = false;
     for (const gp of list) {
@@ -229,6 +232,9 @@ export class GamepadManager {
       for (let i = 0; i < PAD_BUTTON_COUNT; i++) {
         if (isHeld(snap.buttons[i]) && !isHeld(prev.buttons[i])) {
           this.pressed.add(i);
+          let set = this.pressedBy.get(gp.index);
+          if (!set) this.pressedBy.set(gp.index, (set = new Set()));
+          set.add(i);
           used = true;
         }
       }
@@ -271,6 +277,45 @@ export class GamepadManager {
     return a ? padToRaw(a.buttons, a.lx, a.ly) : EMPTY_RAW;
   }
 
+  /** Index of the most recently used pad that isn't in `exclude` (co-op: pads owned by P2). */
+  activeIndexExcept(exclude: ReadonlySet<number>): number | null {
+    if (!exclude.size) return this.activeIdx;
+    return pickActivePad([...this.tracks.entries()].filter(([i]) => !exclude.has(i)).map(([index, t]) => ({ index, lastActive: t.lastActive })));
+  }
+
+  /** Gameplay buttons from the most recently used pad not in `exclude` (Player 1 in co-op). */
+  rawExcept(exclude: ReadonlySet<number>): RawButtons {
+    if (!exclude.size) return this.raw();
+    const i = this.activeIndexExcept(exclude);
+    return i === null ? EMPTY_RAW : this.rawFor(i);
+  }
+
+  /** Gameplay buttons from one specific pad (co-op Player 2's controller). */
+  rawFor(index: number): RawButtons {
+    const s = this.tracks.get(index)?.snap;
+    return s ? padToRaw(s.buttons, s.lx, s.ly) : EMPTY_RAW;
+  }
+
+  /** Connected pad indices. */
+  indices(): number[] {
+    return [...this.tracks.keys()];
+  }
+
+  /** Standard button `i` went down on pad `index` during the latest poll. */
+  wasPressedOn(index: number, i: number): boolean {
+    return this.pressedBy.get(index)?.has(i) ?? false;
+  }
+
+  /** Standard button `i` is held on pad `index`. */
+  isDownOn(index: number, i: number): boolean {
+    return isHeld(this.tracks.get(index)?.snap.buttons[i]);
+  }
+
+  /** Whether pad `index` is connected. */
+  has(index: number): boolean {
+    return this.tracks.has(index);
+  }
+
   /** Standard button `i` went down during the latest poll (on any pad). */
   wasPressed(i: number): boolean {
     return this.pressed.has(i);
@@ -311,6 +356,7 @@ export class GamepadManager {
   reset(): void {
     this.tracks.clear();
     this.pressed.clear();
+    this.pressedBy.clear();
     this.activeIdx = null;
   }
 }

@@ -23,6 +23,8 @@ function ensureFallbackTexture(scene: Phaser.Scene): void {
 export class EnergyBall extends Phaser.Physics.Arcade.Sprite implements PlayerProjectile {
   declare body: Phaser.Physics.Arcade.Body;
   damage = 1;
+  /** Who fired it (co-op: damage uses the owner's attack power). */
+  owner?: { attackPower: number };
   private readonly startX: number;
   private fizzling = false;
 
