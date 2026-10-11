@@ -4,7 +4,7 @@ import { CHARACTERS, harness, openGame, startLevel, trackConsole, waitForScene }
 /**
  * World 2 "The North Side": progression from World 1, world map region, the World 2 story
  * beat, the World 1 → World 2 hand-off in the ending, the World 2 ending, and THE OVERSEER
- * boss being beatable with stomps alone by every character (scripted, deterministic).
+ * boss being beatable with stomps alone by every character (PlatformBot, invulnerable).
  */
 
 type StoryWin = { __story?: { panel: number; storyId: string }; __ending?: { currentBeat: string; endingWorld: number } };
@@ -153,79 +153,43 @@ test.describe('THE OVERSEER', () => {
   test.describe.configure({ timeout: 300_000 });
 
   /**
-   * Scripted stomp-only run (manual stepping, seeded): dodge to the safe side during the
-   * telegraphs, jump shockwaves, and hop onto the core whenever it is open. No abilities.
-   * Invulnerable so the test checks the fight's progression (every window can be stomped),
-   * not the script's dodging.
+   * The PlatformBot fights it stomp-only (no abilities), invulnerable, for every character:
+   * it must stomp the open core in all three phases. Boss states are recorded through a
+   * setAI hook so the test also proves each phase's signature attack ran.
    */
-  for (const character of CHARACTERS) {
-    test(`can be defeated with stomps alone as ${character}`, async ({ page }) => {
-      const log = trackConsole(page);
-      await openGame(page);
-      await setSave(page, { ...W1_DONE, unlockedCharacters: ['grandma'] });
-      await startLevel(page, 'north-4', character, { manual: true, seed: 7 });
-      await harness(page, (h) => h.setInvulnerable(true));
-      const res = await page.evaluate(async () => {
-        type B = {
-          bossName: string; dead: boolean; started: boolean; aiState: string; stateTime: number; vulnerable: boolean; x: number; hp: number; phase: number;
-          arena: { x: number; right: number; width: number; bottom: number }; corePos: { x: number; y: number };
-          plan?: { zoneMin: number }; slamX: number; laserZone: number; attacks: number;
-        };
+  test('is defeated by stomps alone by every character; all three phases and their attacks are seen', async ({ page }) => {
+    const log = trackConsole(page);
+    await openGame(page);
+    await setSave(page, { ...W1_DONE, unlockedCharacters: ['grandma'] });
+    const results: string[] = [];
+    for (const character of CHARACTERS) {
+      const res = await page.evaluate(async (ch) => {
+        type B = { bossName?: string; aiState: string; phase: number; setAI(s: string): unknown };
         const h = window.__harness!;
-        const L = (window as unknown as { __level: { player: { x: number; grounded: boolean; body: { velocity: { x: number } } }; ctx: { groups: { enemies: { getChildren(): unknown[] }; enemyProjectiles: { getChildren(): unknown[] } } } } }).__level;
-        const boss = () => L.ctx.groups.enemies.getChildren().find((e) => (e as B).bossName) as B | undefined;
-        const b0 = boss()!;
-        h.teleport(b0.arena.x - 16, b0.arena.bottom - 1);
-        const states = new Set<string>();
-        let hold = 0;
-        let frames = 0;
-        let stompsOffered = 0;
-        while (frames < 60 * 240) {
-          const b = boss();
-          if (!b || b.dead) break;
-          const p = L.player;
-          const a = b.arena;
-          const mid = a.x + a.width / 2;
-          const s = b.aiState;
-          states.add(`${b.phase}:${s}`);
-          let tx: number;
-          if (!b.started || s === 'intro') tx = a.x + 80;
-          else if (b.vulnerable) tx = b.corePos.x;
-          else if (s === 'beamWarn' || s === 'beamSweep') tx = b.plan!.zoneMin <= a.x + 1 ? mid + 70 : mid - 70;
-          else if (s.startsWith('slam')) {
-            const sx = s === 'slamTrack' ? b.x : b.slamX;
-            tx = sx < mid ? sx + 110 : sx - 110;
-          } else if (s.startsWith('laser')) tx = p.x < b.x ? b.x - b.laserZone - 40 : b.x + b.laserZone + 40;
-          else tx = b.x + (p.x < b.x ? -100 : 100);
-          tx = Math.max(a.x + 12, Math.min(a.right - 12, tx));
-          const dx = tx - p.x;
-          const input: Record<string, boolean> = {};
-          if (Math.abs(dx) > 4) input[dx > 0 ? 'right' : 'left'] = true;
-          const waves = L.ctx.groups.enemyProjectiles.getChildren() as { x: number; opts?: { style?: string }; body: { velocity: { x: number } } }[];
-          const danger = waves.some((w) => w.opts?.style === 'shockwave' && Math.abs(w.x - p.x) < 34 && Math.sign(w.body.velocity.x) === Math.sign(p.x - w.x));
-          if (hold > 0) {
-            input.jump = true;
-            hold--;
-          } else if (p.grounded && (danger || (b.vulnerable && Math.abs(b.corePos.x - p.x) < 18 && b.stateTime > 150))) {
-            input.jump = true;
-            hold = danger ? 14 : 6;
-            if (!danger) stompsOffered++;
-          }
-          h.setInput(input);
-          await h.stepFrames(1);
-          frames++;
+        await h.startLevel('north-4', ch as never, { manual: true });
+        const lv = (window as unknown as { __level: { ctx: { groups: { enemies: { getChildren(): unknown[] } } } } }).__level;
+        const b0 = lv.ctx.groups.enemies.getChildren().find((e) => (e as B).bossName) as B;
+        // Patch the Enemy prototype once (persists across level restarts).
+        let proto = Object.getPrototypeOf(b0);
+        while (proto && !Object.prototype.hasOwnProperty.call(proto, 'setAI')) proto = Object.getPrototypeOf(proto);
+        const w = window as unknown as { __ovStates?: Set<string>; __ovPatched?: boolean };
+        w.__ovStates = new Set();
+        if (!w.__ovPatched) {
+          w.__ovPatched = true;
+          const orig = proto.setAI;
+          proto.setAI = function (this: B, s: string) {
+            if (this.bossName === 'The Overseer') w.__ovStates!.add(`${this.phase}:${s}`);
+            return orig.call(this, s);
+          };
         }
-        h.setInput(null);
-        const b = boss();
-        return { frames, defeated: !b || b.dead, hp: b?.hp ?? 0, states: [...states], stompsOffered };
-      });
-      expect(res.defeated, JSON.stringify(res)).toBe(true);
-      // All three phases were fought, with each phase's signature attack.
-      for (const st of ['1:beamSweep', '2:slamFall', '3:laserSpin', '1:vulnerable', '2:vulnerable', '3:vulnerable']) expect(res.states).toContain(st);
-      // Defeat → BOSS_DEFEATED → level complete → Results.
-      await harness(page, (h) => h.stepFrames(60 * 6));
-      await waitForScene(page, 'Results', 15_000);
-      expect(log.errors, log.errors.join('\n')).toEqual([]);
-    });
-  }
+        const r = await h.bot({ levelId: 'north-4', character: ch as never, invulnerable: true, maxFrames: 60 * 300 });
+        return { completed: r.completed, sim: r.simSeconds, states: [...w.__ovStates] };
+      }, character);
+      results.push(`${character}: ${res.completed ? 'beaten' : 'NOT beaten'} in ${res.sim.toFixed(1)} s`);
+      expect(res.completed, `${character}: ${JSON.stringify(res)}`).toBe(true);
+      for (const st of ['1:beamSweep', '1:vulnerable', '2:slamFall', '2:vulnerable', '3:laserSpin', '3:vulnerable']) expect(res.states, character).toContain(st);
+    }
+    console.log(`[overseer] ${results.join(' · ')}`);
+    expect(log.errors, log.errors.join('\n')).toEqual([]);
+  });
 });

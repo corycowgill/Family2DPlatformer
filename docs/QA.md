@@ -100,7 +100,7 @@ E2E (`tests/e2e`):
   opens on 2-1, PLAY enters north-1); `?story` World 2 comic plays once before 2-1; beating 1-4 → ending
   teaser "WORLD 2 / UNLOCKED! / THE NORTH SIDE" → map on 2-1; beating 2-4 → WORLD 2 CLEAR → W-flag
   ending → World 3 teaser → map, Extras rewatch; every placeholder 2-x map loads; **THE OVERSEER is
-  defeated by a scripted stomp-only run for every character** (manual stepping, invulnerable, all three
+  defeated by the PlatformBot stomping only, for every character** (invulnerable, all three
   phases' signature attacks seen) → Results.
 - `perf.spec.ts` — FPS over 5 s of scripted play (report; warns below 50 fps);
   10 level restarts: textures / listeners / bodies / display list stable, heap growth reported.
