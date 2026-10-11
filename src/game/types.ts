@@ -89,7 +89,8 @@ export type EnemyKind =
 
 export type PickupKind = 'coin' | 'hotdog' | 'pizza' | 'ctaPass' | 'star' | 'souvenir' | 'oneUp';
 
-export type LevelTheme = 'day' | 'rooftop' | 'river' | 'sunset';
+/** World 1: day / rooftop / river / sunset. World 2 (The North Side): park / lakefront / night / stadium. */
+export type LevelTheme = 'day' | 'rooftop' | 'river' | 'sunset' | 'park' | 'lakefront' | 'night' | 'stadium';
 
 export interface LevelInfo {
   id: string;

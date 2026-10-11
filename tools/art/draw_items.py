@@ -353,7 +353,7 @@ def checkpoint(on):
     return cv
 
 
-def goal_pole():
+def goal_pole(flag=None):
     W = 54
     cv = Cv(W, 96)
     px = 25  # pole spans px..px+3, centred on the frame
@@ -376,7 +376,7 @@ def goal_pole():
     star6(cv, px + 1.2, 4.2, 3.1, 1.3, "y1")
     cv.set(px + 1, 3, "y0")
     cv.outline("ink")
-    f = chicago_flag(True, 1.0)
+    f = flag or chicago_flag(True, 1.0)
     f.outline("ink")
     cv.paste_over(f, px + 3, 10)
     return cv
@@ -384,6 +384,39 @@ def goal_pole():
 
 def goal_flag():
     f = chicago_flag(True, 0.3)
+    cv = Cv(27, 17)
+    cv.blit(f, 1, 1)
+    cv.outline("ink")
+    return cv
+
+
+def w_flag(wave=0.0):
+    """Ballpark win flag: white field, bold blue W (World 2 goal variant). 25x15 like the Chicago flag."""
+    w, h = 25, 15
+    cv = Cv(w, h)
+    cv.rect(0, 0, w, h, "w")
+    for (x0, y0, x1, y1) in ((6, 3, 9, 11), (9, 11, 12, 5), (12, 5, 15, 11), (15, 11, 18, 3)):
+        for dx in (0, 1):
+            cv.line(x0 + dx, y0, x1 + dx, y1, "1e4c9a")
+    for x in range(w):
+        ph = math.sin((x / w) * math.pi * 2 + wave)
+        if ph > 0.6:
+            for y in range(h):
+                cv.set(x, y, lerp(cv.get(x, y)[:3], "ffffff", 0.3))
+        elif ph < -0.6:
+            for y in range(h):
+                cv.set(x, y, lerp(cv.get(x, y)[:3], "56648a", 0.2))
+    return cv
+
+
+def goal_pole_w():
+    """goal_pole with the W flag (same 54x96 frame, pole and base)."""
+    cv = goal_pole(flag=w_flag(1.0))
+    return cv
+
+
+def goal_flag_w():
+    f = w_flag(0.3)
     cv = Cv(27, 17)
     cv.blit(f, 1, 1)
     cv.outline("ink")
@@ -552,6 +585,8 @@ def build_items():
     fr["checkpoint_on"] = checkpoint(True).im
     fr["goal_pole"] = goal_pole().im
     fr["goal_flag"] = goal_flag().im
+    fr["goal_pole_w"] = goal_pole_w().im  # World 2 ballpark win flag (goal flag=w)
+    fr["goal_flag_w"] = goal_flag_w().im
     pack_atlas(fr, os.path.join(ASSETS, "items"))
     contact_sheet(fr, os.path.join(PREVIEWS, "items.png"), scale=4, cols=10)
     return fr

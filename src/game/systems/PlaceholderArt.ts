@@ -109,7 +109,7 @@ export function ensurePlaceholderArt(scene: Phaser.Scene): void {
   });
 
   // Parallax backgrounds
-  for (const theme of ['day', 'rooftop', 'river', 'sunset']) {
+  for (const theme of ['day', 'rooftop', 'river', 'sunset', 'park', 'lakefront', 'night', 'stadium']) {
     for (const layer of ['sky', 'far', 'mid', 'near'] as const) {
       const key = IMAGES.bg(theme, layer);
       if (scene.textures.exists(key)) continue;

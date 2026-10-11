@@ -10,6 +10,10 @@ export const BG_TINT: Record<LevelTheme, number> = {
   rooftop: 0x747b9e,
   river: 0x7888a4,
   sunset: 0x9a7480,
+  park: 0x8a96a8,
+  lakefront: 0x8e9cb2,
+  night: 0x5c5f86,
+  stadium: 0x55597e,
 };
 
 const hex = (v: string, def: number): number => {

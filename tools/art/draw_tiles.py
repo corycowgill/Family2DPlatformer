@@ -2,7 +2,8 @@
 """
 Draws public/assets/tilesets/chicago-tiles.png (256 wide, 16x16 tiles, 16 columns,
 as many rows as the contract needs) in exactly the order of src/game/data/tiles.ts,
-plus art/previews/tiles-*.png. Rows 4+ (materials + facade decor) come from draw_terrain.py.
+plus art/previews/tiles-*.png. Rows 4+ (materials + facade decor) come from draw_terrain.py,
+World 2 rows (indices 608+) from draw_terrain_w2.py.
 
 Fill tiles are periodic in 16px so they tile with themselves; each *_TOP tile
 re-uses its fill function under a distinct walkable top band.
@@ -15,6 +16,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from pxl import ASSETS, PREVIEWS, ROOT, Cv, P, T, c, lerp, scaled  # noqa: E402
 from PIL import Image  # noqa: E402
 from draw_terrain import terrain_tiles  # noqa: E402
+from draw_terrain_w2 import terrain_tiles_w2  # noqa: E402
 
 S = 16
 
@@ -1103,6 +1105,7 @@ def contract_order():
 def build():
     order = contract_order()
     TILES.update(terrain_tiles())
+    TILES.update(terrain_tiles_w2())
     assert set(order) == set(TILES), (set(order) ^ set(TILES))
     rows = (max(order.values()) + 16) // 16
     sheet = Image.new("RGBA", (256, rows * 16), (0, 0, 0, 0))

@@ -44,11 +44,12 @@ export class Checkpoint extends TriggerSprite {
   }
 }
 
-/** End-of-level Chicago flag gate. */
+/** End-of-level Chicago flag gate (`flag=w`: the ballpark W flag variant, World 2). */
 export class Goal extends TriggerSprite {
   private reached = false;
   constructor(ctx: LevelContext, obj: SpawnObject) {
-    super(ctx, obj.x, obj.y, 'items', 'goal_pole');
+    const w = obj.props.flag === 'w' && ctx.scene.textures.get('items').has('goal_pole_w');
+    super(ctx, obj.x, obj.y, 'items', w ? 'goal_pole_w' : 'goal_pole');
     this.body.setSize(12, Math.max(48, this.height));
     this.body.setOffset((this.width - 12) / 2, this.height - Math.max(48, this.height));
   }

@@ -18,6 +18,12 @@
  *   @objects           (optional explicit objects in TILE coordinates, bottom-left tile of the object)
  *   movingPlatform 40 12 dx=6 dy=0 period=3 width=3 style=girder
  *
+ * World 2 legend chars (auto-tiled materials, also usable in @background / @foreground):
+ *   M GRASS  H PATH  D SAND  U BOARD  I IVY  Q FLAT  Z SEAT   , = BOARD_PLANK (one-way)
+ * Background FLAT is dressed as greystone / brownstone three-flats, background IVY as a
+ * flat ivy wall. Facade decor tiles (neon, bleachers, zoo sign, conservatory, ...) are
+ * placed with a @legend line, e.g. `n: background NEON_BAR_L` (see tools/art/README.md).
+ *
  * Auto-tiling (tools/levels/autotile.mjs) only chooses WHICH tile fills a cell — caps,
  * corners, edges, undersides, depth-shaded fill variants by a stable (x,y) hash — and
  * dresses background brick / limestone / Lower Wacker regions as building facades
@@ -63,11 +69,20 @@ export const DEFAULT_LEGEND = {
   S: { layer: 'ground', tile: 'STEEL_BLOCK' },
   Y: { layer: 'ground', tile: 'WARNING_STRIPE' },
   V: { layer: 'ground', tile: 'PLANTER' },
+  // World 2 (The North Side) materials
+  M: { layer: 'ground', mat: 'GRASS' }, // park lawn (Meadow)
+  H: { layer: 'ground', mat: 'PATH' }, // park paver path
+  D: { layer: 'ground', mat: 'SAND' }, // beach sand (Dune)
+  U: { layer: 'ground', mat: 'BOARD' }, // boardwalk / pier (Underpinned planks)
+  I: { layer: 'ground', mat: 'IVY' }, // ivy-covered outfield brick wall
+  Q: { layer: 'ground', mat: 'FLAT' }, // three-flat greystone (background: dressed greystone / brownstone facade)
+  Z: { layer: 'ground', mat: 'SEAT' }, // stadium stands
   // One-way platforms
   '=': { layer: 'oneway', tile: 'RAIL' },
   '-': { layer: 'oneway', tile: 'SCAFFOLD_PLANK' },
   _: { layer: 'oneway', tile: 'WOOD_PLANK' },
   ':': { layer: 'oneway', tile: 'AWNING' },
+  ',': { layer: 'oneway', tile: 'BOARD_PLANK' }, // World 2 boardwalk plank
   // Hazards
   '^': { layer: 'hazards', tile: 'SPIKES' },
   E: { layer: 'hazards', tile: 'ELECTRIC_RAIL' },

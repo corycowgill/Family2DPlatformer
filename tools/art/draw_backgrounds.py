@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Parallax backgrounds + ambient sprites for the four level themes.
+Parallax backgrounds + ambient sprites for every level theme (World 1 here; the World 2
+themes park / lakefront / night / stadium come from draw_backgrounds_w2.py).
 
 Outputs
   public/assets/backgrounds/bg-<theme>-sky.png     480x270 opaque gradient, sun, distant clouds (static)
@@ -36,7 +37,8 @@ OUT = os.path.join(ASSETS, "backgrounds")
 ANCHORS_TS = os.path.join(ROOT, "src", "game", "world", "AmbientAnchors.ts")
 
 BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
-THEME_NAMES = ("day", "rooftop", "river", "sunset")
+THEME_NAMES = ("day", "rooftop", "river", "sunset", "park", "lakefront", "night", "stadium")
+W1_THEMES = THEME_NAMES[:4]  # World 2 themes are drawn by draw_backgrounds_w2.py
 
 
 def clamp01(v):
@@ -1344,6 +1346,18 @@ def write_anchors(anchors):
         "  train: { layer: 'far' | 'mid'; y: number } | null;",
         "  /** River surface on the mid layer: water top y and boat baselines. */",
         "  river: { layer: 'mid'; top: number; boatY: number[] } | null;",
+        "  /** Lake horizon (World 2 lakefront): sailboat baseline y on the far layer. */",
+        "  lake?: { layer: 'far'; y: number };",
+        "  /** Stadium light banks (x, y flattened) on a layer: pulsing flares. */",
+        "  flares?: { layer: 'far' | 'mid'; pts: number[] };",
+        "  /** Neon signs (x, y, w, h flattened) on the mid layer: occasional flicker. */",
+        "  neon?: number[];",
+        "  /** Searchlight / alien beam origins: screen x at the bottom of the sky. */",
+        "  beams?: number[];",
+        "  /** Alien scout ships drifting across the sky. */",
+        "  ships?: boolean;",
+        "  /** Small flyers near the camera: park butterflies or night fireflies. */",
+        "  flutter?: 'butterflies' | 'fireflies';",
         "}",
         "",
         f"export const LAYER_WIDTH = {WIDE};",
@@ -1362,6 +1376,19 @@ def write_anchors(anchors):
         lines.append(f"    train: {('{ layer: ' + repr(tr['layer']) + ', y: ' + str(tr['y']) + ' }') if tr else 'null'},")
         rv = a.get("river")
         lines.append(f"    river: {('{ layer: ' + repr(rv['layer']) + ', top: ' + str(rv['top']) + ', boatY: [' + ', '.join(map(str, rv['boatY'])) + '] }') if rv else 'null'},")
+        if a.get("lake"):
+            lines.append(f"    lake: {{ layer: '{a['lake']['layer']}', y: {a['lake']['y']} }},")
+        if a.get("flares"):
+            fl = a["flares"]
+            lines.append(f"    flares: {{ layer: '{fl['layer']}', pts: [{', '.join(str(v) for pt in fl['pts'] for v in pt)}] }},")
+        if a.get("neon"):
+            lines.append(f"    neon: [{flat(a['neon'])}],")
+        if a.get("beams"):
+            lines.append(f"    beams: [{', '.join(map(str, a['beams']))}],")
+        if a.get("ships"):
+            lines.append("    ships: true,")
+        if a.get("flutter"):
+            lines.append(f"    flutter: '{a['flutter']}',")
         lines.append("  },")
     lines.append("};")
     with open(ANCHORS_TS, "w") as f:
@@ -1382,12 +1409,35 @@ def glint_spots(far_cv, r, n=10):
     return out
 
 
+def composite(layers):
+    comp = Image.new("RGBA", (WIDE, H))
+    for x in range(0, WIDE, W):
+        comp.alpha_composite(layers["sky"].im, (x, 0))
+    for x in range(0, WIDE, CLOUD_W):
+        comp.alpha_composite(layers["clouds"].im, (x, 0))
+    for name in ("far", "mid", "near"):
+        comp.alpha_composite(layers[name].im, (0, 0))
+    return comp
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     previews = []
     anchors = {}
     total = {}
+    import draw_backgrounds_w2 as w2  # noqa: E402 (imports this module's helpers)
     for theme in THEME_NAMES:
+        if theme in w2.W2_THEMES:
+            layers, a = w2.draw_theme(theme)
+            anchors[theme] = a
+            tot = 0
+            for name, cv in layers.items():
+                cv.harden()
+                cv.save(os.path.join(OUT, f"bg-{theme}-{name}.png"))
+                tot += cv.w * cv.h * 4
+            total[theme] = tot
+            previews.append(composite(layers))
+            continue
         far, win_far = draw_far(theme)
         mid, mid_anchors = draw_mid(theme)
         near, near_anchors = draw_near(theme)
@@ -1405,23 +1455,18 @@ def main():
             cv.save(os.path.join(OUT, f"bg-{theme}-{name}.png"))
             tot += cv.w * cv.h * 4
         total[theme] = tot
-        comp = Image.new("RGBA", (WIDE, H))
-        for x in range(0, WIDE, W):
-            comp.alpha_composite(layers["sky"].im, (x, 0))
-        for x in range(0, WIDE, CLOUD_W):
-            comp.alpha_composite(layers["clouds"].im, (x, 0))
-        for name in ("far", "mid", "near"):
-            comp.alpha_composite(layers[name].im, (0, 0))
-        previews.append(comp)
+        previews.append(composite(layers))
     write_anchors(anchors)
     frames = draw_ambient()
+    frames.update(w2.ambient_frames())
     pack_atlas(frames, os.path.join(ASSETS, "ambient"), max_w=256)
     draw_water_strip().save(os.path.join(ASSETS, "ambient-water.png"))
-    sheet = Image.new("RGBA", (WIDE, H * len(previews)))
-    for i, p in enumerate(previews):
-        sheet.alpha_composite(p, (0, i * H))
     os.makedirs(PREVIEWS, exist_ok=True)
-    sheet.save(os.path.join(PREVIEWS, "backgrounds.png"))
+    for name, group in (("backgrounds.png", previews[:4]), ("backgrounds-w2.png", previews[4:])):
+        sheet = Image.new("RGBA", (WIDE, H * len(group)))
+        for i, p in enumerate(group):
+            sheet.alpha_composite(p, (0, i * H))
+        sheet.save(os.path.join(PREVIEWS, name))
     print("backgrounds ok; uncompressed bytes per theme:", {k: f"{v / 1e6:.2f} MB" for k, v in total.items()})
 
 

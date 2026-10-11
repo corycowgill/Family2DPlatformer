@@ -247,6 +247,66 @@
       "path": "assets/backgrounds/bg-day-sky.png"
     },
     {
+      "key": "bg-lakefront-clouds",
+      "path": "assets/backgrounds/bg-lakefront-clouds.png"
+    },
+    {
+      "key": "bg-lakefront-far",
+      "path": "assets/backgrounds/bg-lakefront-far.png"
+    },
+    {
+      "key": "bg-lakefront-mid",
+      "path": "assets/backgrounds/bg-lakefront-mid.png"
+    },
+    {
+      "key": "bg-lakefront-near",
+      "path": "assets/backgrounds/bg-lakefront-near.png"
+    },
+    {
+      "key": "bg-lakefront-sky",
+      "path": "assets/backgrounds/bg-lakefront-sky.png"
+    },
+    {
+      "key": "bg-night-clouds",
+      "path": "assets/backgrounds/bg-night-clouds.png"
+    },
+    {
+      "key": "bg-night-far",
+      "path": "assets/backgrounds/bg-night-far.png"
+    },
+    {
+      "key": "bg-night-mid",
+      "path": "assets/backgrounds/bg-night-mid.png"
+    },
+    {
+      "key": "bg-night-near",
+      "path": "assets/backgrounds/bg-night-near.png"
+    },
+    {
+      "key": "bg-night-sky",
+      "path": "assets/backgrounds/bg-night-sky.png"
+    },
+    {
+      "key": "bg-park-clouds",
+      "path": "assets/backgrounds/bg-park-clouds.png"
+    },
+    {
+      "key": "bg-park-far",
+      "path": "assets/backgrounds/bg-park-far.png"
+    },
+    {
+      "key": "bg-park-mid",
+      "path": "assets/backgrounds/bg-park-mid.png"
+    },
+    {
+      "key": "bg-park-near",
+      "path": "assets/backgrounds/bg-park-near.png"
+    },
+    {
+      "key": "bg-park-sky",
+      "path": "assets/backgrounds/bg-park-sky.png"
+    },
+    {
       "key": "bg-river-clouds",
       "path": "assets/backgrounds/bg-river-clouds.png"
     },
@@ -285,6 +345,26 @@
     {
       "key": "bg-rooftop-sky",
       "path": "assets/backgrounds/bg-rooftop-sky.png"
+    },
+    {
+      "key": "bg-stadium-clouds",
+      "path": "assets/backgrounds/bg-stadium-clouds.png"
+    },
+    {
+      "key": "bg-stadium-far",
+      "path": "assets/backgrounds/bg-stadium-far.png"
+    },
+    {
+      "key": "bg-stadium-mid",
+      "path": "assets/backgrounds/bg-stadium-mid.png"
+    },
+    {
+      "key": "bg-stadium-near",
+      "path": "assets/backgrounds/bg-stadium-near.png"
+    },
+    {
+      "key": "bg-stadium-sky",
+      "path": "assets/backgrounds/bg-stadium-sky.png"
     },
     {
       "key": "bg-sunset-clouds",

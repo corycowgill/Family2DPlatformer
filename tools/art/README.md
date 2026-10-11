@@ -200,7 +200,8 @@ parallax), `backgrounds.png` (all four themes composited), `items/ui/props/effec
 `logo.png`, `world-map.png`.
 
 ## Tileset
-`chicago-tiles.png` 256 wide, 16 columns, as many rows as `TILE_COUNT` needs (608 tiles = 38 rows).
+`chicago-tiles.png` 256 wide, 16 columns, as many rows as `TILE_COUNT` needs (1008 tiles = 63 rows;
+World 1 = indices 0-607, World 2 = 608-1007, see "World 2" below).
 Order is generated from `src/game/data/tiles.ts` (the script parses the contract and asserts every
 name is drawn). Rows 0-3 (indices 0-63) are the original hand-placed tiles and stay stable.
 Fill tiles are 16px-periodic; every `*_TOP` tile is its fill pattern with a bright walkable top band.
@@ -255,22 +256,89 @@ lit window runs).
 - near: trees, twin-globe lamps, hedge + fence (day, sunset with lamp halos), riverwalk railing (river),
   parapet + HVAC/tanks/chimneys/vents/antenna/billboard (rooftop).
 
-The script also writes the **ambient** atlas (`public/assets/ambient.png/json`: `bird_0-3` 9x6 white
+The script also writes the **ambient** atlas (World 2 adds `train_night`, `sail_0-2`,
+`butterfly_0-2`, `mote` (firefly), `ufo_0/1`, `beam` 24x180 wedge, `flare` 24x24 dithered disc) (`public/assets/ambient.png/json`: `bird_0-3` 9x6 white
 silhouettes (tinted at runtime), `train_day|rooftop|sunset` pre-hazed 4-car L trains, `boat_tour`,
 `boat_taxi` (+ `_sunset`), `steam_0-3` 12x12, `glint_0-3` 9x9, `px` 2x2 white, `wake_0-1`),
 `public/assets/ambient-water.png` (32x8 tileable surface highlight) and the generated
 `src/game/world/AmbientAnchors.ts` (dark windows that the sunset twinkle switches on, glint spots,
 rooftop vent mouths, L-track and river lines in layer pixels). Runtime: `src/game/world/Ambient.ts`.
 
+## World 2 — The North Side
+
+`python3 tools/art/draw_backgrounds.py` also draws the World 2 themes (via `draw_backgrounds_w2.py`),
+`draw_tiles.py` the World 2 tiles (via `draw_terrain_w2.py`), `draw_props.py` the World 2 props
+(via `draw_props_w2.py`), `draw_items.py` the W goal flag. World 1 output is byte-identical.
+Previews: `art/previews/backgrounds-w2.png`, `tiles-w2-sheet.png` (`python3 tools/art/draw_terrain_w2.py`),
+`props-w2.png`.
+
+### Themes (`LevelTheme`)
+| theme | level | look |
+|---|---|---|
+| `park` | 2-1 Lincoln Park, morning | Streeterville skyline (Hancock) far south over the park canopy; mid: the Conservatory glasshouse, zoo gate + lion house + aviary, prairie pavilion, North Pond with lily pads + ducks; near: oaks, acorn lamps, flower beds, hedge + hoop fence. Ambient: butterflies. |
+| `lakefront` | 2-2 Lakefront, afternoon | Lake Michigan horizon (y=150) with static sailboats, a freighter, sun glitter; skyline cluster to the south; mid: North Avenue Beach — the ship-shaped beach house (decks, portholes, two stacks, signal flags), lifeguard chairs, volleyball nets, umbrellas, beach-goers, jetty light; near: dune grass, snow fence, trail lamps, life rings. Ambient: drifting sailboats on the horizon (`sail_0-2`), white gulls. |
+| `night` | 2-3 Wrigleyville night | stars + full moon, night clouds with a city-glow rim; far: the ballpark grandstand with light towers + the red marquee, alien pods beaming the stands, lit three-flats; mid: three-flats / greystones with lit windows, neon signs (BAR, PIZZA, HOT DOGS, GO TEAM!, TAVERN, GRILL, OPEN), rooftop bleachers with fans, the Red Line L + Addison station; near: street lamps with halos, trees, parked cars. Ambient: L train (`train_night`), window twinkle, neon flicker, fireflies, alien scout ships (`ufo_0/1`), sweeping green beams. No birds. |
+| `stadium` | 2-4 ballpark boss arena, night | mothership hanging in the sky (static sky layer); far: Wrigleyville rooftops with rooftop bleachers + scout pods beaming; mid: outfield bleachers full of fans, light standards with bloom, the hand-turned scoreboard (clock, pennants), ivy wall with 368 / 400 markers; near: yellow foul poles, bullpen padding, mowed outfield stripes. Ambient: pulsing light flares, alien ships, white searchlights. |
+
+Same layer sizes as World 1 (sky 480x270, clouds 640x176, far/mid/near 960x270) = 4.08 MB per theme
+uncompressed (~80 KB PNG per theme). Note: PreloadScene loads every background in the manifest at boot,
+so the 4 new themes add ~16 MB of GPU texture memory for the whole game; lazy-loading backgrounds
+per theme would bring that back to ~4 MB per level.
+
+Grading (`src/game/fx/fxMath.ts` `THEME_MOOD`): park ungraded, light vignette; lakefront a faint
+warm grade; night a cool blue-violet grade + strong vignette + lamp glows (0.95); stadium a cool
+grade + lamp glows (0.85). `Lighting.ts` lights `lamp`, `park_lamp` and `stadium_light` props
+(bulb offsets in `LAMP_BULBS`). Decor-layer default tints: `BG_TINT` in `world/LevelStyle.ts`.
+
+### Materials (indices 608-943, `draw_terrain_w2.py`)
+Same 48-slot layout as World 1 (`MATERIAL_SUFFIXES`), auto-tiled by `tools/levels/autotile.mjs`.
+| material | legend | top / fill |
+|---|---|---|
+| GRASS | `M` | lawn with blade fringe (daisies, clover, dandelions; rare tulips / sprinkler) over loam with roots, pebbles, a worm; deep: dark soil + clay lens |
+| PATH | `H` | rose-tan basket-weave clay pavers + granite edge (rare bronze medallion, leaf) over crushed gravel (drain tile, irrigation line) |
+| SAND | `D` | wind-rippled beach sand (footprints, shells, beach-grass tuft, driftwood) over packed sand strata (beach glass, bottle cap); deep: wet sand |
+| BOARD | `U` | boardwalk deck plank (nails, cleat, brass plate) over a timber crib of round piles + stringer + X bracing (rope ring, mussels, algae) |
+| IVY | `I` | brick rowlock coping over dense Boston ivy on brick (patches of brick, a painted "400", a lost baseball) |
+| FLAT | `Q` | three-flat greystone: carved cornice lip over rock-faced grey Bedford ashlar (rosette, date stone) |
+| SEAT | `Z` | stadium tread with a yellow safety nosing over two rows of green seats per tile (folded seat, red home-run seat, aisle number); deep: precast rakers + columns |
+
+One-way: `BOARD_PLANK` (legend `,`) — a deck plank with a knee brace, transparent below.
+
+### North Side decor (indices 944-1007, background layer)
+- `GS_*` greystone / `BS_*` brownstone three-flat facade, 16 each: `WALL0-2`, `EDGE_L/R` (quoins),
+  `CORN_L/CORN/CORN_R` (bracketed cornice), `WIN`, `WIN_LIT`, two-tile bay window `BAY_L/R` and
+  `BAYLIT_L/R`, `DOOR` (arched, lit transom), `STOOP` (steps rising to a door on the right).
+  A background `@FLAT` region is dressed automatically (autotile.mjs `decorateNorthSide`):
+  greystone or brownstone per building, cornice row, quoined edges, alternating window / wall rows
+  with a bay near the left on 5+ wide buildings, stoop + door on the ground row every 5 columns.
+- Neon signs, two tiles each (`_L`/`_R`): `NEON_BAR`, `NEON_PIZZA`, `NEON_DOGS` ("HOT DOGS"), `NEON_TEAM` ("GO TEAM!").
+- Rooftop bleachers: `BLEACH_TL/T/TR` (bench rows + fans) over `BLEACH_L/BLEACH/BLEACH_R` (steel frame).
+- `SIGN_ADDISON_L/R` (Red Line station sign), `ZOO_SIGN_L/M/R` ("LINCOLN PARK / ZOO" board),
+  conservatory `CONS_ROOF_L/CONS_ROOF/CONS_ROOF_R` + `CONS_GLASS` / `CONS_GLASS_LIT`,
+  flat ivy wall `IVYW_TOP` / `IVYW_0` / `IVYW_1` (a background `@IVY` region uses these automatically),
+  `BOARD_RAIL` (boardwalk railing), `SCORE_L/R` (scoreboard panel with number plates), `HEDGE`.
+  Place them with a level `@legend` line, e.g. `n: background NEON_BAR_L`.
+
+Showcase levels: `tools/levels/src/test-{park,lakefront,night,stadium}.txt` (`?level=test-park` …;
+a `test-<theme>` id picks that theme, see `getLevel` in `src/game/data/levels.ts`).
+
 ## Atlases (frame sizes)
 - **items**: coin_0-5, star_0-3, question_0-3, hotdog, pizza, cta_pass, one_up (red Chicago star),
   souvenir_0-2, block_used, brick, bounce_pad_0/1 (0 = extended, 1 = compressed) — all 16x16.
   checkpoint_off/on **34x48** (pole centred at x=17, flag extends right), goal_pole **54x96**
-  (pole centred, Chicago flag attached), goal_flag 27x17 (standalone flag).
+  (pole centred, Chicago flag attached), goal_flag 27x17 (standalone flag); World 2: goal_pole_w /
+  goal_flag_w — same sizes with the white ballpark W flag (goal object prop `flag=w`, e.g. legend
+  `F: goal flag=w`).
 - **props** (bottom-anchored, variable sizes): lamp 16x48, hydrant 14x16, hotdog_cart 52x44,
   bench 32x16, flag_pole 32x48, cone 12x16, barricade 32x22, news_box 16x24, trash_can(_broken)
   18x18, planter 32x22, traffic_light 14x48, sign_wacker 44x34, sign_michigan 52x34, clock 18x48,
   cta_entrance 48x48, bus_shelter 48x40, steam_vent 16x8, mailbox 16x22, tree 32x48.
+  World 2: park_tree_s 32x40 / park_tree_m 48x60 / park_tree_l 64x80, park_bench 32x18, park_lamp 16x56
+  (lit by Lighting), lion_statue 44x34, giraffe_topiary 30x56, flower_bed 48x16, lifeguard_stand 32x52,
+  beach_umbrella 36x40, volleyball_net 64x34, sailboat 40x48, buoy 12x18, stadium_light 32x112 (lit),
+  scoreboard 64x52, pennants 64x16, ivy_clump 16x14, ivy_clump_l 32x24, baseball 8x8.
+  Neon anims (40x18, looping flicker, `meta.anims` durations 1700/90/140/70 ms): neon_bar_0-3,
+  neon_pizza_0-3, neon_dogs_0-3, neon_open_0-3 — `prop <tx> <ty> frame=neon_bar` plays the anim.
   Anims: pigeon_idle_0-3 / pigeon_fly_0-3 16x16, steam_0-5 16x32 (rising puffs, loop),
   train_light_0-5 16x24 (railroad-crossing flasher, alternates every 3 frames).
 - **effects** (centred; dust bottom-centred): dust 24x16x6, spark 24x24x5, explosion_small 32x32x8,

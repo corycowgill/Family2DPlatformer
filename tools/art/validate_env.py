@@ -73,13 +73,31 @@ def main():
                 errors.append(f"{key}:{name} outside sheet")
             elif sheet.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])).getbbox() is None:
                 errors.append(f"{key}:{name} empty")
-    for theme in ("day", "rooftop", "river", "sunset"):
-        for layer in ("sky", "far", "mid", "near"):
+    # every auto-tiled material has the full 48-slot layout
+    mats = re.search(r"export const MATERIALS = \[(.*?)\]", ts).group(1)
+    sufs = re.search(r"export const MATERIAL_SUFFIXES = \[(.*?)\]", ts).group(1)
+    names = set(re.findall(r"^\s+([A-Z_0-9]+): \d+,", ts, re.M))
+    for m in re.findall(r"'(\w+)'", mats):
+        for suf in re.findall(r"'(\w+)'", sufs):
+            if f"{m}_{suf}" not in names:
+                errors.append(f"tiles.ts: material {m} lacks {m}_{suf}")
+    # World 2 ambient sprites used by Ambient.ts
+    amb = json.load(open(os.path.join(A, "ambient.json")))["frames"]
+    for f in ("train_night", "sail_0", "sail_1", "sail_2", "butterfly_0", "butterfly_1", "butterfly_2", "mote",
+              "ufo_0", "ufo_1", "beam", "flare"):
+        if f not in amb:
+            errors.append(f"ambient: missing frame {f}")
+    themes = re.search(r"export type LevelTheme = (.*?);", open(os.path.join(ROOT, "src/game/types.ts")).read()).group(1)
+    for theme in re.findall(r"'(\w+)'", themes):
+        for layer in ("sky", "clouds", "far", "mid", "near"):
             p = os.path.join(A, "backgrounds", f"bg-{theme}-{layer}.png")
             if not os.path.exists(p):
                 errors.append(f"missing {p}")
                 continue
             im = Image.open(p).convert("RGBA")
+            if layer == "clouds":
+                check_hard_alpha(im, p)
+                continue
             if im.height != 270 or im.width % 480:
                 errors.append(f"{p}: size {im.size}")
             check_hard_alpha(im, p)

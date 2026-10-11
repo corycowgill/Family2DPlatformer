@@ -92,6 +92,25 @@ export const THEME_MOOD: Record<string, ThemeMood> = {
     rimColor: 0xffd29a,
     rimAlpha: 0.62,
   },
+  // World 2 — The North Side
+  park: { vignette: 0.18, vignetteColor: 0x0c1a20, grade: null, lampGlow: 0, rimColor: 0xfffbe0, rimAlpha: 0.42 },
+  lakefront: { vignette: 0.2, vignetteColor: 0x0a1630, grade: [0xfffbf2, 0xfff1de], lampGlow: 0, rimColor: 0xfff2d0, rimAlpha: 0.48 },
+  night: {
+    vignette: 0.48,
+    vignetteColor: 0x060818,
+    grade: [0xa9b0e6, 0xbdb6dc],
+    lampGlow: 0.95,
+    rimColor: 0xb8d0ff,
+    rimAlpha: 0.62,
+  },
+  stadium: {
+    vignette: 0.4,
+    vignetteColor: 0x080a1c,
+    grade: [0xbcc4f0, 0xd2d0ea],
+    lampGlow: 0.85,
+    rimColor: 0xe8f0ff,
+    rimAlpha: 0.68,
+  },
 };
 
 export function moodFor(theme: string): ThemeMood {

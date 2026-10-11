@@ -1,4 +1,4 @@
-import type { LevelInfo } from '../types';
+import type { LevelInfo, LevelTheme } from '../types';
 
 /** Level registry. Maps live in public/levels/<id>.json (compiled from tools/levels/src). */
 export const LEVELS: LevelInfo[] = [
@@ -13,13 +13,17 @@ export const TEST_LEVEL: LevelInfo = {
   id: 'test', number: '0-0', name: 'Test Range', world: 0, file: 'levels/test.json', theme: 'day', music: 'streets',
 };
 
+/** Test levels named after a theme (`test-park`, `test-night-foo`...) use that theme. */
+const TEST_THEMES: readonly LevelTheme[] = ['park', 'lakefront', 'night', 'stadium', 'rooftop', 'river', 'sunset'];
+const testTheme = (id: string): LevelTheme => TEST_THEMES.find((t) => id === `test-${t}` || id.startsWith(`test-${t}-`)) ?? 'day';
+
 export function getLevel(id: string): LevelInfo | undefined {
   if (id === TEST_LEVEL.id) return TEST_LEVEL;
   const found = LEVELS.find((l) => l.id === id);
   if (found) return found;
   // Generic developer test levels: ?level=test-<name> → levels/test-<name>.json
   if (/^test-[\w-]+$/.test(id)) {
-    return { ...TEST_LEVEL, id, name: `Test: ${id.slice(5)}`, file: `levels/${id}.json`, boss: id.includes('boss') };
+    return { ...TEST_LEVEL, id, name: `Test: ${id.slice(5)}`, file: `levels/${id}.json`, boss: id.includes('boss'), theme: testTheme(id) };
   }
   return undefined;
 }
