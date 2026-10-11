@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { EAGER_THEMES } from './ThemeAssets';
 import { CHARACTER_IDS } from '../types';
 import { ATLAS, CHARACTER_ANIMS, CHARACTER_FRAME_SIZE, IMAGES } from '../data/assets';
 import { TILESET_COLUMNS, TILE_COUNT } from '../data/tiles';
@@ -109,7 +110,8 @@ export function ensurePlaceholderArt(scene: Phaser.Scene): void {
   });
 
   // Parallax backgrounds
-  for (const theme of ['day', 'rooftop', 'river', 'sunset', 'park', 'lakefront', 'night', 'stadium']) {
+  // Only boot-time themes: lazy themes load their real art on demand (ThemeAssets.ts).
+  for (const theme of EAGER_THEMES) {
     for (const layer of ['sky', 'far', 'mid', 'near'] as const) {
       const key = IMAGES.bg(theme, layer);
       if (scene.textures.exists(key)) continue;
