@@ -16,6 +16,8 @@ import { playAnim } from '../systems/AnimationSystem';
 import { CHARACTER_FRAME_SIZE } from '../data/assets';
 import type { LevelContext } from '../world/LevelContext';
 import type { Enemy } from './Enemy';
+import { pitOutcome, type SafeGroundTracker } from '../systems/Assist';
+import { reduceFlashing, SOFT_HIT_TINT } from '../systems/Accessibility';
 
 /** A character's special ability. Implementations live in systems/Abilities.ts. */
 export interface AbilityController {
@@ -94,6 +96,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Input latched by tick() for the following physics steps (edges held until consumed). */
   private readonly latched: InputState = { ...EMPTY_INPUT };
   private sawWorldStep = false;
+  /** Assist safety net: last safe ground (set by LevelScene when the option is on). */
+  safeGround: SafeGroundTracker | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -306,8 +310,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.landTimer > 0) this.landTimer -= dtMs;
     if (this.mode === 'hurt' && now >= this.knockbackUntil) this.mode = 'normal';
 
+    if (this.safeGround) this.sampleSafeGround(now);
+
     // Fell into a pit
     if (this.y > this.ctx.map.heightInPixels + 32) this.die('pit');
+  }
+
+  /** Safety net: is the hero standing on solid, hazard-free tiles (both feet, no moving platform)? */
+  private sampleSafeGround(now: number): void {
+    const b = this.body;
+    let safe = false;
+    if (this.motor.grounded && this.mode === 'normal' && !this.currentPlatform()) {
+      const { ground, hazards, water } = this.ctx;
+      const solid = (x: number) => !!ground.getTileAtWorldXY(x, b.bottom + 2)?.collides;
+      const bad = (x: number) =>
+        [hazards, water].some((l) => (l?.getTileAtWorldXY(x, b.bottom - 4)?.index ?? -1) > 0 || (l?.getTileAtWorldXY(x, b.bottom + 2)?.index ?? -1) > 0);
+      safe = solid(b.left + 1) && solid(b.right - 1) && !bad(b.left + 1) && !bad(b.right - 1);
+    }
+    this.safeGround!.note({ x: this.x, y: this.y, t: now, safe });
   }
 
   /** Per-frame bookkeeping: power-up expiry, HUD cooldown, visuals and animation. */
@@ -425,17 +445,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private updateVisuals(now: number, dtMs: number): void {
     // Invulnerability: strong blink (alpha) plus a white flash right after the hit.
     const invuln = now < this.invulnUntil && this.mode !== 'ability';
+    const calm = reduceFlashing();
     if (invuln) {
       const left = this.invulnUntil - now;
       const period = left < 400 ? 40 : 70;
-      this.setAlpha(Math.floor(now / period) % 2 ? 0.2 : 1);
+      // Reduced flashing: a steady see-through hero instead of a fast blink.
+      this.setAlpha(calm ? 0.6 : Math.floor(now / period) % 2 ? 0.2 : 1);
     } else {
       this.setAlpha(1);
     }
 
     const sinceHurt = now - (this.invulnUntil - PHYSICS.hurtInvulnMs);
     if (this.mode === 'hurt' && sinceHurt < 160) {
-      this.setTintFill(0xffffff);
+      if (calm) this.setTint(SOFT_HIT_TINT);
+      else this.setTintFill(0xffffff);
     } else if (this.powerups.has('star')) {
       this.setTint(Phaser.Display.Color.HSVToRGB(((now / 400) % 1), 0.6, 1).color);
     } else if (this.powerups.has('pizza')) {
@@ -630,8 +653,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.ctx.events.emit(EV.HEALTH_CHANGED, this.health, this.maxHealth);
   }
 
-  die(_cause: HitInfo['kind'] | 'pit' = 'contact'): void {
+  die(cause: HitInfo['kind'] | 'pit' = 'contact'): void {
     if (this.mode === 'dead') return;
+    if (cause === 'pit' && this.safeGround && this.mode !== 'victory') {
+      const o = pitOutcome(true, this.health, this.safeGround.point);
+      if (o.kind === 'rescue') {
+        this.rescue(o.x, o.y, o.health);
+        return;
+      }
+    }
     this.ability?.cancel?.();
     this.mode = 'dead';
     this.health = 0;
@@ -645,6 +675,37 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     playAnim(this, 'defeat', 'hurt', false);
     this.scene.tweens.add({ targets: this, y: this.y - 24, duration: 300, yoyo: true, ease: 'Quad.easeOut' });
     this.ctx.events.emit(EV.PLAYER_DIED);
+  }
+
+  /**
+   * Assist safety net: back onto safe ground at x,y (bottom-centre) with `health` left,
+   * keeping power-ups, with the usual post-hit invulnerability.
+   */
+  rescue(x: number, y: number, health: number): void {
+    this.ability?.cancel?.();
+    this.mode = 'normal';
+    this.health = health;
+    this.body.enable = true;
+    this.body.reset(x, y);
+    this.setPosition(x, y);
+    Object.assign(this.motor, createMotorState(), { facing: this.motor.facing });
+    if (this.crouching) {
+      this.crouching = false;
+      this.applyBodySize(false);
+    }
+    this.attacking = false;
+    this.actionAnim = null;
+    this.groundPlatform = null;
+    this.appliedExtraVy = 0;
+    this.stuckToGround = false;
+    this.appliedCarryVx = 0;
+    this.dropThroughUntil = 0;
+    this.invulnUntil = this.ctx.now() + PHYSICS.hurtInvulnMs;
+    this.ctx.events.emit(EV.HEALTH_CHANGED, this.health, this.maxHealth);
+    this.ctx.events.emit(EV.PLAYER_HURT, { amount: 1, fromX: x, kind: 'pit' } satisfies HitInfo);
+    this.ctx.sfx('hurt');
+    this.ctx.events.emit(EV.PLAYER_RESCUED, x, y);
+    playAnim(this, 'idle');
   }
 
   respawn(x: number, y: number): void {

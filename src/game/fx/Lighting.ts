@@ -4,6 +4,7 @@ import { LAYERS, TILE } from '../data/tiles';
 import type { LevelContext } from '../world/LevelContext';
 import { FX_SOFT, moodTexture } from './FxTextures';
 import { fxRng, type ThemeMood } from './fxMath';
+import { reduceFlashing } from '../systems/Accessibility';
 
 /** Lamp props (props atlas, bottom-centre origin): bulb centre offset from the prop's feet, glow scale. */
 const LAMP_BULBS: Record<string, { dy: number; scale: number }> = {
@@ -217,7 +218,7 @@ export class Lighting {
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(depth + 0.1);
       // One lamp in three flickers now and then.
-      if (!this.reducedMotion && i % 3 === 1) {
+      if (!this.reducedMotion && !reduceFlashing() && i % 3 === 1) {
         const objs = [cone, pool, bulb];
         this.flickers.push({ objs, base: objs.map((o) => o.alpha), phase: this.rng() * 1000, next: 1500 + this.rng() * 3000, burst: 0 });
       }

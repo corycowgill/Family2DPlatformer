@@ -89,6 +89,7 @@ describe('SaveSystem corrupted / malformed data', () => {
     expect(d.totalCoins).toBe(0);
     expect(d.worldsCompleted).toEqual([1]);
     expect(d.settings).toEqual({
+      ...DEFAULT_SETTINGS, // assist / accessibility fields missing → defaults
       musicVolume: 1,
       sfxVolume: DEFAULT_SETTINGS.sfxVolume,
       muted: false,

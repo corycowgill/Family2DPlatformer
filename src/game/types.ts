@@ -127,6 +127,7 @@ export const EV = {
   PLAYER_HURT: 'player-hurt', // (hit: HitInfo)
   PLAYER_DIED: 'player-died', // ()
   PLAYER_RESPAWN: 'player-respawn', // ()
+  PLAYER_RESCUED: 'player-rescued', // (x, y) assist safety net caught a pit fall
   ENEMY_DEFEATED: 'enemy-defeated', // (kind: EnemyKind, x: number, y: number)
   CHECKPOINT: 'checkpoint', // (index: number)
   LEVEL_COMPLETE: 'level-complete', // ()

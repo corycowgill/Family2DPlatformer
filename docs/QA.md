@@ -195,7 +195,7 @@ h.getState();  // { scenes, levelId, character, x, y, vx, vy, grounded, mode, he
 | `spawnEnemy(kind, x, y, props?)` | Through the spawner registry (`getSpawner('enemy')`). |
 | `editTiles(layer, tx, ty, w, h, index)` | Runtime tile edits for synthetic scenarios (`-1` clears). |
 | `completeLevel()`, `killPlayer()`, `revive(x?, y?)`, `setLives(n)`, `pause()` | |
-| `getSave()`, `clearSave()` | Save = localStorage `cfa-save`. |
+| `getSave()`, `clearSave()`, `setSettings(patch)` | Save = localStorage `cfa-save`. `setSettings` merges + sanitises settings (assist / accessibility). |
 | `levels()`, `useMap(id, file)`, `aliasMissingLevels()` | Which LEVELS maps exist; substitute test.json. |
 | `scenes()`, `isActive(key)`, `sceneTexts(key)`, `sceneObjects(key, type)` | UI assertions. |
 | `stats()` | textures, display-list sizes, bodies, tweens, listener counts, JS heap. |

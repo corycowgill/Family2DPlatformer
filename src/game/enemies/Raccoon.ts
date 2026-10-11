@@ -6,6 +6,7 @@ import type { LevelContext, SpawnObject } from '../world/LevelContext';
 import { playAnim } from '../systems/AnimationSystem';
 import { ENEMY_FRAME_SIZE, ensureSimpleTexture, hasRealAtlas } from './enemyArt';
 import { propNum, shieldBlocks } from './ai';
+import { reduceFlashing, SOFT_HIT_TINT } from '../systems/Accessibility';
 
 /**
  * Raccoon: holds a trash-can-lid shield in front (2 hp). Frontal attacks/projectiles
@@ -40,7 +41,8 @@ export class Raccoon extends Enemy {
   }
 
   protected onBlocked(): void {
-    this.lid?.setTintFill(0xffffff);
+    if (reduceFlashing()) this.lid?.setTint(SOFT_HIT_TINT);
+    else this.lid?.setTintFill(0xffffff);
     this.scene.time.delayedCall(80, () => this.lid?.active && this.lid.clearTint());
   }
 

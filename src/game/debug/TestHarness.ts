@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { LevelScene } from '../scenes/LevelScene';
 import { gameState } from '../state/GameState';
-import { saveSystem } from '../systems/SaveSystem';
+import { sanitizeSettings, saveSystem, type Settings } from '../systems/SaveSystem';
 import { getSpawner } from '../world/registry';
 import { CHARACTER_IDS, EV, type CharacterId, type EnemyKind } from '../types';
 import { LEVELS, TEST_LEVEL, getLevel } from '../data/levels';
@@ -166,11 +166,12 @@ export class TestHarness {
     const lv = this.levelScene();
     if (!lv || this.origStep) return;
     const sys = lv.sys;
-    const proto = Phaser.Scenes.Systems.prototype.step;
-    this.origStep = (time, delta) => proto.call(sys, time, delta);
+    // LevelScene's own step wrapper (assist game speed) stays in the chain.
+    const inner = sys.step;
+    this.origStep = (time, delta) => inner.call(sys, time, delta);
     sys.step = (time: number, delta: number) => {
       if (this.manual) return;
-      proto.call(sys, time, delta);
+      inner.call(sys, time, delta);
     };
   }
 
@@ -520,6 +521,14 @@ export class TestHarness {
     saveSystem.save();
     gameState.character = saveSystem.get().selectedCharacter;
     return this.getSave();
+  }
+
+  /** Merge `patch` into the saved settings (sanitised like a loaded save) and persist them. */
+  setSettings(patch: Partial<Settings>): Settings {
+    saveSystem.update((d) => {
+      d.settings = sanitizeSettings({ ...d.settings, ...patch });
+    });
+    return { ...saveSystem.get().settings };
   }
 
   /** All registered levels (test level first) and whether their map file is served. */

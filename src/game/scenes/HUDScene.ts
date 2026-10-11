@@ -16,6 +16,7 @@ import { prompt } from '../ui/Prompts';
 import { attachRumble } from '../ui/PadOverlay';
 import { showLevelCard } from '../story/LevelCard';
 import { playBossIntro } from '../story/BossIntro';
+import { reduceFlashing } from '../systems/Accessibility';
 
 const POWERUP_ICON: Partial<Record<PickupKind, string>> = { star: 'star_icon', ctaPass: 'pass', hotdog: 'hotdog', pizza: 'pizza' };
 const ABILITY_SHORT: Record<string, string> = { groundPound: 'POUND', airJump: 'SPARKLE', dash: 'DASH', projectile: 'BLAST', sniff: 'SNIFF', panSpin: 'SPIN' };
@@ -162,7 +163,7 @@ export class HUDScene extends Phaser.Scene {
       [EV.BOSS_PHASE, (phase: number) => {
         if (this.inBossIntro && phase === 1) return; // the intro card already announces the fight
         this.toast(`PHASE ${phase}!`, COLORS.red);
-        if (!reducedMotion()) this.cameras.main.flash(120, 255, 80, 80);
+        if (!reducedMotion() && !reduceFlashing()) this.cameras.main.flash(120, 255, 80, 80);
       }],
       [EV.BOSS_DEFEATED, () => {
         this.bossHealth(0, this.boss?.max ?? 1);

@@ -11,6 +11,7 @@ import { drawChicagoStar } from './MenuScene';
 import { storyPanels, type IntroPanel, type StoryId } from '../story/storyData';
 import { isRealAsset } from '../ui/Icons';
 import { CaptionBox, CREAM, INK, cutsceneControls, drawElTrack, ensureStoryTextures, popIn, speechBubble, speedBurst, type CutsceneControls } from '../story/Cutscene';
+import { shakeAllowed } from '../systems/Accessibility';
 
 export interface StorySceneData {
   /** Which comic: the opening story (default) or the World 2 beat. */
@@ -332,7 +333,7 @@ export class StoryScene extends Phaser.Scene {
     this.sfxText(root, 330, 40, 'RUMBLE', 0xffa63a, -8, 600);
     this.sfxText(root, 380, 62, 'RUMBLE!!', 0xff6a3a, 6, 1100);
     audio.sfx('train-horn');
-    if (!still) this.time.delayedCall(700, () => this.current?.cam === cam && cam.shake(1800, 0.006));
+    if (!still && shakeAllowed()) this.time.delayedCall(700, () => this.current?.cam === cam && cam.shake(1800, 0.006));
     // Parker, close-up, bottom-left.
     const parker = this.hero(root, 'parker', 64, PH + 14, 'hurt', 2);
     parker.anims.pause();

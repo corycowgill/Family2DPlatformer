@@ -54,11 +54,17 @@ export function medalTimes(levelId: string): MedalTimes | undefined {
   return MEDAL_TIMES[levelId];
 }
 
-/** Medal earned by finishing `levelId` in `timeMs` (null = too slow / no targets). */
-export function medalFor(levelId: string, timeMs: number): Medal | null {
+/** Best medal an assisted run (assist mode, systems/Assist.ts) can earn. */
+export const ASSIST_MEDAL_CAP: Medal = 'silver';
+
+/**
+ * Medal earned by finishing `levelId` in `timeMs` (null = too slow / no targets).
+ * Assisted runs never earn gold (capped at ASSIST_MEDAL_CAP).
+ */
+export function medalFor(levelId: string, timeMs: number, assisted = false): Medal | null {
   const t = MEDAL_TIMES[levelId];
   if (!t || !(timeMs > 0)) return null;
-  if (timeMs <= t.gold) return 'gold';
+  if (timeMs <= t.gold) return assisted ? ASSIST_MEDAL_CAP : 'gold';
   if (timeMs <= t.silver) return 'silver';
   if (timeMs <= t.bronze) return 'bronze';
   return null;
