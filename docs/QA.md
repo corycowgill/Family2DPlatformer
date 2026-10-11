@@ -99,7 +99,7 @@ E2E (`tests/e2e`):
 - `world2.spec.ts` — World 2 locked until 1-4 is beaten (old World 1 saves open 2-1 retroactively, map
   opens on 2-1, PLAY enters north-1); `?story` World 2 comic plays once before 2-1; beating 1-4 → ending
   teaser "WORLD 2 / UNLOCKED! / THE NORTH SIDE" → map on 2-1; beating 2-4 → WORLD 2 CLEAR → W-flag
-  ending → World 3 teaser → map, Extras rewatch; every placeholder 2-x map loads; **THE OVERSEER is
+  ending → World 3 teaser → map, Extras rewatch; every 2-x map loads; **THE OVERSEER is
   defeated by the PlatformBot stomping only, for every character** (invulnerable, all three
   phases' signature attacks seen) → Results.
 - `perf.spec.ts` — FPS over 5 s of scripted play (report; warns below 50 fps);
@@ -278,10 +278,10 @@ invulnerable: true })`, sim seconds), measured 2026-10 on the shipped maps:
 | 1-2 loop-2 | 31-33 s | 0:45 | 1:10 | 1:50 |
 | 1-3 loop-3 | 27-31 s | 0:40 | 1:05 | 1:40 |
 | 1-4 boss | 73-76 s (≈ 30 s run + the fight) | 1:45 | 2:30 | 3:30 |
-| 2-1 north-1 | 8.9-12.1 s (**placeholder map — TODO re-measure**) | 0:13 | 0:21 | 0:33 |
-| 2-2 north-2 | 10.1-14.7 s (placeholder) | 0:18 | 0:29 | 0:46 |
-| 2-3 north-3 | 8.4-15.9 s (placeholder) | 0:14 | 0:22 | 0:35 |
-| 2-4 boss | 91.7-94.1 s (placeholder approach + 9-HP Overseer) | 2:10 | 3:20 | 5:20 |
+| 2-1 north-1 | 23-25 s | 0:34 | 0:53 | 1:25 |
+| 2-2 north-2 | 25-32 s (Mom / Grandma wait longer for the tide planks) | 0:40 | 1:02 | 1:38 |
+| 2-3 north-3 | 34-35 s | 0:48 | 1:15 | 2:00 |
+| 2-4 boss | 103-106 s (≈ 20 s approach + the 9-HP Overseer) | 2:30 | 3:30 | 5:00 |
 
 Gold ≈ 1.4 × par, silver ≈ 2.2 ×, bronze ≈ 3.5 × (boss: a little tighter — the fight's
 length is set by the boss). Measure with the bot runner in `bot.spec.ts` / `h.bot({ levelId,

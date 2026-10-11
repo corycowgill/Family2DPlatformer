@@ -135,7 +135,7 @@ test.describe('World 2: the North Side', () => {
     expect(log.errors, log.errors.join('\n')).toEqual([]);
   });
 
-  test('every placeholder level loads and runs without errors', async ({ page }) => {
+  test('every World 2 level loads and runs without errors', async ({ page }) => {
     const log = trackConsole(page);
     await openGame(page);
     for (const id of ['north-1', 'north-2', 'north-3', 'north-4']) {

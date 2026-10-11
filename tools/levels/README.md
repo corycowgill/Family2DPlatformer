@@ -103,6 +103,114 @@ Idea: everything from 1-1..1-3 at once, then the boss.
    checkpoints), and the shooting skirmisher on the landing became a cone guy at the far end of the roof.
 4. Bounce pad to souvenir 3, steam-vent pair, girder jump to the last checkpoint, arena.
 
+## World 2 — The North Side
+
+All four maps were rebuilt from the short systems-pass placeholders into full levels
+(240-280 tiles; 2-4 = a 168-tile approach + the unchanged 26-tile Overseer arena). Materials:
+`M` grass, `H` park path, `D` sand, `U` boardwalk, `Q` greystone, `Z` stadium seats, `I` ivy,
+`,` boardwalk plank; `A` asphalt for the night streets (the World 1 sidewalk is too bright at
+night). Decor: background `@FLAT` (auto-dressed three-flats), neon / bleacher / Addison / zoo
+sign / conservatory tiles via `@legend`, and World 2 props. Two tricks worth reusing:
+
+- **Facade-dressed solid buildings** (2-3): the street face of a solid `Q` building is covered
+  with greystone / brownstone facade tiles on the *foreground* layer (`GS_*` / `BS_*` walls,
+  windows, quoined edges). The player can never stand in front of a solid cell, so foreground
+  tiles over solid ground are safe and turn a flat stone block into a three-flat with windows.
+- **Hidden rooms** (2-1 hill cave, 2-2 ship cabin, 2-3 alley back room, 2-4 the ivy): the
+  room is empty in `@map` and the whole room (not just its entrance) is covered by the same
+  material in `@foreground`; a `secret` rectangle fades it while the player is inside.
+
+Heatmap (damage on, sloppy 0.5, seeds 1-3; Dad/Mom/Brennan/Parker/Lupin = 15 runs, Grandma 3):
+
+| level | deaths / hits / sim (15 runs) | Grandma (3 runs) |
+|---|---|---|
+| 2-1 north-1 | 0.27 / 0.73 / 26 s | 0.00 / 1.00 / 29 s |
+| 2-2 north-2 | 0.27 / 1.27 / 32 s | 0.67 / 1.33 / 34 s |
+| 2-3 north-3 | 0.13 / 2.07 / 42 s | 0.33 / 1.67 / 44 s |
+| 2-4 north-4 (before the arena) | 0.07 / 1.87 / 21 s | 0.00 / 1.33 / 22 s |
+| 2-4 north-4 (incl. the fight) | 3.20 / 8.47 / 137 s (13 of 15 within 300 s) | 3.67 / 8.67 / 117 s |
+
+Compared with World 1 the regular levels are longer (par 24 / 26-32 / 34 s vs 22-33 s), denser
+and bring the alien soldiers (skirmishers, wasps, the Warlord) into regular levels. The
+Overseer is far harder for the bot with damage on than the EL-iminator (0.67 / 4.07): the
+fight itself is the boss team's tuning (`enemies/overseerPlan.ts`), the arena is unchanged.
+
+Hotspots found and fixed while tuning: a skirmisher on the 2-3 rooftop right after a gap (shot
+every jumper into the gangway: 6 of 6 runs), a gnat over the 2-4 moving girder (14 hits + 13
+pit deaths in 18 runs) and the skirmisher that guarded the 2-4 scaffolds, the skirmisher on the
+2-2 piers (shoots players mid-jump over the lake; moved to the beach), a wasp over the 2-2
+harbor planks and one over the last inlet, gnats over the 2-2 tide planks, the 2-1 ravine
+(falling plank → a stump, 2-wide jumps), the raccoon at the 2-3 alley entrance (10 of 18 runs),
+a turnstile bot in the 2-4 concourse (17 of 18 runs). Two bot-planner stalls were removed by
+geometry: the 2-2 harbor boat now starts 12 tiles past the beach house (the bot waited on the
+upper deck for a jump onto the boat) and the 2-3 alley light-well has two landings. Remaining
+hotspots are intentional: the Warlord at Addison (≈ 1.3 hits per run, an awning lets you pass
+over it), the 2-2 beach skirmisher, the 2-4 grandstand skirmisher + wasp and the pre-arena
+skirmisher + wasp + gnats combo.
+
+### 2-1 Lincoln Park (`north-1`) — gentle start, 240×20
+
+1. Zoo entrance: the LINCOLN PARK ZOO board, lion statues, `?` row (hotdog, 5 coins). Treetops
+   (one-way `HEDGE` canopies over tree props) climb from a hedge step to souvenir 1 above the
+   limestone zoo house (roof garden). First 3-wide pit under a coin arc.
+2. "Alien gnats swoop" sign + the first gnat over open lawn (giraffe topiary).
+3. **The Conservatory**: glasshouse in the background, boardwalk galleries inside (15 → 12 → 9),
+   one-way glass roof (6) and cupola (3); Chicago Star 1 above the cupola, a gnat on the roof,
+   a 1-up block. Checkpoint.
+4. **North Pond**: fishing pier, two stepping stones, the pond boat, an island. Bounce pad on the
+   pier into the willow tops (souvenir 2), a security drone over the boat.
+5. Lawns (pigeons, CTA-pass brick row), checkpoint, the hill: **souvenir 3 in a cave hidden
+   behind the hillside** (walk into the hill at ground level). Ravine with a stump step.
+6. Zoo exit gate, the classic end staircase; Chicago Star 2 in the arc past the top step.
+
+### 2-2 Lakefront Trail (`north-2`) — speedy and breezy, 250×20
+
+1. North Avenue Beach: umbrellas, lifeguard chair (one-way seat), volleyball net, beach-ball
+   bounce pad to a high `?` row, a skirmisher on the sand.
+2. Boardwalk piers over Lake Michigan (railings), a lookout plank above a lifeguard chair
+   (souvenir 1), sinking pier planks (3 × falling planks). Checkpoint.
+3. **The tide**: eight bobbing planks (period 3.4 s, phase-shifted like a wave) over open water;
+   Chicago Star 1 above the crest, one gnat high above.
+4. **The ship-shaped beach house**: hull, main deck, upper deck, bridge deck and a crow's nest
+   (souvenir 2), limestone superstructure in the background; skirmisher + rat on the decks,
+   a wasp at the crow's nest. **Souvenir 3 in the cabin inside the hull** (door at the stern).
+5. Checkpoint, the harbor: boat ride, breakwater, harbor-light gallery (bounce pad → Chicago
+   Star 2), sinking planks; a security drone over the boat.
+6. Oak Street Beach sprint: dune, a 3-wide inlet, rats, volleyball, wasp, flag.
+
+### 2-3 Wrigleyville Nights (`north-3`) — hardest regular level, 280×20
+
+1. Clark Street (asphalt): three-flats with neon (BAR, PIZZA, HOT DOGS), lamps, pigeons, a rat;
+   the greystone stoop up to the roofs.
+2. Rooftops over bottomless gangways: a raccoon, a 4-wide gap, chimney steam on a roof, a 5-wide
+   running jump to the **rooftop bleachers** (three one-way tiers, souvenir 1 at the top), a
+   skirmisher at the far end, a crumbling scaffold over an 8-wide gangway. Checkpoint.
+3. **The Red Line**: the track runs above the roofs with a hazard-train lane and two plank
+   shelters; a boarding step *below* the lane, then the car ride over the gap (Chicago Star 1
+   above it, a drone). The lane is above everything else on purpose: a hazard train sweeps the
+   whole screen at the lane height.
+4. Addison station (canopy, ADDISON sign, drone + gnat), stairs down to the plaza: **the Warlord**
+   (mini-boss, `boss=false`), an awning over it. Checkpoint.
+5. The alley (`darkZone`) under a building: steam vents, a rat, a raccoon, a window washer;
+   or the roof above it (skirmisher, wasp, Chicago Star 2 on a high plank). Out through the
+   light-well's fire-escape landings; **souvenir 2 in the back room behind the alley's end wall**.
+6. Rooftop bleachers down to the street, a cone guy, skirmisher, rat; the ballpark: ivy wall with
+   bleachers, a light tower with a service ladder (souvenir 3, wasp), the W flag.
+
+### 2-4 Battle at Wrigley (`north-4`) — 196×17, boss
+
+1. The concourse under the grandstand (steel columns, CHICAGO DOGS cart): `?` row with hotdog +
+   pizza before the fight, a cone guy, two gnats.
+2. Up the grandstand seats (`Z`): skirmisher + wasp on the top row, Chicago Star 1 above it,
+   the press-box catwalk (souvenir 3). Checkpoint on the field.
+3. The outfield bleachers: the scoreboard with a catwalk on top (bounce pad, souvenir 1), a
+   raccoon. The bleacher renovation: two crumbling scaffolds + a shuttling girder over a
+   bottomless pit; a wasp past it.
+4. **The ivy** (souvenir 2: the lost ball hidden in the ivy, walk into the wall). Checkpoint.
+5. The dugout (rats under its roof), the warning track: CTA pass, skirmisher + wasp + gnats.
+6. The arena (unchanged): `boss 168 12 width=26 height=13 kind=overseer`, floor 13, one-way
+   ledges at row 10, ivy wall on the right.
+
 ## Changing a level
 
 Keep `npm run levels:check` green, keep the 3 souvenirs, run the bot spec
