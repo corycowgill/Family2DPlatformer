@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { isLazyBgKey } from '../systems/ThemeAssets';
 import { MANIFEST_PATH, type AssetManifest } from '../data/assets';
 import { registerAtlasAnimations } from '../systems/AnimationSystem';
 import { ensurePlaceholderArt } from '../systems/PlaceholderArt';
@@ -43,7 +44,8 @@ export class PreloadScene extends Phaser.Scene {
       const m = this.cache.json.get('manifest') as AssetManifest | undefined;
       if (!m) return;
       for (const a of m.atlases ?? []) this.load.atlas(a.key, a.png, a.json);
-      for (const i of m.images ?? []) this.load.image(i.key, i.path);
+      // Backgrounds of non-boot themes load on demand (systems/ThemeAssets.ts).
+      for (const i of m.images ?? []) if (!isLazyBgKey(i.key)) this.load.image(i.key, i.path);
     });
     registerAudio(this);
   }

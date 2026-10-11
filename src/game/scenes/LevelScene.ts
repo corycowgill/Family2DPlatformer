@@ -12,6 +12,7 @@ import { CameraSystem } from '../systems/CameraSystem';
 import { audio } from '../systems/AudioSystem';
 import { saveSystem } from '../systems/SaveSystem';
 import { REQUEST_PAUSE } from '../systems/InputDevice';
+import { queueThemeBackgrounds, releaseLazyThemes } from '../systems/ThemeAssets';
 import { animKey, playAnim } from '../systems/AnimationSystem';
 import { heroTexture } from '../ui/CharacterArt';
 import { gameState } from '../state/GameState';
@@ -80,9 +81,11 @@ export class LevelScene extends Phaser.Scene {
   preload(): void {
     const key = `map-${this.level.id}`;
     if (!this.cache.tilemap.exists(key)) this.load.tilemapTiledJSON(key, this.level.file);
+    queueThemeBackgrounds(this, this.level.theme);
   }
 
   create(): void {
+    releaseLazyThemes(this, [this.level.theme]);
     const map = this.make.tilemap({ key: `map-${this.level.id}` });
     const tileset = map.addTilesetImage(TILESET_NAME, TILESET_KEY, TILE_SIZE, TILE_SIZE, 0, 0);
     if (!tileset) throw new Error('Tileset missing');
