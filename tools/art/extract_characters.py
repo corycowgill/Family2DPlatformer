@@ -32,6 +32,7 @@ CHARS = {
     'brennan': dict(band=(394, 509), h=31),
     'parker': dict(band=(566, 685), h=29),
     'lupin': dict(band=(744, 852), h=18),
+    'grandma': dict(band=(900, 1012), h=33),
 }
 # Column cells (sheet x-range between the separator lines) and how many poses each holds.
 CELLS = {
@@ -48,6 +49,7 @@ ERASE = {
     'brennan': [(928, 394, 1012, 427), (958, 394, 1012, 437), (967, 437, 1012, 509)],
     'parker': [(970, 566, 1012, 685)],
     'lupin': [(950, 744, 1012, 852)],
+    'grandma': [(968, 900, 1012, 932)],
 }
 
 
@@ -254,10 +256,10 @@ def build_character_sheet(raw, cid: str) -> dict[str, np.ndarray]:
     return fr
 
 
-def build_character(rgb: np.ndarray, cid: str):
-    raw, poses, scale = raw_sprites(rgb, cid)
+def build_character(rgb: np.ndarray, cid: str, costume: dict | None = None, cached=None):
+    raw, poses, scale = cached or raw_sprites(rgb, cid)
     legacy = build_character_sheet(raw, cid)
-    rigged = animate_characters.build(cid, raw)
+    rigged = animate_characters.build(cid, raw, costume)
     fr: dict[str, np.ndarray] = {}
     for name in legacy:
         anim, _, n = name.rpartition('_')
@@ -268,7 +270,7 @@ def build_character(rgb: np.ndarray, cid: str):
     return fr, poses, scale, rigged
 
 
-PORTRAIT_FRAC = {'dad': 0.46, 'mom': 0.46, 'brennan': 0.5, 'parker': 0.5, 'lupin': 0.62}
+PORTRAIT_FRAC = {'dad': 0.46, 'mom': 0.46, 'brennan': 0.5, 'parker': 0.5, 'lupin': 0.62, 'grandma': 0.47}
 
 
 def portrait(rgb: np.ndarray, poses, cid: str) -> np.ndarray:
@@ -301,11 +303,59 @@ def portrait(rgb: np.ndarray, poses, cid: str) -> np.ndarray:
     return out
 
 
+def costume_portrait(fr: dict[str, np.ndarray], cid: str) -> np.ndarray:
+    """24x24 costume portrait: the head (+ hat) of idle_0 at 1x, centred."""
+    f = fr['idle_0']
+    a = f[..., 3] > 0
+    ys, xs = np.nonzero(a)
+    top = ys.min()
+    if cid == 'lupin':  # head is at the front (right) of the dog
+        x1 = xs.max() + 1
+        crop = f[max(0, top - 1):top + 22, max(0, x1 - 22):x1]
+    else:
+        sel = ys < top + 12
+        cx = int(round((xs[sel].min() + xs[sel].max() + 1) / 2))
+        crop = f[top:top + 22, max(0, cx - 11):cx + 11].copy()
+    out = np.zeros((24, 24, 4), np.uint8)
+    h, w = crop.shape[:2]
+    y, x = 1, (24 - w) // 2
+    out[y:y + h, x:x + w] = crop
+    out[-1] = 0
+    return out
+
+
+def build_costumes(rgb: np.ndarray, cids=None) -> list:
+    """Write public/assets/characters/<id>-<costume>.png/.json for every costume."""
+    import costumes
+    rows = []
+    for cid in cids or CHARS:
+        cached = raw_sprites(rgb, cid)
+        meta = animate_characters.anim_meta(cid, cached[0])
+        for cs in costumes.costumes(cid):
+            key = f"{cid}-{cs['id']}"
+            fr, *_ = build_character(rgb, cid, cs, cached)
+            write_atlas(OUT / 'characters' / key, fr, cols=12, meta_extra={'anims': meta})
+            rig.anim_gif(PREVIEW / f'anim-{key}.gif', animate_characters.preview_cells(fr, meta), zoom=2, cols=6,
+                         seconds=2.0)
+            Image.fromarray(costume_portrait(fr, cid), 'RGBA').save(OUT / 'ui' / f'portrait-{key}.png')
+            rows.append((key, list(fr.items())))
+            print(f'{key}: {len(fr)} frames')
+    return rows
+
+
 def main():
     rgb = load('family-characters-sheet.png')
+    args = sys.argv[1:]
+    if args and args[0] == '--costumes':
+        rows = build_costumes(rgb, args[1:] or None)
+        PREVIEW.mkdir(parents=True, exist_ok=True)
+        for cid in sorted({k.split('-')[0] for k, _ in rows}):
+            mine = [r for r in rows if r[0].startswith(cid + '-')]
+            contact_sheet(mine, zoom=3, per_row=12).save(PREVIEW / f'costumes-{cid}.png')
+        return
     rows = []
     ports = []
-    for cid in CHARS:
+    for cid in (args or CHARS):
         fr, poses, scale, rigged = build_character(rgb, cid)
         raw = raw_sprites(rgb, cid)[0]
         meta = animate_characters.anim_meta(cid, raw)
@@ -324,6 +374,8 @@ def main():
         rows.append((cid, list(fr.items())))
         print(f'{cid}: scale {scale:.2f}, {len(fr)} frames')
     PREVIEW.mkdir(parents=True, exist_ok=True)
+    if args:
+        return
     contact_sheet(rows, zoom=4, per_row=12).save(PREVIEW / 'characters.png')
     contact_sheet([('portraits', ports)], zoom=6).save(PREVIEW / 'portraits.png')
 

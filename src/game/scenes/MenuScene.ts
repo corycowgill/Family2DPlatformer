@@ -43,6 +43,7 @@ export class MenuScene extends Phaser.Scene {
         { label: 'PLAY', onSelect: () => transitionTo(this, 'CharacterSelect', { next: 'WorldMap' }) },
         { label: 'CONTINUE', disabled: !hasSave, onSelect: () => transitionTo(this, 'WorldMap') },
         { label: 'CHARACTER SELECT', onSelect: () => transitionTo(this, 'CharacterSelect', { next: 'Menu' }) },
+        { label: 'COLLECTION', onSelect: () => transitionTo(this, 'Collection') },
         { label: 'SETTINGS', onSelect: () => transitionTo(this, 'Settings', { from: 'Menu' }) },
         { label: 'CREDITS', onSelect: () => transitionTo(this, 'Credits') },
       ],

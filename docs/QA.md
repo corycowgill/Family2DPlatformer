@@ -72,7 +72,16 @@ E2E (`tests/e2e`):
   (`iphone-gameplay*.png`, `iphone-title-tip.png` in the test output dir).
 - `touch-layout.test.ts` (unit) — overlay geometry on iPhone / Pro Max / iPad / Pixel sizes (thumb size, safe
   area, centre kept free), d-pad angle hit test, JUMP↔ABILITY slide, iOS / standalone detection, tip rule.
-- `bot.spec.ts` — bot completes the test level with all five characters (damage on); widened
+- `rewards.test.ts` (unit) — medal targets ordered for every level, `medalFor` boundaries,
+  `nextMedal`; unlock tiers (clear 1-2 / 6 souvenirs incl. Chicago Stars / 3 golds / boss → Grandma);
+  costume fallback to classic when locked; every costume atlas + portrait in the manifest; save
+  fields (defaults, old-save load with retroactive unlocks, malformed values, locked Grandma
+  can't be the selected hero), `recordCompletion` best medal + unlocks reported once, `markSeen`.
+- `rewards.spec.ts` — locked Grandma silhouette + hint, confirm refused; boss beaten ⇒ unlock popup
+  once, selectable, persisted; costume picker (▲▼) saves wearable outfits only, level uses the
+  `<id>-<costume>` atlas; Results medal + NEW MEDAL! + best medal saved + outfits III popup;
+  Collection screen from the menu; Frying Pan Spin hits both sides and caps the fall once per jump.
+- `bot.spec.ts` — bot completes the test level with all six characters (damage on); widened
   gap; impassable wall ⇒ stuck report; every existing `LEVELS` map with every character
   (invulnerable; **warning only**, with screenshot + JSON attachments).
 - `perf.spec.ts` — FPS over 5 s of scripted play (report; warns below 50 fps);
@@ -210,6 +219,22 @@ on each attempt) and retries with the next jump-timing variant (run/walk, earlie
 short/long hold). After `maxAttemptsPerSection` (10) it gives up and reports `stuckAt`.
 
 Result: `{ completed, progress, maxX, goalX, deaths, rewinds, failures[], stuckAt, simSeconds }`.
+
+### Medal times
+
+Time-trial targets live in `src/game/systems/Rewards.ts` (`MEDAL_TIMES`). Par = the bot's
+cleanest invulnerable run (`h.startLevel(id, ch, { manual: true }); h.bot({ noRestart: true,
+invulnerable: true })`, sim seconds), measured 2026-10 on the shipped maps:
+
+| level | bot par (clean runs) | gold | silver | bronze |
+|---|---|---|---|---|
+| 1-1 loop-1 | 22.5 s Lupin, 27.7 s Mom, 28.9 s Grandma | 0:35 | 0:55 | 1:30 |
+| 1-2 loop-2 | bot can't clear (moving trains) — scaled from length | 0:45 | 1:10 | 1:50 |
+| 1-3 loop-3 | 26.8 s Lupin, 30.5 s Bro1, 32.1 s Dad | 0:40 | 1:00 | 1:40 |
+| 1-4 boss | bot doesn't fight — walk ≈ 30 s + 12-HP boss | 1:15 | 1:50 | 2:40 |
+
+Re-measure after a level layout change. `h.setSave(data)` replaces the save (sanitised like
+a loaded one, retroactive unlocks applied) to set up progress in tests.
 A failure is a lead for a human, not proof of an impossible level — the bot doesn't plan
 routes, climb via one-way platforms above it, use abilities, wait for moving platforms, or
 backtrack left.

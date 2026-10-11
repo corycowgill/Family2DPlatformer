@@ -146,7 +146,7 @@ describe('SaveSystem.recordCompletion', () => {
     const sys = new SaveSystem(storage);
     expect(sys.recordCompletion('loop-1', { timeMs: 5000, coins: 10, souvenirs: [1], stars: 1, next: 'loop-2' })).toBe(true);
     let rec = sys.get().levels['loop-1'];
-    expect(rec).toEqual({ completed: true, bestTimeMs: 5000, souvenirs: [1], stars: 1 });
+    expect(rec).toEqual({ completed: true, bestTimeMs: 5000, souvenirs: [1], stars: 1, medal: 'gold' });
     expect(sys.isUnlocked('loop-2')).toBe(true);
     expect(sys.hasProgress()).toBe(true);
 

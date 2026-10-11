@@ -7,6 +7,12 @@ export function formatTime(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${String(Math.floor((safe % 1000) / 10)).padStart(2, '0')}`;
 }
 
+/** Medal target times (whole seconds): 75000 → "1:15" */
+export function formatTarget(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 /** 0.6 → "●●●●●●○○○○" */
 export function volumeBar(v: number, slots = 10): string {
   const n = Math.round(Math.max(0, Math.min(1, v)) * slots);

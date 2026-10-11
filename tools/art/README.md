@@ -19,8 +19,9 @@ Previews (4x, checkerboard, red baseline) go to `art/previews/`.
 
 ## Characters — `public/assets/characters/<id>.png/.json`
 
-Source: `art/reference/family-characters-sheet.png` (Grandma row skipped). All frames
+Source: `art/reference/family-characters-sheet.png`. All frames
 48x48, facing right, feet on the bottom row (except deliberate hops, see below).
+`python3 tools/art/extract_characters.py [ids...]` rebuilds a subset (no contact sheet).
 
 | id | idle-pose height | downscale |
 |---|---|---|
@@ -29,6 +30,40 @@ Source: `art/reference/family-characters-sheet.png` (Grandma row skipped). All f
 | brennan | 31 px | 2.52 |
 | parker | 29 px | 2.72 |
 | lupin | 18 px sitting (≈22-26 px walking/running) | 2.78 |
+| grandma | 33 px | 2.36 |
+
+Grandma (secret 6th hero) uses the same human rig; her frying pan is a rig prop drawn in
+the near hand only in `attack` (wind-up, overhead, smash, follow-through) and `ability`
+(Frying Pan Spin: pan out front / overhead / mirrored behind — loops).
+
+### Costumes (`costumes.py`) — `public/assets/characters/<id>-<costume>.png/.json`
+
+`python3 tools/art/extract_characters.py --costumes [ids...]` renders the 18 costume
+variants of the sheet's POWER-UPS column as full atlases (same 44 frames, frame names,
+`meta.anims` and contract as the base atlas) plus `public/assets/ui/portrait-<id>-<costume>.png`
+(24x24, idle head + hat at 1x). Previews: `art/previews/costumes-<id>.png` (every frame)
+and `anim-<id>-<costume>.gif`. The costume is applied to the rig *before* posing, so it
+can't drift or tear between frames:
+
+- limb palette swap (sleeves / trouser bands / shoes), torso pixels remapped by role
+  (shirt above the hips, trousers below, same tone index) + painted straps / aprons / belts;
+- `hood`: hair recoloured (+1 px growth) into a hood; `hat`: hand-authored pixel sprite
+  anchored to the head bbox (head + torso sprites are padded so hats can rise above);
+- `back`: cape / tail drawn behind the body from the rig's hip & shoulder each frame;
+- `item`: prop in the front hand (wand, sword, spatula, flowers; Dad's fireball only in
+  `attack`); Grandma's pan still wins in her attack / ability frames;
+- Lupin: cape over the back, bee stripes + antennae + wings, firefighter helmet + coat.
+
+| id | costumes (ids, tier 1 / 2 / 3) |
+|---|---|
+| dad | `flame` red tee + fireball punch, `raccoon` hood/ears/striped tail, `hardhat` hard hat + overalls |
+| mom | `wand` star wand, `cat` white kitty hood/ears/tail + pink suit, `chef` toque + apron + spatula |
+| brennan (Bro2) | `knight` blue tunic, red cape, sword, `raccoon`, `elf` green hat + tunic |
+| parker (Bro1) | `cap` sky-blue "Chicago cap" with a red six-point Chicago star (original, no letter logo), red shirt + navy overalls, `dino` green dino hood + tail, `propeller` beanie |
+| lupin | `cape`, `bee`, `firefighter` |
+| grandma | `princess` crown + pink dress (skirt), `sporty` headband + tank + shorts, `gardener` straw hat + overalls + flowers |
+
+Ids must match `src/game/systems/Rewards.ts` (`COSTUMES`); unlock rules live there too.
 
 ### Animation rig (`rig.py`, `animate_characters.py`, `animate_dog.py`)
 

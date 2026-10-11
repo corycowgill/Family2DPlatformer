@@ -3,10 +3,11 @@
  * Changing anything in this file affects every team; coordinate before editing.
  */
 
-export type CharacterId = 'dad' | 'mom' | 'brennan' | 'parker' | 'lupin';
-export const CHARACTER_IDS: readonly CharacterId[] = ['dad', 'mom', 'brennan', 'parker', 'lupin'];
+export type CharacterId = 'dad' | 'mom' | 'brennan' | 'parker' | 'lupin' | 'grandma';
+/** Every playable character. Grandma is secret: see systems/Rewards.ts for unlocking. */
+export const CHARACTER_IDS: readonly CharacterId[] = ['dad', 'mom', 'brennan', 'parker', 'lupin', 'grandma'];
 
-export type AbilityId = 'groundPound' | 'airJump' | 'dash' | 'projectile' | 'sniff';
+export type AbilityId = 'groundPound' | 'airJump' | 'dash' | 'projectile' | 'sniff' | 'panSpin';
 
 export interface MovementStats {
   walkSpeed: number;

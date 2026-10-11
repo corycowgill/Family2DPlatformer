@@ -4,6 +4,7 @@ import { Mom } from './Mom';
 import { Brennan } from './Brennan';
 import { Parker } from './Parker';
 import { Lupin } from './Lupin';
+import { Grandma } from './Grandma';
 
 export const CHARACTERS: Record<CharacterId, CharacterDef> = {
   dad: Dad,
@@ -11,6 +12,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
   brennan: Brennan,
   parker: Parker,
   lupin: Lupin,
+  grandma: Grandma,
 };
 
 export function getCharacter(id: CharacterId): CharacterDef {

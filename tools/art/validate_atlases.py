@@ -19,7 +19,11 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 A = ROOT / 'public' / 'assets'
-CHARS = ['dad', 'mom', 'brennan', 'parker', 'lupin']
+CHARS = ['dad', 'mom', 'brennan', 'parker', 'lupin', 'grandma']
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import costumes as _costumes  # noqa: E402
+# costume atlases <id>-<costume> (tools/art/costumes.py) follow the same contract
+COSTUME_KEYS = [f"{c}-{cs['id']}" for c in CHARS for cs in _costumes.costumes(c)]
 CHAR_COUNTS = dict(idle=4, walk=6, run=6, jump=2, fall=2, land=2, crouch=2, attack=4, hurt=2, victory=6,
                    defeat=4, ability=4)
 ENEMIES = ['pigeon', 'rat', 'raccoon', 'coneGuy', 'turnstileBot', 'securityDrone', 'windowWasher', 'gnat',
@@ -89,7 +93,7 @@ def check_atlas(path: Path, required: dict[str, tuple[int, int]], size: tuple[in
 
 
 def main():
-    for c in CHARS:
+    for c in CHARS + COSTUME_KEYS:
         check_atlas(A / 'characters' / c, {k: (v, v) for k, v in CHAR_COUNTS.items()}, (48, 48))
         p = A / 'ui' / f'portrait-{c}.png'
         if not p.exists():
@@ -109,7 +113,8 @@ def main():
         for e in errors:
             print(' -', e)
         sys.exit(1)
-    print(f'OK: {len(CHARS)} characters, {len(CHARS)} portraits, {len(ENEMIES)} enemies')
+    print(f'OK: {len(CHARS)} characters, {len(COSTUME_KEYS)} costumes, {len(CHARS) + len(COSTUME_KEYS)} portraits, '
+          f'{len(ENEMIES)} enemies')
 
 
 if __name__ == '__main__':
