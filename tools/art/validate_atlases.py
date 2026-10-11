@@ -25,6 +25,8 @@ CHAR_COUNTS = dict(idle=4, walk=6, run=6, jump=2, fall=2, land=2, crouch=2, atta
 ENEMIES = ['pigeon', 'rat', 'raccoon', 'coneGuy', 'turnstileBot', 'securityDrone', 'windowWasher', 'gnat',
            'skirmisher', 'wasp', 'warlord', 'juggernaut', 'overseer', 'eliminator']
 ENEMY_ANIMS = ['idle', 'move', 'attack', 'hit', 'die']
+# frame-count range per enemy anim (looping cycles may use up to 8 frames)
+ENEMY_COUNTS = dict(idle=(2, 8), move=(2, 8), attack=(2, 6), hit=(2, 4), die=(2, 6))
 
 AIRBORNE_OK = {'victory', 'ability', 'die'}
 
@@ -100,7 +102,7 @@ def main():
                 err(f'{p.name}: corners not transparent')
     for e in ENEMIES:
         # the "die" pose is allowed to sit off the ground only if it is a flyer; we anchor all.
-        sizes = check_atlas(A / 'enemies' / e, {k: (2, 4) for k in ENEMY_ANIMS}, None)
+        sizes = check_atlas(A / 'enemies' / e, ENEMY_COUNTS, None)
         print(f'  {e:14s} {sorted(sizes or [])}')
     if errors:
         print('FAIL')

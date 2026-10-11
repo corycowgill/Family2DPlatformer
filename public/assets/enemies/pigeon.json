@@ -98,8 +98,8 @@
   },
   "move_0": {
    "frame": {
-    "x": 0,
-    "y": 24,
+    "x": 96,
+    "y": 0,
     "w": 24,
     "h": 24
    },
@@ -122,7 +122,7 @@
   },
   "move_1": {
    "frame": {
-    "x": 24,
+    "x": 0,
     "y": 24,
     "w": 24,
     "h": 24
@@ -146,7 +146,7 @@
   },
   "move_2": {
    "frame": {
-    "x": 48,
+    "x": 24,
     "y": 24,
     "w": 24,
     "h": 24
@@ -170,7 +170,55 @@
   },
   "move_3": {
    "frame": {
+    "x": 48,
+    "y": 24,
+    "w": 24,
+    "h": 24
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 24
+   },
+   "sourceSize": {
+    "w": 24,
+    "h": 24
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_4": {
+   "frame": {
     "x": 72,
+    "y": 24,
+    "w": 24,
+    "h": 24
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 24
+   },
+   "sourceSize": {
+    "w": 24,
+    "h": 24
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_5": {
+   "frame": {
+    "x": 96,
     "y": 24,
     "w": 24,
     "h": 24
@@ -264,9 +312,33 @@
     "y": 1.0
    }
   },
-  "hit_0": {
+  "attack_3": {
    "frame": {
     "x": 72,
+    "y": 48,
+    "w": 24,
+    "h": 24
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 24
+   },
+   "sourceSize": {
+    "w": 24,
+    "h": 24
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "hit_0": {
+   "frame": {
+    "x": 96,
     "y": 48,
     "w": 24,
     "h": 24
@@ -390,9 +462,26 @@
   "image": "pigeon.png",
   "format": "RGBA8888",
   "size": {
-   "w": 96,
+   "w": 120,
    "h": 96
   },
-  "scale": "1"
+  "scale": "1",
+  "anims": {
+   "idle": {
+    "durations": [
+     600,
+     300,
+     500,
+     120
+    ]
+   },
+   "move": {
+    "fps": 10
+   },
+   "attack": {
+    "fps": 14,
+    "loop": true
+   }
+  }
  }
 }

@@ -30,24 +30,57 @@ Source: `art/reference/family-characters-sheet.png` (Grandma row skipped). All f
 | parker | 29 px | 2.72 |
 | lupin | 18 px sitting (≈22-26 px walking/running) | 2.78 |
 
-Frames (sheet has 2 idle, 3 walk, 3 run, 1 jump/fall/crouch, 2 attack, 1 hurt/die):
+### Animation rig (`rig.py`, `animate_characters.py`, `animate_dog.py`)
 
-- `idle_0-3`: idle A, idle A squashed 1px (breath), idle B, idle B squashed.
-- `walk_0-5`, `run_0-5`: the 3 sheet poses twice, 2nd cycle starts with a 1px-squashed pose (Lupin: 2 poses + squashed variants).
-- `jump_0-1`, `fall_0-1`: sheet pose, then 1px stretched.
-- `land_0-1`: crouch pose, then idle squashed 2px.
-- `crouch_0-1`: crouch, crouch squashed 1px.
-- `attack_0-3`: wind-up, strike, strike squashed, wind-up. Attack FX (swooshes, ball, sparkles, energy) are erased — they are separate effect sprites. Lupin: crouch → lunge → lunge +2px → squashed.
-- `hurt_0-1`: hurt pose, hurt shifted 2px back.
-- `victory_0-5`: idle, crouch, jump pose lifted 3/6/3 px (hop — intentionally off the ground), idle squashed.
-- `defeat_0-3`: hurt, hurt squashed, DIE pose ×2.
-- `ability_0-3`: dad ground pound (jump rise, tucked crouch in the air 8px/4px up, slam squash); mom air-jump (jump, mirrored jump = spin, stretched jump, mirrored fall); brennan dash (run poses leaned forward with a shear); parker energy blast (attack poses without the energy FX); lupin sniff (crouch with head/front lowered 1-2px).
+The sheet only has 2-3 poses per action, so every character frame is re-posed by a small
+part rig instead of padding the sheet poses with squash/offset copies:
+
+- **Humans**: head and torso+pelvis are the original pixels of the clean idle pose (cut by
+  per-character boxes in `HUMANS`); arms (sleeve, forearm, fist), legs (trouser / shorts /
+  skin / sock bands) and side-view shoes are redrawn as rig limbs (4x4-supersampled capsule
+  chains, 2-bone IK for legs, FK for arms) with colours snapped to the sprite's own palette.
+- **Lupin**: body, head (ear, rainbow collar, tongue touch-ups) and tail from the sheet's
+  walk pose; four fluffy legs + paws are rig limbs; the tail wags with a rotsprite rotation.
+- `Canvas.finish()` draws one 1px outline around the composite silhouette plus contours
+  where a part overlaps another (near arm over torso, near leg over far leg...), so limbs
+  never tear away and there are no outline gaps. Rotations use rotsprite (8x nearest
+  upscale, rotate, majority-vote downscale); 90-degree steps are exact.
+- Pose tables (`common_poses`, `ATTACKS`, `ABILITIES`, `dog_poses`) are keyed at Dad's leg
+  length and scaled per character. Feet are planted on the bottom row on contact frames and
+  a planted foot slides back exactly `stride` px per frame.
+
+| anim | frames |
+|---|---|
+| idle | rest, breathe (1px dip), rest, blink (Lupin: tail wag) — per-frame durations in meta |
+| walk | 6: contact (heel), down, passing, toe-off, swing x2 — arms counter-swing (Lupin: trot) |
+| run | 6: contact, down, flight (both feet up), x2 — torso lean, bent arms (Lupin: bound) |
+| jump / fall | launch, rising / apex (arms out), falling (arms up) |
+| land / crouch | squash 4px, recover / hunch 4px, 6px |
+| attack | dad shoulder-bump punch, mom sparkle-hand thrust, brennan soccer kick (leg in front), parker two-hand push, lupin pounce + bite |
+| hurt / defeat | recoil (eyes shut) / recoil, tilt 40, lying, lying limp |
+| victory | crouch, hop up with fist pump, peak, fall, land, fist raised (Lupin: hop + spin) |
+| ability | dad tuck -> ground-pound slam pose, mom tucked front flip, brennan dash lean, parker blast push + recoil, lupin nose-down sniff |
+
+Runtime timing lives in each atlas JSON (`meta.anims`): `fps`, per-frame `durations`, and
+for walk/run the `stride` (px of ground per frame). `AnimationSystem.playAnim` scales
+walk/run playback to the body's real speed (`speed / (stride * fps)`, clamped 0.55-2.0), so
+feet stay planted at any speed instead of skating or moonwalking.
+
+Downscale uses `dark_frac=0.45` (feature-preserving: a block that is >=45% dark takes the
+dark colour) so glasses, eyes and mouths survive; eye pixels are then set explicitly
+(`HUMANS[*]['eyes']`) for a readable blink.
+
+Previews: `art/previews/anim-<id>.gif` (every anim at its runtime rate, 4x; walk/run cells
+scroll a ground strip at the nominal stride speed — planted feet must move with the
+ticks) and `anim-<id>.png` frame strips.
 
 HUD portraits: `public/assets/ui/portrait-<id>.png` (24x24, manifest key `portrait-<id>`), cut from the idle pose head at a finer scale.
 
 ## Enemies — `public/assets/enemies/<kind>.png/.json`
 
-Frames `idle_n, move_n, attack_n, hit_n, die_n` (2-4 each), bottom-centre, facing right.
+Frames `idle_n, move_n, attack_n, hit_n, die_n` (idle/move 2-8, attack 2-6, hit 2-4, die 2-6),
+bottom-centre, facing right (coneGuy also has a looping `shell`). Rig-animated anims come from
+`animate_enemies.py` (see below); anims a kind does not rig keep the sheet-derived frames.
 `hit_0` is a white flash, `hit_1` a red tint (or the sheet's hit pose); the last `die`
 frames of several kinds dissolve and may not touch the bottom row.
 
@@ -71,12 +104,38 @@ frames of several kinds dissolve and may not touch the bottom row.
 Frame sizes start from the suggested size and grow in 4px steps when a pose needs more
 room (logged by the script). Physics bodies should be sized in code, not from frame size.
 
+### Enemy animation (`animate_enemies.py`)
+
+Each enemy's sheet pose is cut into rigid parts by hand-picked boxes (`PartRig`), re-posed
+per frame (offset + rotsprite rotation about a pivot) with procedural pieces where the sheet
+has none, and re-outlined by the same `Canvas.finish()` pass:
+
+| kind | rig |
+|---|---|
+| pigeon | head-bob walk (head thrusts, then holds while the body catches up), thin rig legs, tail bob; looping wing-flap hop-flight |
+| rat | gallop-scurry (gather / extend), 4 rig legs, rippling rig tail; crouch + lunge |
+| raccoon | 4-leg waddle, head bob, tail swish, lid shield bob (never crosses Raccoon.ts' 68% crop line) |
+| coneGuy | rocking waddle on its feet, blink; looping `shell` (feet tucked, eyes shut, wobble) |
+| turnstileBot | robot march (legs lift / stomp); rig turnstile bars rotate about a vertical axis — the spin attack sweeps a full 120-degree period over 4 frames |
+| securityDrone | edge-on rotor blades spinning, belly light pulse, lens charge / flare on attack |
+| wasp | rig thruster flame flicker, eye + side light blink |
+| gnat | wing buzz (rotsprite wing), dangling legs |
+| windowWasher | squeegee arm wipe, bucket sway, boots dangle (code adds rope bob / shake) |
+| skirmisher | stalking scissor-step (legs counter-swing about the hips), claw arm swing |
+| warlord / juggernaut | 6-frame stomp walk on one consistent sheet pose (front foot, dip, back foot, dip), cape / claw arm counter-swing |
+| overseer | tentacle wave travelling down each tentacle (out of phase), rigid stalk tip pendulum, red core pulse |
+| eliminator | stomp walk (far leg lifts + slams, body dips, arms counter-swing, near leg rocks on its toe); cannon-arm wind-up + punch; CTA plate stays readable after the face-left mirror |
+
+`strip_floor` removes the painted floor shadow under some alien sheet poses. Timing per
+atlas is in `ENEMY_META` (written to `meta.anims`, `loop` overrides the default play-once).
+Previews: `art/previews/anim-<kind>.gif` / `.png` (2x for the 88px+ sprites).
+
 ## Known weak spots
-- Single-pose Chicago enemies (raccoon, coneGuy, turnstileBot, securityDrone,
-  windowWasher, eliminator) have procedurally derived motion (lean/squash/sway), not real
-  walk cycles.
+- hit/die (and the alien attack) frames still come from the sheet poses / flash-tint-dissolve.
 - Small sources at 2.5-2.8x downscale (parker, lupin, gnat) lose some facial detail.
 - Some gnat/wasp/skirmisher die frames keep small spark bits from the sheet.
+- Kids / Lupin are short-legged for their speed: stride sync hits its 2.0x cap at full
+  walk speed (~5-7% residual foot slide).
 
 ---
 

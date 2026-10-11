@@ -28,6 +28,8 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from artlib import (OUT, PREVIEW, components, contact_sheet, dilate, downscale, fg_mask, load,  # noqa: E402
                     outline, place, quantize_set, remove_specks, strip_lines, trim, write_atlas)
+import animate_enemies  # noqa: E402
+import rig  # noqa: E402
 
 SHEETS = {'en': 'enemies-sheet.png', 'chi': 'chicago-environment-sheet.png'}
 OUTLINE = (18, 14, 26)
@@ -106,6 +108,7 @@ SPECS: dict[str, dict] = {
 
 
 FRAME_SIZES: dict[str, tuple[int, int]] = {}
+RIGGED: dict[str, list[str]] = {}
 
 # ---------------------------------------------------------------- extraction
 def cut(rgb: np.ndarray, box, tol: float, erase=(), keep_gap: int = 6):
@@ -306,7 +309,8 @@ def build(kind: str, S: dict[str, list[np.ndarray]]) -> dict[str, list]:
     raise KeyError(kind)
 
 
-def process(kind: str, sheets: dict[str, np.ndarray]):
+def raw_small(kind: str, sheets: dict[str, np.ndarray]):
+    """Every sheet pose of `kind` at game scale (quantised, outlined, trimmed)."""
     sp = SPECS[kind]
     rgb = sheets[sp['sheet']]
     cuts = {p: [cut(rgb, b, sp['tol'], sp.get('erase', ()), sp.get('keep_gap', 6)) for b in boxes]
@@ -318,11 +322,37 @@ def process(kind: str, sheets: dict[str, np.ndarray]):
         scale = max(scale, (xs.max() - xs.min() + 1) / sp['w'])
     small = {}
     for p, lst in cuts.items():
-        small[p] = [trim(remove_specks(downscale(reg, m, scale, cover=0.5), 3)) for reg, m in lst]
+        small[p] = [trim(remove_specks(downscale(reg, m, scale, cover=0.5, dark_frac=sp.get('dark_frac')), 3))
+                    for reg, m in lst]
     names = [(p, i) for p in small for i in range(len(small[p]))]
     q = quantize_set([small[p][i] for p, i in names], colors=32)
     for (p, i), f in zip(names, q):
-        small[p][i] = trim(outline(f, color=OUTLINE, thresh=55))
+        small[p][i] = trim(outline(strip_floor(f), color=OUTLINE, thresh=55))
+    return small, scale
+
+
+def strip_floor(sp: np.ndarray) -> np.ndarray:
+    """Remove the painted floor shadow some sheet poses stand on: bottom rows that span
+    most of the sprite width in dark blue-grey (feet are narrower and coloured)."""
+    out = sp.copy()
+    h, w = out.shape[:2]
+    for y in range(h - 1, max(-1, h - 4), -1):
+        row = out[y]
+        m = row[..., 3] > 0
+        if m.sum() < 0.5 * w:
+            break
+        px = row[m][:, :3].astype(int)
+        L = 0.299 * px[:, 0] + 0.587 * px[:, 1] + 0.114 * px[:, 2]
+        floor = (px[:, 2] >= px[:, 0] - 4) & (L < 95)
+        if floor.mean() < 0.7:
+            break
+        out[y] = 0
+    return trim(out) if out[..., 3].any() else sp
+
+
+def process(kind: str, sheets: dict[str, np.ndarray]):
+    sp = SPECS[kind]
+    small, scale = raw_small(kind, sheets)
     anims = build(kind, small)
     fw, fh = sp['frame']
     # grow the frame (in steps of 4px) if any pose does not fit the suggested size
@@ -337,11 +367,20 @@ def process(kind: str, sheets: dict[str, np.ndarray]):
     if (fw, fh) != sp['frame']:
         print(f'  ! {kind}: frame grown {sp["frame"]} -> {(fw, fh)}')
     FRAME_SIZES[kind] = (fw, fh)
-    frames = {}
+    legacy = {}
     for anim, lst in anims.items():
-        for k, s in enumerate(lst):
+        legacy[anim] = []
+        for s in lst:
             s, dx, dy = s if isinstance(s, tuple) else (s, 0, 0)
-            frames[f'{anim}_{k}'] = place(s, fw, fh, dx, dy)
+            legacy[anim].append(place(s, fw, fh, dx, dy))
+    # rig / hand-keyed animation (animate_enemies.py) replaces whole anims it provides
+    rigged = animate_enemies.build(kind, small, (fw, fh), legacy)
+    frames = {}
+    order = ['idle', 'move', 'attack', 'hit', 'die'] + [a for a in rigged if a not in ('idle', 'move', 'attack', 'hit', 'die')]
+    for anim in order:
+        for k, f in enumerate(rigged.get(anim, legacy.get(anim, []))):
+            frames[f'{anim}_{k}'] = f
+    RIGGED[kind] = sorted(rigged)
     return frames, scale
 
 
@@ -378,6 +417,28 @@ def face_left_keep_label(frames: dict[str, np.ndarray]) -> dict[str, np.ndarray]
     return out
 
 
+DEFAULT_FPS = dict(idle=6, move=10, attack=16, hit=12, die=10)
+LOOPING = {'idle', 'move', 'shell'}
+
+
+def preview_anim(kind: str, frames: dict[str, np.ndarray], meta: dict):
+    """art/previews/anim-<kind>.gif (every anim at its runtime rate, 4x) + a frame strip."""
+    groups: dict[str, list[np.ndarray]] = {}
+    for name, f in frames.items():
+        groups.setdefault(name.rpartition('_')[0], []).append(f)
+    cells = []
+    for anim, fr in groups.items():
+        m = meta.get(anim, {})
+        fps = m.get('fps', DEFAULT_FPS.get(anim, 10))
+        if 'durations' in m:
+            fps = 1000 * len(fr) / sum(m['durations'])
+        cells.append(dict(title=anim, frames=fr, fps=fps, loop=m.get('loop', anim in LOOPING)))
+    fw = frames['idle_0'].shape[1]
+    cols = 3 if fw <= 48 else 2
+    rig.anim_gif(PREVIEW / f'anim-{kind}.gif', cells, zoom=4 if fw <= 68 else 2, cols=cols, seconds=2.0)
+    rig.strip_png(PREVIEW / f'anim-{kind}.png', list(groups.items()), zoom=4 if fw <= 68 else 3)
+
+
 def main():
     sheets = {k: load(v) for k, v in SHEETS.items()}
     only = sys.argv[1:]
@@ -388,8 +449,11 @@ def main():
         frames, scale = process(kind, sheets)
         if kind in FACES_LEFT:
             frames = face_left_keep_label(frames)
-        write_atlas(OUT / 'enemies' / kind, frames)
+        meta = animate_enemies.ENEMY_META.get(kind)
+        write_atlas(OUT / 'enemies' / kind, frames, meta_extra={'anims': meta} if meta else None)
         rows.append((kind, list(frames.items())))
+        if RIGGED.get(kind):
+            preview_anim(kind, frames, meta or {})
         print(f'{kind}: scale {scale:.2f}, {len(frames)} frames {SPECS[kind]["frame"]}')
     if not only:
         PREVIEW.mkdir(parents=True, exist_ok=True)

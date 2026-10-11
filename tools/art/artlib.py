@@ -148,11 +148,16 @@ def dilate(mask: np.ndarray, n: int = 1) -> np.ndarray:
 
 
 def downscale(rgb: np.ndarray, mask: np.ndarray, scale: float, cover: float = 0.45,
-              anchor_bottom: bool = True) -> np.ndarray:
+              anchor_bottom: bool = True, dark_frac: float | None = None, dark_l: float = 75) -> np.ndarray:
     """Box-downsample a masked figure by `scale` (source px per target px) → RGBA uint8.
 
     The grid is anchored to the bottom-centre of the mask bbox so feet land on a whole
     target row regardless of where the figure sits in the source.
+
+    dark_frac: feature-preserving mode. When at least this fraction of a block's
+    foreground is dark (luma < dark_l) the block takes the median of the dark pixels
+    (thin lines: glasses, eyes, mouths survive); otherwise the dark pixels are ignored
+    (no muddy half-dark blends).
     """
     ys, xs = np.nonzero(mask)
     x0, x1 = xs.min(), xs.max() + 1
@@ -177,6 +182,13 @@ def downscale(rgb: np.ndarray, mask: np.ndarray, scale: float, cover: float = 0.
             if m.size == 0 or m.mean() < cover:
                 continue
             px = rgb[a0:a1, b0:b1][m]
+            if dark_frac is not None:
+                pf = px.astype(np.float32)
+                dk = (0.299 * pf[:, 0] + 0.587 * pf[:, 1] + 0.114 * pf[:, 2]) < dark_l
+                if dk.mean() >= dark_frac:
+                    px = px[dk]
+                elif dk.any():
+                    px = px[~dk]
             # median of the central-ish pixels gives crisp colours
             out[ty, tx, :3] = np.median(px, axis=0).astype(np.uint8)
             out[ty, tx, 3] = 255

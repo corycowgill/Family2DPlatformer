@@ -1065,6 +1065,27 @@
    "w": 576,
    "h": 192
   },
-  "scale": "1"
+  "scale": "1",
+  "anims": {
+   "idle": {
+    "durations": [
+     600,
+     600,
+     500,
+     130
+    ]
+   },
+   "walk": {
+    "fps": 14,
+    "stride": 3.76
+   },
+   "run": {
+    "fps": 16,
+    "stride": 6.58
+   },
+   "ability": {
+    "loop": false
+   }
+  }
  }
 }
