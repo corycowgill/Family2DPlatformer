@@ -35,7 +35,9 @@ GROUND = 47.0
 # part labels; depth = label value (higher = in front)
 FAR_ARM, FAR_LEG, FAR_SHOE, NEAR_LEG, NEAR_SHOE, TORSO, HEAD, NEAR_ARM = 1, 2, 3, 4, 5, 6, 7, 8
 KICK_LEG, KICK_SHOE = 9, 10
-DEPTH = {k: k for k in range(1, 11)}
+ITEM, BACK = 11, 12  # held prop (frying pan, wand ...) / cape or tail behind everything
+DEPTH = {k: k for k in range(1, 12)}
+DEPTH[BACK] = 0
 MERGE = {(FAR_LEG, TORSO), (NEAR_LEG, TORSO), (TORSO, HEAD), (FAR_ARM, TORSO)}
 
 EYE = (34, 24, 34)
@@ -97,6 +99,17 @@ HUMANS = {
                  (1.01, ((240, 236, 222), (255, 255, 245), (213, 205, 173), (150, 140, 120)))],
             shoe=((50, 140, 218), (213, 205, 173), (6, 68, 158), (25, 57, 89)), sole=(240, 236, 222),
         )),
+    'grandma': dict(
+        neck=15, torso=(5, 15, 12, 27), head_extra=[],
+        hip=(6.8, 10.2, 26.0), leg=(3.3, 3.1, 1.9, 1.7),
+        shoulder=((4.4, 17.6), (12.4, 17.6)), arm=(3.6, 3.2, 1.5, 1.8, 0.45),
+        shoe=0.85, eyes=[(10, 9, 1), (14, 9, 1)],
+        pal=dict(
+            skin=((247, 191, 137), (246, 198, 166), (237, 169, 118), (199, 159, 132)),
+            sleeve=((204, 87, 205), (223, 118, 230), (169, 85, 185), (124, 46, 135)),
+            leg=[(1.01, ((55, 56, 58), (78, 78, 84), (46, 41, 51), (39, 25, 37)))],
+            shoe=((223, 118, 155), (242, 219, 193), (179, 113, 142), (124, 46, 135)), sole=(235, 230, 222),
+        )),
 }
 
 
@@ -144,9 +157,9 @@ def _rot_pt(p, c, deg):
 
 
 class Human:
-    def __init__(self, cid: str, idle: np.ndarray):
+    def __init__(self, cid: str, idle: np.ndarray, costume: dict | None = None):
         self.cid = cid
-        c = self.c = HUMANS[cid]
+        c = self.c = dict(HUMANS[cid])
         h, w = idle.shape[:2]
         self.ox = int(round(FRAME / 2 - w / 2))
         self.oy = FRAME - h
@@ -171,6 +184,15 @@ class Human:
         L1, L2 = c['leg'][:2]
         self.leg_len = L1 + L2
         self.k = self.leg_len / 8.3  # pose tables are keyed at Dad's leg length
+        # head / torso sprites may be padded (costume hats) -> pasted at -px, -py
+        self.px = self.py = 0
+        # props: [(name, 'always' | 'action' | 'attack')], first match wins
+        self.items = [c['item']] if c.get('item') else []
+        self.back = None                # costume cape / tail spec
+        self.skirt = None
+        if costume:
+            from costumes import apply_human
+            apply_human(self, costume)
 
     def _blink(self, head):
         """Closed eyes: 2px eyes keep only a lash line on their lower pixel, 1px eyes turn
@@ -208,6 +230,10 @@ class Human:
         nhx, fhx, hpy = c['hip']
         s = c['shoe']
         pivot = (ox + hx + (nhx + fhx) / 2, oy + hy + hpy)
+        px_, py_ = self.px, self.py
+        if self.back:
+            from costumes import draw_back
+            draw_back(self, cv, P, (tdx, tdy), BACK)
         # -- legs + shoes
         L1, L2, r1, r2 = c['leg']
 
@@ -275,21 +301,45 @@ class Human:
                 m = sp[..., 3] > 0
                 sub = up[y:y + h, x:x + w]
                 sub[m] = sp[m]
-            torso, tox = shear_rows(self.torso, lean, y_from=ty0) if lean else (self.torso, 0)
-            paste(torso, off - tox, off)
-            paste(head, off + hdx + lean, off + hdy)
+            torso, tox = shear_rows(self.torso, lean, y_from=ty0 + py_) if lean else (self.torso, 0)
+            paste(torso, off - tox - px_, off - py_)
+            paste(head, off + hdx + lean - px_, off + hdy - py_)
             pv = (off + (nhx + fhx) / 2, off + hpy)
             rup, npv = rot_sprite(up, -bend, pv)
             cv.sprite(rup, pivot[0], pivot[1], TORSO, anchor=npv)
         else:
-            torso, tox = shear_rows(self.torso, lean, y_from=ty0) if lean else (self.torso, 0)
-            cv.sprite(torso, tdx - tox, tdy, TORSO)
-            cv.sprite(head, tdx + hdx + lean, tdy + hdy, HEAD)
+            torso, tox = shear_rows(self.torso, lean, y_from=ty0 + py_) if lean else (self.torso, 0)
+            cv.sprite(torso, tdx - tox - px_, tdy - py_, TORSO)
+            cv.sprite(head, tdx + hdx + lean - px_, tdy + hdy - py_, HEAD)
+        if self.skirt:
+            from costumes import draw_skirt
+            draw_skirt(self, cv, P, (tdx, tdy), TORSO)
         if kick:  # kicking leg swings in front of the body
             leg('near', nhx, P['nf'], KICK_LEG, KICK_SHOE)
         arm('near', nsx, nsy, P['na'])
+        item = P.get('item')
+        for it in self.items:  # first item whose condition holds (grandma's pan beats costume props)
+            if item:
+                break
+            mode = it[1]
+            if mode == 'always' or (mode == 'action' and P.get('action')) or (mode == 'attack' and P.get('attack')):
+                item = it[0]
+        if item:
+            from costumes import draw_item
+            # props are held in the front (far) hand unless the pose says otherwise (grandma's pan swing)
+            near = P.get('ihand', 'far') == 'near'
+            a1, a2 = (P['na'] if near else P['fa'])[:2]
+            root = shoulder(nsx, nsy) if near else shoulder(fsx, fsy)
+            _, hand = fk2(root, a1 + bend, a2, A1, A2)
+            draw_item(cv, item, hand, a1 + a2 + bend + P.get('irel', ITEM_REL.get(item, 110)), ITEM)
         img = cv.finish(merge=MERGE)
+        if P.get('flip'):
+            img = img[:, ::-1].copy()
         return _post(img, P)
+
+
+# default grip: item direction relative to the forearm (deg, + = forward / up when the arm hangs)
+ITEM_REL = {'pan': 150, 'wand': 140, 'sword': 150, 'spatula': 150, 'flowers': 160, 'fireball': 90, 'bow': 90}
 
 
 def _post(img: np.ndarray, P: dict) -> np.ndarray:
@@ -308,7 +358,9 @@ def _post(img: np.ndarray, P: dict) -> np.ndarray:
         img = bottom_anchor(img)
     if P.get('up'):
         img = bottom_anchor(img)
-        img = _shift(img, 0, -int(P['up']))
+        rows = np.nonzero(img[..., 3].any(1))[0]
+        # never push a tall costume (chef hat, crown) out of the top of the frame
+        img = _shift(img, 0, -min(int(P['up']), int(rows.min()) if len(rows) else 0))
     if P.get('dx'):
         img = _shift(img, int(P['dx']), 0)
     return img
@@ -457,6 +509,12 @@ ATTACKS = {
         P(hip=(0, 1), lean=0, nf=(4, 0, 0), ff=(-3, -20, 0), na=(88, 0), fa=(84, 0)),
         P(hip=(0, 0), nf=(2, 0, 0), ff=(-1, 0, 0), na=(40, 60), fa=(30, 60)),
     ],
+    'grandma': [  # frying-pan swing: wind up behind, overhead, smash forward, follow through
+        P(hip=(-1, 1), lean=-1, head=(-1, 0), nf=(-1, 0, 0), ff=(3, 0, 0), na=(-140, 10), fa=(30, 40), irel=10),
+        P(hip=(0, 0), head=(0, -1), nf=(-2, -15, 0), ff=(4, 0, 0), na=(175, 0), fa=(50, 40), irel=0),
+        P(hip=(2, 1), lean=2, head=(1, 0), nf=(-4, -25, 0), ff=(5, 10, 0), na=(95, -10), fa=(-30, 40), irel=0),
+        P(hip=(1, 1), lean=1, nf=(-2, 0, 0), ff=(3, 0, 0), na=(55, 15), fa=(-20, 30), irel=10),
+    ],
 }
 
 TUCK = dict(nf=(3, -15, 7), ff=(5, -10, 8), na=(70, 80), fa=(60, 80), ground=False)
@@ -485,15 +543,31 @@ ABILITIES = {
         P(hip=(-1, 1), lean=-1, head=(-1, 0), nf=(3, 0, 0), ff=(-3, -10, 0), na=(98, 0), fa=(94, 0)),
         P(hip=(0, 0), nf=(2, 0, 0), ff=(-1, 0, 0), na=(40, 50), fa=(30, 50)),
     ],
+    'grandma': [  # frying-pan spin: pan out front, overhead, pan out behind (mirrored), overhead
+        P(hip=(0, 1), nf=(3, 0, 0), ff=(-2, 0, 0), na=(92, -5), fa=(-60, 30), irel=0, ground=False, up=1),
+        P(hip=(0, 0), head=(0, -1), nf=(1, -10, 1), ff=(0, -10, 1), na=(-170, 0), fa=(120, 20), irel=0, ground=False, up=2,
+          flip=True),
+        P(hip=(0, 1), nf=(3, 0, 0), ff=(-2, 0, 0), na=(92, -5), fa=(-60, 30), irel=0, ground=False, up=1, flip=True),
+        P(hip=(0, 0), head=(0, -1), nf=(1, -10, 1), ff=(0, -10, 1), na=(-170, 0), fa=(120, 20), irel=0, ground=False, up=2),
+    ],
 }
 
+# Grandma's frying pan only appears for the swing / spin
+HUMANS['grandma']['item'] = ('pan', 'action')
+for _p in ATTACKS['grandma'] + ABILITIES['grandma']:
+    _p['ihand'] = 'near'
 
-def build_human(cid: str, idle: np.ndarray) -> dict[str, list[np.ndarray]]:
-    rig = Human(cid, idle)
+
+def human_poses(cid: str) -> dict[str, list[dict]]:
     poses = common_poses()
-    poses['attack'] = ATTACKS[cid]
-    poses['ability'] = ABILITIES[cid]
-    return {anim: [rig.draw(p) for p in plist] for anim, plist in poses.items()}
+    poses['attack'] = [dict(p, action=True, attack=True) for p in ATTACKS[cid]]
+    poses['ability'] = [dict(p, action=True) for p in ABILITIES[cid]]
+    return poses
+
+
+def build_human(cid: str, idle: np.ndarray, costume: dict | None = None) -> dict[str, list[np.ndarray]]:
+    rig = Human(cid, idle, costume)
+    return {anim: [rig.draw(p) for p in plist] for anim, plist in human_poses(cid).items()}
 
 
 def human_meta(cid: str, idle: np.ndarray) -> dict:
@@ -501,12 +575,12 @@ def human_meta(cid: str, idle: np.ndarray) -> dict:
     return dict(walk=dict(stride=round(WALK_D * rig.k, 2)), run=dict(stride=round(RUN_D * rig.k, 2)))
 
 
-def build(cid: str, raw: dict[str, list[np.ndarray]]) -> dict[str, list[np.ndarray]]:
+def build(cid: str, raw: dict[str, list[np.ndarray]], costume: dict | None = None) -> dict[str, list[np.ndarray]]:
     if cid in HUMANS:
-        return build_human(cid, raw['idle'][0])
+        return build_human(cid, raw['idle'][0], costume)
     if cid == 'lupin':
         from animate_dog import build_dog
-        return build_dog(raw)
+        return build_dog(raw, costume)
     return {}
 
 
@@ -526,7 +600,7 @@ def anim_meta(cid: str, raw: dict[str, list[np.ndarray]]) -> dict:
         walk=dict(fps=16 if kid else 14, stride=round(WALK_D * rig.k, 2)),
         run=dict(fps=18 if kid else 16, stride=round(RUN_D * rig.k, 2)),
     )
-    if cid != 'brennan':  # the dash loops; the others play once and hold (dad: slam pose while dropping)
+    if cid not in ('brennan', 'grandma'):  # the dash / pan spin loop; the others play once and hold (dad: slam pose while dropping)
         meta['ability'] = dict(loop=False)
     return meta
 

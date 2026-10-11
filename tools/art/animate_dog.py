@@ -54,7 +54,7 @@ def _tone(tbl, nx, far, rel):
 
 
 class Dog:
-    def __init__(self, walk0: np.ndarray):
+    def __init__(self, walk0: np.ndarray, costume: dict | None = None):
         d = self.d = DOG
         h, w = walk0.shape[:2]
         self.ox = int(round(FRAME / 2 - w / 2))
@@ -86,6 +86,10 @@ class Dog:
         if ey + 1 < H and self.blink_head[ey + 1, ex, 3]:
             self.blink_head[ey + 1, ex, :3] = (90, 60, 56)
         self.k = 1.0
+        self.px = self.py = 0
+        if costume:
+            from costumes import apply_dog
+            apply_dog(self, costume)
 
     def draw(self, P: dict) -> np.ndarray:
         d = self.d
@@ -120,17 +124,21 @@ class Dog:
         # tail (behind the body)
         ang = P.get('tail', 0)
         tr = d['tail_root']
-        if ang:
-            tail, npv = rot_sprite(self.tail, ang, tr)
-        else:
-            tail, npv = self.tail, tr
         tdy_tail = P.get('tail_dy', 0)
+        px, py = self.px, self.py
+        if ang:
+            tail, npv = rot_sprite(self.tail, ang, (tr[0] + px, tr[1] + py))
+        else:
+            tail, npv = self.tail, (tr[0] + px, tr[1] + py)
         cv.sprite(tail, tr[0] + tdx, tr[1] + tdy + tdy_tail, TAIL, anchor=npv)
         leg(hn, P['hn'], False, False, NEAR_LEG)
         leg(sn, P['fn'], False, True, NEAR_LEG)
-        cv.sprite(self.body, tdx, tdy, BODY)
+        cv.sprite(self.body, tdx - px, tdy - py, BODY)
+        if getattr(self, 'costume', None):
+            from costumes import draw_dog_extra
+            draw_dog_extra(self, cv, P, (tdx, tdy), dict(BODY=BODY))
         head = self.blink_head if P.get('blink') else self.head
-        cv.sprite(head, tdx + hdx, tdy + hdy + (fdy if fdy < 0 else 0), HEAD)
+        cv.sprite(head, tdx + hdx - px, tdy + hdy + (fdy if fdy < 0 else 0) - py, HEAD)
         img = cv.finish(merge=MERGE)
         from animate_characters import _post
         if P.get('flip'):
@@ -225,8 +233,8 @@ def dog_poses() -> dict[str, list[dict]]:
     return p
 
 
-def build_dog(raw: dict[str, list[np.ndarray]]) -> dict[str, list[np.ndarray]]:
-    rig = Dog(raw['walk'][0])
+def build_dog(raw: dict[str, list[np.ndarray]], costume: dict | None = None) -> dict[str, list[np.ndarray]]:
+    rig = Dog(raw['walk'][0], costume)
     return {anim: [rig.draw(q) for q in ql] for anim, ql in dog_poses().items()}
 
 

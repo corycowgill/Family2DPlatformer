@@ -397,6 +397,8 @@ export class TouchControls {
   private shown = false;
   private portrait: MediaQueryList | null;
   private unsubscribe: () => void;
+  /** Hide the overlay during cutscene beats (boss intro) even while the level runs. */
+  suppressed = false;
 
   constructor(private scene: Phaser.Scene, private level: Phaser.Scene, private onShownChange?: (shown: boolean) => void) {
     this.overlay = installTouchOverlay(scene.game);
@@ -415,6 +417,7 @@ export class TouchControls {
   private wanted(): boolean {
     return (
       !!this.overlay &&
+      !this.suppressed &&
       shouldShowTouch() &&
       this.scene.sys.isActive() &&
       this.level.sys.isActive() &&

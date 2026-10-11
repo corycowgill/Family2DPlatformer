@@ -506,6 +506,22 @@ export class TestHarness {
     gameState.character = saveSystem.get().selectedCharacter;
   }
 
+  /**
+   * Replace the save with `data` (sanitised exactly like a save loaded from storage, so
+   * retroactive unlocks are applied) and persist it. Used by e2e tests to set up progress.
+   */
+  setSave(data: unknown): unknown {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      /* ignore */
+    }
+    saveSystem.load();
+    saveSystem.save();
+    gameState.character = saveSystem.get().selectedCharacter;
+    return this.getSave();
+  }
+
   /** All registered levels (test level first) and whether their map file is served. */
   async levels(): Promise<{ id: string; file: string; exists: boolean; boss: boolean; next?: string }[]> {
     const out = [];

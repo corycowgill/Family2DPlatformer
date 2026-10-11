@@ -4,7 +4,7 @@ import type { BotOptions, BotResult } from '../../src/game/debug/PlatformBot';
 
 export type { HarnessState, BotResult };
 
-export const CHARACTERS = ['dad', 'mom', 'brennan', 'parker', 'lupin'] as const;
+export const CHARACTERS = ['dad', 'mom', 'brennan', 'parker', 'lupin', 'grandma'] as const;
 export const GAME_W = 480;
 export const GAME_H = 270;
 

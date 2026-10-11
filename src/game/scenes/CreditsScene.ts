@@ -10,6 +10,9 @@ import { Skyline } from '../ui/Skyline';
 import { COLORS } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
 import { prompt } from '../ui/Prompts';
+import { saveSystem } from '../systems/SaveSystem';
+import { isCharacterUnlocked } from '../systems/Rewards';
+import { heroTexture } from '../ui/CharacterArt';
 
 const LINES: [string, 'h' | 't' | 's' | 'gap'][] = [
   ['CHICAGO FAMILY ADVENTURE', 'h'],
@@ -43,9 +46,14 @@ export class CreditsScene extends Phaser.Scene {
   private roll!: Phaser.GameObjects.Container;
   private speed = 24;
   private done = false;
+  private back = 'Menu';
 
   constructor() {
     super('Credits');
+  }
+
+  init(data: { back?: string } = {}): void {
+    this.back = data?.back ?? 'Menu';
   }
 
   create(): void {
@@ -67,8 +75,10 @@ export class CreditsScene extends Phaser.Scene {
       y += kind === 'h' ? 22 : 13;
     }
     // The family parade at the end of the roll.
-    CHARACTER_IDS.forEach((id, i) => {
-      const s = this.add.sprite(GAME_WIDTH / 2 + (i - 2) * 50, y + 60, id).setOrigin(0.5, 1);
+    // (Secret heroes only join once unlocked.)
+    const cast = CHARACTER_IDS.filter((id) => isCharacterUnlocked(saveSystem.get(), id));
+    cast.forEach((id, i) => {
+      const s = this.add.sprite(GAME_WIDTH / 2 + (i - (cast.length - 1) / 2) * 50, y + 60, heroTexture(this, id)).setOrigin(0.5, 1);
       playAnim(s, 'victory');
       this.roll.add(s);
       this.roll.add(px(this, s.x, y + 68, CHARACTERS[id].name.toUpperCase(), { color: COLORS.sub }));
@@ -90,7 +100,7 @@ export class CreditsScene extends Phaser.Scene {
     if (this.done) return;
     this.done = true;
     audio.sfx('menu-back');
-    transitionTo(this, 'Menu');
+    transitionTo(this, this.back);
   }
 
   update(_t: number, delta: number): void {

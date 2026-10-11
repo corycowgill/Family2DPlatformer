@@ -10,10 +10,12 @@ import { icon, setIcon } from '../ui/Icons';
 import { onNav } from '../ui/NavInput';
 import { COLORS, button, drawPanel, type UIButton } from '../ui/Widgets';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
-import { formatTime } from '../ui/format';
+import { formatTarget, formatTime } from '../ui/format';
 import { pathBetween, pickDirectional } from '../ui/mapNav';
 import { prompt, type PromptText } from '../ui/Prompts';
 import { mulberry32 } from '../systems/audio/notes';
+import { heroTexture } from '../ui/CharacterArt';
+import { MEDALS, medalTimes } from '../systems/Rewards';
 
 interface MapNode {
   kind: 'level' | 'hood';
@@ -55,6 +57,9 @@ export class WorldMapScene extends Phaser.Scene {
     status: Phaser.GameObjects.BitmapText;
     best: Phaser.GameObjects.BitmapText;
     souv: Phaser.GameObjects.Image[];
+    /** Best medal earned + the three target times. */
+    medal: Phaser.GameObjects.Image;
+    targets: { img: Phaser.GameObjects.Image; t: Phaser.GameObjects.BitmapText }[];
     play: UIButton;
     hint: PromptText;
   };
@@ -81,7 +86,7 @@ export class WorldMapScene extends Phaser.Scene {
     this.drawNodes();
 
     const start = this.nodes[this.at];
-    this.walker = this.add.sprite(start.x, start.y + 3, gameState.character).setOrigin(0.5, 1).setDepth(30);
+    this.walker = this.add.sprite(start.x, start.y + 3, heroTexture(this)).setOrigin(0.5, 1).setDepth(30);
     playAnim(this.walker, 'idle');
 
     this.ring = this.add.graphics().setDepth(25);
@@ -233,7 +238,12 @@ export class WorldMapScene extends Phaser.Scene {
     const title = px(this, x + 10, y + 12, '', { origin: [0, 0.5], color: COLORS.gold }).setDepth(d);
     const name = px(this, x + 10, y + 26, '', { origin: [0, 0], color: COLORS.text, maxWidth: 168 }).setDepth(d);
     const status = px(this, x + 10, y + 52, '', { origin: [0, 0.5], color: COLORS.sub, maxWidth: 168 }).setDepth(d);
-    const best = px(this, x + 10, y + 66, '', { origin: [0, 0.5], color: COLORS.sub }).setDepth(d);
+    const best = px(this, x + 10, y + 64, '', { origin: [0, 0.5], color: COLORS.sub }).setDepth(d);
+    const medal = icon(this, x + 170, y + 63, 'medal_empty').setDepth(d);
+    const targets = MEDALS.map((m, i) => ({
+      img: icon(this, x + 14 + i * 38, y + 75, `medal_${m}`).setDepth(d).setScale(0.75),
+      t: px(this, x + 21 + i * 38, y + 75, '', { origin: [0, 0.5], color: COLORS.dim }).setDepth(d),
+    }));
     const souv = [0, 1, 2].map((i) => icon(this, x + 124 + i * 16, y + 12, 'souvenir_icon_empty').setDepth(d));
     const play = button(this, x + 150, y + 84, '▶ PLAY', () => this.confirm(), { sound: null, depth: d, w: 56 });
     const hint = prompt(this, x + 10, y + 84, (dev) => (dev === 'touch' ? 'TAP AGAIN: PLAY' : '{CONFIRM} PLAY {HERO} HERO'), {
@@ -241,13 +251,13 @@ export class WorldMapScene extends Phaser.Scene {
       color: COLORS.sub,
       depth: d,
     });
-    this.info = { g, title, name, status, best, souv, play, hint };
+    this.info = { g, title, name, status, best, souv, medal, targets, play, hint };
   }
 
   private refresh(): void {
     const n = this.nodes[this.sel];
     const save = saveSystem.get();
-    const { title, name, status, best, souv, play, hint } = this.info;
+    const { title, name, status, best, souv, medal, targets, play, hint } = this.info;
     hint.setVisible(n.kind === 'level' && saveSystem.isUnlocked(n.levelId!));
     if (n.kind === 'level') {
       const lvl = LEVELS[this.sel];
@@ -258,6 +268,13 @@ export class WorldMapScene extends Phaser.Scene {
       setPx(status, !unlocked ? `LOCKED - CLEAR ${LEVELS[this.sel - 1]?.number ?? ''} FIRST` : rec?.completed ? '✓ CLEARED' : 'NEW ADVENTURE!');
       status.setTint(!unlocked ? COLORS.dim : rec?.completed ? COLORS.green : COLORS.gold);
       setPx(best, rec?.bestTimeMs ? `BEST TIME ${formatTime(rec.bestTimeMs)}` : 'BEST TIME --:--.--');
+      setIcon(medal.setVisible(true), rec?.medal ? `medal_${rec.medal}` : 'medal_empty');
+      const mt = medalTimes(lvl.id);
+      targets.forEach(({ img, t }, i) => {
+        img.setVisible(!!mt);
+        t.setVisible(!!mt);
+        if (mt) setPx(t, formatTarget(mt[MEDALS[i]]));
+      });
       souv.forEach((img, i) => setIcon(img.setVisible(true), rec?.souvenirs.includes(i) ? 'souvenir_icon' : 'souvenir_icon_empty'));
       play.setEnabled(unlocked);
       play.container.setVisible(true);
@@ -269,6 +286,11 @@ export class WorldMapScene extends Phaser.Scene {
       status.setTint(COLORS.sub);
       setPx(best, '');
       souv.forEach((img) => img.setVisible(false));
+      medal.setVisible(false);
+      targets.forEach(({ img, t }) => {
+        img.setVisible(false);
+        t.setVisible(false);
+      });
       play.container.setVisible(false);
     }
     // Selection ring

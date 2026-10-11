@@ -10,6 +10,7 @@ import { isRealAsset } from '../ui/Icons';
 import { reducedMotion, transitionIn, transitionTo } from '../ui/Transitions';
 import { COLORS } from '../ui/Widgets';
 import { prompt } from '../ui/Prompts';
+import { browserStoryAllowed } from '../story/storyData';
 
 /** Draw a six-pointed Chicago-flag star centred at (cx, cy). */
 export function drawChicagoStar(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: number, color: number = COLORS.red): void {
@@ -40,11 +41,12 @@ export class MenuScene extends Phaser.Scene {
     createMenu(
       this,
       [
-        { label: 'PLAY', onSelect: () => transitionTo(this, 'CharacterSelect', { next: 'WorldMap' }) },
+        { label: 'PLAY', onSelect: () => this.play() },
         { label: 'CONTINUE', disabled: !hasSave, onSelect: () => transitionTo(this, 'WorldMap') },
         { label: 'CHARACTER SELECT', onSelect: () => transitionTo(this, 'CharacterSelect', { next: 'Menu' }) },
+        { label: 'COLLECTION', onSelect: () => transitionTo(this, 'Collection') },
         { label: 'SETTINGS', onSelect: () => transitionTo(this, 'Settings', { from: 'Menu' }) },
-        { label: 'CREDITS', onSelect: () => transitionTo(this, 'Credits') },
+        { label: 'EXTRAS', onSelect: () => transitionTo(this, 'Extras') },
       ],
       GAME_WIDTH / 2,
       134,
@@ -58,6 +60,13 @@ export class MenuScene extends Phaser.Scene {
     px(this, GAME_WIDTH - 4, 4, 'v0.1', { origin: [1, 0], color: COLORS.dim, outline: false }).setDepth(20);
     audio.music('title');
     transitionIn(this);
+  }
+
+  /** PLAY: a new save sees the opening story first (not in automated/dev runs unless ?story). */
+  private play(): void {
+    const toSelect = { next: 'WorldMap' };
+    if (!saveSystem.get().seenIntro && browserStoryAllowed()) transitionTo(this, 'Story', { next: 'CharacterSelect', nextData: toSelect });
+    else transitionTo(this, 'CharacterSelect', toSelect);
   }
 
   private buildLogo(): void {

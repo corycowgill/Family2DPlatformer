@@ -17,6 +17,7 @@ import { rumble } from '../ui/PadOverlay';
  *  Brennan — Soccer Dash (ground or once in air), bowls over small enemies.
  *  Parker  — Energy Blast projectile (max 2 on screen).
  *  Lupin   — Super Sniff (reveals secrets, EV.SNIFF) + pounce bite.
+ *  Grandma — Frying Pan Spin: hits both sides; once per jump it also slows the fall.
  */
 
 // ───────────────────────── shared helpers ─────────────────────────
@@ -454,6 +455,90 @@ class Sniff extends BaseAbility {
   }
 }
 
+// ───────────────────────── Grandma: Frying Pan Spin ─────────────────────────
+
+/** Spin length, reach on each side, and the capped fall speed of the once-per-jump hover. */
+export const PAN_SPIN = { ms: 380, reach: 22, height: 26, hoverFallSpeed: 45 } as const;
+
+class PanSpin extends BaseAbility {
+  private spinUntil = 0;
+  private hovering = false;
+  private hoverUsed = false;
+  private readonly bonked = new Set<Enemy>();
+
+  get spinning(): boolean {
+    return this.spinUntil > 0 && this.now < this.spinUntil;
+  }
+
+  onPress(_input: InputState): void {
+    const p = this.p;
+    if (this.spinning || !this.ready) return;
+    this.spinUntil = this.now + PAN_SPIN.ms;
+    this.bonked.clear();
+    p.attacking = true;
+    p.playAction('ability', PAN_SPIN.ms);
+    p.ctx.sfx('attack');
+    // Once per jump the spin works like a little helicopter: the fall is slowed while it lasts.
+    if (!p.grounded && !this.hoverUsed) {
+      this.hoverUsed = true;
+      this.hovering = true;
+      if (p.motor.vy > 0) p.motor.vy = 0;
+      p.motor.jumping = false;
+    }
+    const x = p.x;
+    const y = p.body.center.y;
+    ring(p.scene, x, y, PAN_SPIN.reach, 0xe8e4f0, PAN_SPIN.ms, 0.45, 2);
+    sparkles(p.scene, x, y - 4, 0xc79bf0, 6, 14);
+    this.startCooldown();
+    this.used();
+  }
+
+  update(input: InputState, dtMs: number): void {
+    super.update(input, dtMs);
+    if (this.spinUntil === 0) return;
+    const p = this.p;
+    if (this.now < this.spinUntil) {
+      p.attacking = true;
+      // Bonk everything in reach on BOTH sides (each enemy once per spin).
+      const b = p.body;
+      const rect = new Phaser.Geom.Rectangle(b.center.x - PAN_SPIN.reach, b.bottom - PAN_SPIN.height, PAN_SPIN.reach * 2, PAN_SPIN.height);
+      for (const e of liveEnemies(p)) {
+        if (this.bonked.has(e)) continue;
+        const eb = e.body;
+        if (Phaser.Geom.Intersects.RectangleToRectangle(rect, new Phaser.Geom.Rectangle(eb.left, eb.top, eb.width, eb.height))) {
+          this.bonked.add(e);
+          e.takeHit({ amount: p.attackPower, fromX: p.x, kind: 'melee' });
+        }
+      }
+      if (this.hovering && !p.grounded) p.motor.vy = Math.min(p.motor.vy, PAN_SPIN.hoverFallSpeed);
+    } else {
+      this.spinUntil = 0;
+      this.hovering = false;
+      p.attacking = false;
+    }
+  }
+
+  onLand(): void {
+    this.hoverUsed = false;
+    this.hovering = false;
+  }
+
+  onEnemyContact(enemy: Enemy): boolean {
+    if (!this.spinning) return false;
+    if (!this.bonked.has(enemy)) {
+      this.bonked.add(enemy);
+      enemy.takeHit({ amount: this.p.attackPower, fromX: this.p.x, kind: 'melee' });
+    }
+    return true;
+  }
+
+  cancel(): void {
+    super.cancel();
+    this.spinUntil = 0;
+    this.hovering = false;
+  }
+}
+
 class NoAbility extends BaseAbility {
   onPress(): void {
     this.melee(200, 18, 20);
@@ -472,6 +557,8 @@ export function createAbility(player: Player): AbilityController {
       return new Projectile(player);
     case 'sniff':
       return new Sniff(player);
+    case 'panSpin':
+      return new PanSpin(player);
     default:
       return new NoAbility(player);
   }
