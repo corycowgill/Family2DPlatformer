@@ -28,18 +28,19 @@ export interface MedalTimes {
 }
 
 /**
- * Target times (ms) per level. Par = the platform bot's cleanest run on the shipped maps
- * (invulnerable, sim time; docs/QA.md "Medal times"): loop-1 22.5 s (Lupin) / 27.7 s (Mom),
- * loop-3 26.8 s (Lupin) / 30.5 s (Bro1). The bot can't finish loop-2 (moving trains) or
- * fight the boss, so those are scaled from their length (262 / 232 tiles) plus the fight.
- * Gold ≈ 1.4-1.6x the bot's par (tight but fair, no detours), silver ≈ a relaxed clear,
- * bronze ≈ any clear that doesn't get lost.
+ * Target times (ms) per level. Par = the platform bot's clean invulnerable runs on the
+ * shipped maps (sim time, docs/QA.md "Medal times"), 2026-10 after the playtest pass:
+ * loop-1 22-24 s, loop-2 31-33 s, loop-3 27-31 s, loop-boss 73-76 s (incl. the boss fight;
+ * the fight length is set by the boss's attack/vulnerable cycle, not by the player).
+ * Gold ≈ 1.4x par (tight but fair, no detours), silver ≈ 2.2x (a relaxed clear),
+ * bronze ≈ 3.5x (any clear that doesn't get lost; the boss level's bronze is a bit tighter
+ * because most of its time is the fight).
  */
 export const MEDAL_TIMES: Record<string, MedalTimes> = {
-  'loop-1': { gold: 35_000, silver: 55_000, bronze: 90_000 },
+  'loop-1': { gold: 32_000, silver: 50_000, bronze: 80_000 },
   'loop-2': { gold: 45_000, silver: 70_000, bronze: 110_000 },
-  'loop-3': { gold: 40_000, silver: 60_000, bronze: 100_000 },
-  'loop-boss': { gold: 75_000, silver: 110_000, bronze: 160_000 },
+  'loop-3': { gold: 40_000, silver: 65_000, bronze: 100_000 },
+  'loop-boss': { gold: 105_000, silver: 150_000, bronze: 210_000 },
 };
 
 export function medalTimes(levelId: string): MedalTimes | undefined {
