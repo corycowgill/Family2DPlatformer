@@ -2,8 +2,8 @@
  "frames": {
   "bird_0": {
    "frame": {
-    "x": 40,
-    "y": 74,
+    "x": 94,
+    "y": 274,
     "w": 9,
     "h": 5
    },
@@ -22,8 +22,8 @@
   },
   "bird_1": {
    "frame": {
-    "x": 50,
-    "y": 74,
+    "x": 104,
+    "y": 274,
     "w": 9,
     "h": 5
    },
@@ -42,8 +42,8 @@
   },
   "bird_2": {
    "frame": {
-    "x": 60,
-    "y": 74,
+    "x": 114,
+    "y": 274,
     "w": 9,
     "h": 5
    },
@@ -62,8 +62,8 @@
   },
   "bird_3": {
    "frame": {
-    "x": 70,
-    "y": 74,
+    "x": 124,
+    "y": 274,
     "w": 9,
     "h": 5
    },
@@ -83,7 +83,7 @@
   "train_day": {
    "frame": {
     "x": 0,
-    "y": 0,
+    "y": 181,
     "w": 192,
     "h": 18
    },
@@ -103,7 +103,7 @@
   "train_rooftop": {
    "frame": {
     "x": 0,
-    "y": 19,
+    "y": 200,
     "w": 192,
     "h": 18
    },
@@ -123,7 +123,7 @@
   "train_sunset": {
    "frame": {
     "x": 0,
-    "y": 38,
+    "y": 219,
     "w": 192,
     "h": 18
    },
@@ -143,7 +143,7 @@
   "boat_tour": {
    "frame": {
     "x": 0,
-    "y": 57,
+    "y": 257,
     "w": 64,
     "h": 16
    },
@@ -163,7 +163,7 @@
   "boat_taxi": {
    "frame": {
     "x": 130,
-    "y": 57,
+    "y": 257,
     "w": 34,
     "h": 12
    },
@@ -183,7 +183,7 @@
   "boat_tour_sunset": {
    "frame": {
     "x": 65,
-    "y": 57,
+    "y": 257,
     "w": 64,
     "h": 16
    },
@@ -203,7 +203,7 @@
   "boat_taxi_sunset": {
    "frame": {
     "x": 165,
-    "y": 57,
+    "y": 257,
     "w": 34,
     "h": 12
    },
@@ -223,7 +223,7 @@
   "steam_0": {
    "frame": {
     "x": 200,
-    "y": 57,
+    "y": 257,
     "w": 12,
     "h": 12
    },
@@ -243,7 +243,7 @@
   "steam_1": {
    "frame": {
     "x": 213,
-    "y": 57,
+    "y": 257,
     "w": 12,
     "h": 12
    },
@@ -263,7 +263,7 @@
   "steam_2": {
    "frame": {
     "x": 226,
-    "y": 57,
+    "y": 257,
     "w": 12,
     "h": 12
    },
@@ -283,7 +283,7 @@
   "steam_3": {
    "frame": {
     "x": 239,
-    "y": 57,
+    "y": 257,
     "w": 12,
     "h": 12
    },
@@ -302,8 +302,8 @@
   },
   "glint_0": {
    "frame": {
-    "x": 0,
-    "y": 74,
+    "x": 54,
+    "y": 274,
     "w": 9,
     "h": 9
    },
@@ -322,8 +322,8 @@
   },
   "glint_1": {
    "frame": {
-    "x": 10,
-    "y": 74,
+    "x": 64,
+    "y": 274,
     "w": 9,
     "h": 9
    },
@@ -342,8 +342,8 @@
   },
   "glint_2": {
    "frame": {
-    "x": 20,
-    "y": 74,
+    "x": 74,
+    "y": 274,
     "w": 9,
     "h": 9
    },
@@ -362,8 +362,8 @@
   },
   "glint_3": {
    "frame": {
-    "x": 30,
-    "y": 74,
+    "x": 84,
+    "y": 274,
     "w": 9,
     "h": 9
    },
@@ -382,8 +382,8 @@
   },
   "px": {
    "frame": {
-    "x": 114,
-    "y": 74,
+    "x": 190,
+    "y": 274,
     "w": 2,
     "h": 2
    },
@@ -402,8 +402,8 @@
   },
   "wake_0": {
    "frame": {
-    "x": 80,
-    "y": 74,
+    "x": 152,
+    "y": 274,
     "w": 16,
     "h": 3
    },
@@ -422,8 +422,8 @@
   },
   "wake_1": {
    "frame": {
-    "x": 97,
-    "y": 74,
+    "x": 169,
+    "y": 274,
     "w": 16,
     "h": 3
    },
@@ -439,6 +439,246 @@
     "w": 16,
     "h": 3
    }
+  },
+  "train_night": {
+   "frame": {
+    "x": 0,
+    "y": 238,
+    "w": 192,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 192,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 192,
+    "h": 18
+   }
+  },
+  "sail_0": {
+   "frame": {
+    "x": 50,
+    "y": 0,
+    "w": 15,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 15,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 15,
+    "h": 22
+   }
+  },
+  "sail_1": {
+   "frame": {
+    "x": 193,
+    "y": 238,
+    "w": 11,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 11,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 11,
+    "h": 17
+   }
+  },
+  "sail_2": {
+   "frame": {
+    "x": 66,
+    "y": 0,
+    "w": 12,
+    "h": 19
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 19
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 19
+   }
+  },
+  "butterfly_0": {
+   "frame": {
+    "x": 134,
+    "y": 274,
+    "w": 5,
+    "h": 4
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "sourceSize": {
+    "w": 5,
+    "h": 4
+   }
+  },
+  "butterfly_1": {
+   "frame": {
+    "x": 140,
+    "y": 274,
+    "w": 5,
+    "h": 4
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "sourceSize": {
+    "w": 5,
+    "h": 4
+   }
+  },
+  "butterfly_2": {
+   "frame": {
+    "x": 146,
+    "y": 274,
+    "w": 5,
+    "h": 4
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "sourceSize": {
+    "w": 5,
+    "h": 4
+   }
+  },
+  "mote": {
+   "frame": {
+    "x": 186,
+    "y": 274,
+    "w": 3,
+    "h": 3
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 3,
+    "h": 3
+   },
+   "sourceSize": {
+    "w": 3,
+    "h": 3
+   }
+  },
+  "ufo_0": {
+   "frame": {
+    "x": 0,
+    "y": 274,
+    "w": 26,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 12
+   }
+  },
+  "ufo_1": {
+   "frame": {
+    "x": 27,
+    "y": 274,
+    "w": 26,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 12
+   }
+  },
+  "beam": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 180
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 180
+   },
+   "sourceSize": {
+    "w": 24,
+    "h": 180
+   }
+  },
+  "flare": {
+   "frame": {
+    "x": 25,
+    "y": 0,
+    "w": 24,
+    "h": 24
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 24
+   },
+   "sourceSize": {
+    "w": 24,
+    "h": 24
+   }
   }
  },
  "meta": {
@@ -448,7 +688,7 @@
   "format": "RGBA8888",
   "size": {
    "w": 252,
-   "h": 83
+   "h": 286
   },
   "scale": "1"
  }

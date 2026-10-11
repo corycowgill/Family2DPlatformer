@@ -5,8 +5,12 @@ import type { LevelContext } from '../world/LevelContext';
 import { FX_SOFT, moodTexture } from './FxTextures';
 import { fxRng, type ThemeMood } from './fxMath';
 
-/** Lamp prop (props atlas `lamp`, 16×48, bottom-centre origin): bulb centre offset. */
-const LAMP_BULB_DY = -40;
+/** Lamp props (props atlas, bottom-centre origin): bulb centre offset from the prop's feet, glow scale. */
+const LAMP_BULBS: Record<string, { dy: number; scale: number }> = {
+  lamp: { dy: -40, scale: 1 },
+  park_lamp: { dy: -46, scale: 1 },
+  stadium_light: { dy: -97, scale: 2.2 },
+};
 
 interface Flicker {
   objs: Phaser.GameObjects.Image[];
@@ -59,12 +63,13 @@ export class Lighting {
         const type = o.type || (o as { class?: string }).class || o.name;
         if (type !== 'prop') continue;
         const frame = (o.properties as { name: string; value: unknown }[] | undefined)?.find((p) => p.name === 'frame')?.value;
-        if (frame !== 'lamp') continue;
+        const bulb = typeof frame === 'string' ? LAMP_BULBS[frame] : undefined;
+        if (!bulb) continue;
         // Spawn objects are normalised to bottom-centre (see LevelScene.readObjects).
         const x = (o.x ?? 0) + (o.width ?? 0) / 2;
         const y = (o.y ?? 0) + (o.height ?? 0);
         if (this.inDarkZone(x, y - 8)) continue;
-        this.lampGlow(x, y, mood.lampGlow);
+        this.lampGlow(x, y, mood.lampGlow, bulb.dy, bulb.scale);
       }
     }
     if (high) this.buildScreen();
@@ -99,19 +104,19 @@ export class Lighting {
     this.screenObjs.push(img);
   }
 
-  private lampGlow(x: number, y: number, k: number): void {
+  private lampGlow(x: number, y: number, k: number, dy = -40, scale = 1): void {
     const scene = this.ctx.scene;
-    const by = y + LAMP_BULB_DY;
+    const by = y + dy;
     const halo = scene.add
       .image(x, by, FX_SOFT, 'glow')
-      .setScale(1.6)
+      .setScale(1.6 * scale)
       .setTint(0xffc46a)
       .setAlpha(0.55 * k)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(DEPTH.props);
     const core = scene.add
       .image(x, by, FX_SOFT, 'glow')
-      .setScale(0.5)
+      .setScale(0.5 * scale)
       .setTint(0xfff0c0)
       .setAlpha(0.8 * k)
       .setBlendMode(Phaser.BlendModes.ADD)
@@ -128,7 +133,7 @@ export class Lighting {
       const cone = scene.add
         .image(x, by + 2, FX_SOFT, 'cone')
         .setOrigin(0.5, 0)
-        .setDisplaySize(40, Math.max(8, y - by - 2))
+        .setDisplaySize(40 * scale, Math.max(8, y - by - 2))
         .setTint(0xffc070)
         .setAlpha(0.22 * k)
         .setBlendMode(Phaser.BlendModes.ADD)

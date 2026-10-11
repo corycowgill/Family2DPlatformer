@@ -1,11 +1,12 @@
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
-import { CHARACTERS, availableLevels, harness, openGame, runBot, warn, type BotResult } from './helpers';
+import { CHARACTERS, availableLevels, harness, openGame, runBot, type BotResult } from './helpers';
+import { LEVELS } from '../../src/game/data/levels';
 
 /**
- * Automated platforming bot. It must finish the test level with every character.
- * For the real levels (whatever exists on disk among LEVELS) a bot failure is reported
- * as a warning with the stuck coordinates and a screenshot — not as a test failure,
- * because a heuristic bot failing is not proof that a level is impossible.
+ * Automated platforming bot (src/game/debug/PlatformBot.ts — a route planner over the
+ * level's tiles + a receding-horizon controller that simulates the real motor). It must
+ * finish the test level and every registered level with every character; a failure comes
+ * with the stuck coordinates, a screenshot and the bot's JSON (deaths, hurts, rewinds).
  */
 
 function summary(r: BotResult): string {
@@ -64,29 +65,47 @@ test.describe('platforming bot', () => {
     expect(r.rewinds).toBe(3);
     expect(r.failures[0].attempts).toBe(4);
   });
+});
 
-  test('traverses every registered level that exists (warn only)', async ({ page }, testInfo) => {
-    test.setTimeout(15 * 60_000); // levels × characters of simulated play
-    await openGame(page);
-    const levels = (await availableLevels(page)).filter((l) => l.exists && l.id !== 'test');
-    if (levels.length === 0) {
-      testInfo.annotations.push({ type: 'info', description: 'No LEVELS map files exist yet — only the test level was checked.' });
-      return;
-    }
-    const results: string[] = [];
-    for (const l of levels) {
-      if (l.boss) {
-        testInfo.annotations.push({ type: 'info', description: `${l.id}: boss level — bot only checks it loads` });
-        await harness(page, (h, id) => h.startLevel(id, 'dad', { manual: true }), l.id);
-        continue;
-      }
+/**
+ * The real levels: the bot must finish every registered level with every character.
+ * Regular levels with damage on (deaths just rewind the bot); boss levels are beaten with
+ * invulnerability, and a separate damage-on run must at least reach the boss arena.
+ */
+test.describe('platforming bot on the real levels', () => {
+  test.describe.configure({ mode: 'parallel', timeout: 8 * 60_000 });
+
+  for (const level of LEVELS) {
+    const title = level.boss ? `${level.id}: every character beats the boss (invulnerable)` : `${level.id}: every character finishes with damage on`;
+    test(title, async ({ page }, testInfo) => {
+      await openGame(page);
+      const exists = (await availableLevels(page)).find((l) => l.id === level.id)?.exists;
+      test.skip(!exists, `${level.file} not built`);
+      const failed: string[] = [];
+      const lines: string[] = [];
       for (const character of CHARACTERS) {
-        const r = await runBot(page, { levelId: l.id, character, invulnerable: true, maxFrames: 60 * 240 });
+        const r = await runBot(page, { levelId: level.id, character, invulnerable: !!level.boss, maxFrames: 60 * 300 });
         await report(page, testInfo, r);
-        results.push(summary(r));
-        if (!r.completed) warn(testInfo, `bot could not finish ${summary(r)}`);
+        lines.push(summary(r));
+        if (!r.completed) failed.push(summary(r));
       }
+      await testInfo.attach(`bot-${level.id}-summary.txt`, { body: lines.join('\n'), contentType: 'text/plain' });
+      expect(failed, failed.join('\n')).toEqual([]);
+    });
+
+    if (level.boss) {
+      test(`${level.id}: every character reaches the boss arena with damage on`, async ({ page }, testInfo) => {
+        await openGame(page);
+        const exists = (await availableLevels(page)).find((l) => l.id === level.id)?.exists;
+        test.skip(!exists, `${level.file} not built`);
+        const failed: string[] = [];
+        for (const character of CHARACTERS) {
+          const r = await runBot(page, { levelId: level.id, character, invulnerable: false, stopAtBossArena: true, maxFrames: 60 * 240 });
+          await report(page, testInfo, r);
+          if (!r.reachedBossArena) failed.push(summary(r));
+        }
+        expect(failed, failed.join('\n')).toEqual([]);
+      });
     }
-    await testInfo.attach('bot-summary.txt', { body: results.join('\n'), contentType: 'text/plain' });
-  });
+  }
 });

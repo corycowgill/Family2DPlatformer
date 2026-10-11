@@ -63,6 +63,8 @@ const BOTTOM = [['B0', 40], ['B1', 25], ['B2', 20], ['B3', 15]];
 const SLAB = [['S0', 60], ['S1', 40]];
 const RARE = new Set(['X0', 'X1', 'X2', 'X3']);
 const MAT_SALT = { CONC: 11, LIME: 23, BRICK: 37, GIRD: 41, RWALK: 53, STONE: 67, ROOF: 79, ASPH: 83, DECK: 97, WACK: 101 };
+// World 2 materials
+Object.assign(MAT_SALT, { GRASS: 103, PATH: 107, SAND: 109, BOARD: 113, IVY: 127, FLAT: 131, SEAT: 137 });
 /** Per-material underside rhythm (Lower Wacker: a sodium lamp every 4 tiles). */
 const BOTTOM_PATTERN = {
   WACK: (x, y) => (x % 4 === 2 ? 'B1' : hash01(x, y, 7) < 0.5 ? 'B0' : 'B2'),
@@ -126,6 +128,8 @@ const FAMILY_TILES = {
   wack: new Set(['LOWER_WACKER']),
 };
 const FAMILY_MAT = { BRICK: 'brick', LIME: 'lime', WACK: 'wack' };
+// World 2: background FLAT → greystone / brownstone three-flats, background IVY → flat ivy wall
+Object.assign(FAMILY_MAT, { FLAT: 'flat', IVY: 'ivy' });
 const WINDOW_TILES = new Set(['BRICK_WINDOW', 'LIMESTONE_WINDOW']);
 const GLASS_TILES = new Set(['GLASS', 'GLASS_FRAME']);
 
@@ -195,6 +199,11 @@ export function decorateBackground(cell, width, height) {
     const inside = (x, y) => occupied(x, y) && (fam(x, y) === b.fam || fam(x, y) === null);
     const isTop = (x, y) => y > 0 && !occupied(x, y - 1);
     const set = (x, y, name) => out.set(idx(x, y), name);
+
+    if (b.fam === 'flat' || b.fam === 'ivy') {
+      decorateNorthSide(b, { isTop, inside, set, seed });
+      continue;
+    }
 
     if (b.fam === 'wack') {
       for (const [x, y] of b.cells) {
@@ -338,4 +347,57 @@ export function decorateBackground(cell, width, height) {
     }
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// World 2 facades (background layer)
+// ---------------------------------------------------------------------------
+/**
+ * Three-flats (background FLAT regions): greystone or brownstone per building — carved
+ * cornice on top, quoined edges, alternating window / wall rows (a two-tile bay window
+ * near the left on wide buildings), a stoop + door on the ground row every 5 columns.
+ * Ivy walls (background IVY): brick coping on top, flat ivy below.
+ */
+function decorateNorthSide(b, { isTop, inside, set, seed }) {
+  const w = b.maxX - b.minX + 1;
+  const h = b.maxY - b.minY + 1;
+  if (b.fam === 'ivy') {
+    for (const [x, y] of b.cells) set(x, y, isTop(x, y) ? 'IVYW_TOP' : hash01(x, y, seed, 3) < 0.6 ? 'IVYW_0' : 'IVYW_1');
+    return;
+  }
+  const pre = hash01(seed, 21) < 0.5 ? 'GS' : 'BS';
+  const bay = w >= 5 ? b.minX + 1 : null;
+  const doors = new Set();
+  if (h >= 3 && w >= 3) for (let x = b.minX + 2; x < b.maxX; x += 5) doors.add(x);
+  for (const [x, y] of b.cells) {
+    const leftEdge = !inside(x - 1, y);
+    const rightEdge = !inside(x + 1, y);
+    const r = hash01(x, y, seed, 5);
+    const lit = r < 0.4;
+    if (isTop(x, y)) {
+      set(x, y, `${pre}_CORN${leftEdge ? '_L' : rightEdge ? '_R' : ''}`);
+      continue;
+    }
+    if (leftEdge || rightEdge) {
+      set(x, y, `${pre}_EDGE_${leftEdge ? 'L' : 'R'}`);
+      continue;
+    }
+    const k = y - b.minY;
+    if (y === b.maxY && h >= 3) {
+      if (doors.has(x)) set(x, y, `${pre}_DOOR`);
+      else if (doors.has(x + 1)) set(x, y, `${pre}_STOOP`);
+      else set(x, y, (x - b.minX) % 2 ? `${pre}_WIN${lit ? '_LIT' : ''}` : `${pre}_WALL0`);
+      continue;
+    }
+    if (k % 2 === 1) {
+      if (bay !== null && (x === bay || x === bay + 1) && inside(bay, y) && inside(bay + 1, y)) {
+        const litBay = hash01(bay, y, seed, 7) < 0.45;
+        set(x, y, `${pre}_BAY${litBay ? 'LIT' : ''}_${x === bay ? 'L' : 'R'}`);
+      } else if ((x - b.minX) % 2 === 1) {
+        set(x, y, `${pre}_WIN${lit ? '_LIT' : ''}`);
+      } else set(x, y, `${pre}_WALL0`);
+      continue;
+    }
+    set(x, y, pick(r, [[`${pre}_WALL0`, 60], [`${pre}_WALL1`, 22], [`${pre}_WALL2`, 18]]));
+  }
 }

@@ -2,7 +2,7 @@
  "frames": {
   "coin_0": {
    "frame": {
-    "x": 153,
+    "x": 236,
     "y": 0,
     "w": 16,
     "h": 16
@@ -22,7 +22,7 @@
   },
   "coin_1": {
    "frame": {
-    "x": 170,
+    "x": 253,
     "y": 0,
     "w": 16,
     "h": 16
@@ -42,7 +42,7 @@
   },
   "coin_2": {
    "frame": {
-    "x": 187,
+    "x": 270,
     "y": 0,
     "w": 16,
     "h": 16
@@ -62,7 +62,7 @@
   },
   "coin_3": {
    "frame": {
-    "x": 204,
+    "x": 287,
     "y": 0,
     "w": 16,
     "h": 16
@@ -82,7 +82,7 @@
   },
   "coin_4": {
    "frame": {
-    "x": 221,
+    "x": 304,
     "y": 0,
     "w": 16,
     "h": 16
@@ -102,7 +102,7 @@
   },
   "coin_5": {
    "frame": {
-    "x": 238,
+    "x": 321,
     "y": 0,
     "w": 16,
     "h": 16
@@ -122,7 +122,7 @@
   },
   "star_0": {
    "frame": {
-    "x": 255,
+    "x": 338,
     "y": 0,
     "w": 16,
     "h": 16
@@ -142,7 +142,7 @@
   },
   "star_1": {
    "frame": {
-    "x": 272,
+    "x": 355,
     "y": 0,
     "w": 16,
     "h": 16
@@ -162,7 +162,7 @@
   },
   "star_2": {
    "frame": {
-    "x": 289,
+    "x": 372,
     "y": 0,
     "w": 16,
     "h": 16
@@ -182,7 +182,7 @@
   },
   "star_3": {
    "frame": {
-    "x": 306,
+    "x": 389,
     "y": 0,
     "w": 16,
     "h": 16
@@ -202,7 +202,7 @@
   },
   "question_0": {
    "frame": {
-    "x": 323,
+    "x": 406,
     "y": 0,
     "w": 16,
     "h": 16
@@ -222,7 +222,7 @@
   },
   "question_1": {
    "frame": {
-    "x": 340,
+    "x": 423,
     "y": 0,
     "w": 16,
     "h": 16
@@ -242,7 +242,7 @@
   },
   "question_2": {
    "frame": {
-    "x": 357,
+    "x": 440,
     "y": 0,
     "w": 16,
     "h": 16
@@ -262,7 +262,7 @@
   },
   "question_3": {
    "frame": {
-    "x": 374,
+    "x": 457,
     "y": 0,
     "w": 16,
     "h": 16
@@ -282,7 +282,7 @@
   },
   "hotdog": {
    "frame": {
-    "x": 391,
+    "x": 474,
     "y": 0,
     "w": 16,
     "h": 16
@@ -302,7 +302,7 @@
   },
   "pizza": {
    "frame": {
-    "x": 408,
+    "x": 491,
     "y": 0,
     "w": 16,
     "h": 16
@@ -322,106 +322,6 @@
   },
   "cta_pass": {
    "frame": {
-    "x": 425,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "sourceSize": {
-    "w": 16,
-    "h": 16
-   }
-  },
-  "one_up": {
-   "frame": {
-    "x": 442,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "sourceSize": {
-    "w": 16,
-    "h": 16
-   }
-  },
-  "souvenir_0": {
-   "frame": {
-    "x": 459,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "sourceSize": {
-    "w": 16,
-    "h": 16
-   }
-  },
-  "souvenir_1": {
-   "frame": {
-    "x": 476,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "sourceSize": {
-    "w": 16,
-    "h": 16
-   }
-  },
-  "souvenir_2": {
-   "frame": {
-    "x": 493,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 16,
-    "h": 16
-   },
-   "sourceSize": {
-    "w": 16,
-    "h": 16
-   }
-  },
-  "block_used": {
-   "frame": {
     "x": 0,
     "y": 97,
     "w": 16,
@@ -440,7 +340,7 @@
     "h": 16
    }
   },
-  "brick": {
+  "one_up": {
    "frame": {
     "x": 17,
     "y": 97,
@@ -460,7 +360,7 @@
     "h": 16
    }
   },
-  "bounce_pad_0": {
+  "souvenir_0": {
    "frame": {
     "x": 34,
     "y": 97,
@@ -480,7 +380,7 @@
     "h": 16
    }
   },
-  "bounce_pad_1": {
+  "souvenir_1": {
    "frame": {
     "x": 51,
     "y": 97,
@@ -500,9 +400,109 @@
     "h": 16
    }
   },
+  "souvenir_2": {
+   "frame": {
+    "x": 68,
+    "y": 97,
+    "w": 16,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 16
+   }
+  },
+  "block_used": {
+   "frame": {
+    "x": 85,
+    "y": 97,
+    "w": 16,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 16
+   }
+  },
+  "brick": {
+   "frame": {
+    "x": 102,
+    "y": 97,
+    "w": 16,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 16
+   }
+  },
+  "bounce_pad_0": {
+   "frame": {
+    "x": 119,
+    "y": 97,
+    "w": 16,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 16
+   }
+  },
+  "bounce_pad_1": {
+   "frame": {
+    "x": 136,
+    "y": 97,
+    "w": 16,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 16
+   }
+  },
   "checkpoint_off": {
    "frame": {
-    "x": 55,
+    "x": 110,
     "y": 0,
     "w": 34,
     "h": 48
@@ -522,7 +522,7 @@
   },
   "checkpoint_on": {
    "frame": {
-    "x": 90,
+    "x": 145,
     "y": 0,
     "w": 34,
     "h": 48
@@ -562,7 +562,47 @@
   },
   "goal_flag": {
    "frame": {
-    "x": 125,
+    "x": 180,
+    "y": 0,
+    "w": 27,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 17
+   }
+  },
+  "goal_pole_w": {
+   "frame": {
+    "x": 55,
+    "y": 0,
+    "w": 54,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 96
+   }
+  },
+  "goal_flag_w": {
+   "frame": {
+    "x": 208,
     "y": 0,
     "w": 27,
     "h": 17
@@ -587,7 +627,7 @@
   "image": "items.png",
   "format": "RGBA8888",
   "size": {
-   "w": 510,
+   "w": 508,
    "h": 113
   },
   "scale": "1"

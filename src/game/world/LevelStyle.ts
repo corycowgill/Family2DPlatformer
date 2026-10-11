@@ -5,11 +5,15 @@ import type { LevelContext, SpawnObject } from './LevelContext';
 import { num, str } from './worldUtil';
 
 /** Default tint of the decor (background) tile layer per theme, so facades read as "behind". */
-export const BG_TINT: Partial<Record<LevelTheme, number>> = {
+export const BG_TINT: Record<LevelTheme, number> = {
   day: 0x7a86a8,
   rooftop: 0x747b9e,
   river: 0x7888a4,
   sunset: 0x9a7480,
+  park: 0x8a96a8,
+  lakefront: 0x8e9cb2,
+  night: 0x5c5f86,
+  stadium: 0x55597e,
 };
 
 const hex = (v: string, def: number): number => {

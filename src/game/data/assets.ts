@@ -78,6 +78,9 @@ export const ATLAS = {
       'checkpoint_on',
       'goal_pole',
       'goal_flag',
+      // World 2: ballpark win flag (white, blue W) — goal entity prop flag=w
+      'goal_pole_w',
+      'goal_flag_w',
     ],
   },
   /** Decorative / interactive props. */
@@ -104,8 +107,28 @@ export const ATLAS = {
       'steam_vent',
       'mailbox',
       'tree',
+      // World 2 — The North Side (tools/art/draw_props_w2.py)
+      'park_tree_s', // 32x40
+      'park_tree_m', // 48x60
+      'park_tree_l', // 64x80
+      'park_bench',
+      'park_lamp', // acorn globe, lit at night (Lighting)
+      'lion_statue',
+      'giraffe_topiary',
+      'flower_bed',
+      'lifeguard_stand',
+      'beach_umbrella',
+      'volleyball_net',
+      'sailboat',
+      'buoy',
+      'stadium_light', // 32x112, lit (Lighting)
+      'scoreboard',
+      'pennants',
+      'ivy_clump',
+      'ivy_clump_l',
+      'baseball',
     ],
-    anims: ['pigeon_idle', 'pigeon_fly', 'steam', 'train_light'],
+    anims: ['pigeon_idle', 'pigeon_fly', 'steam', 'train_light', 'neon_bar', 'neon_pizza', 'neon_dogs', 'neon_open'],
   },
   /** Particles, projectiles, explosions. */
   effects: {

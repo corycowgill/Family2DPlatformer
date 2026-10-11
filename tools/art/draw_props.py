@@ -538,8 +538,20 @@ def build():
         fr[f"steam_{i}"] = steam(i).im
     for i in range(6):
         fr[f"train_light_{i}"] = train_light(i).im
+    # World 2 (The North Side) props + looping neon flicker anims (timing in meta.anims)
+    import json
+    from draw_props_w2 import frames as w2_frames
+    fr2, anim_meta = w2_frames()
+    w1_names = list(fr)
+    fr.update(fr2)
     pack_atlas(fr, os.path.join(ASSETS, "props"))
-    contact_sheet(fr, os.path.join(PREVIEWS, "props.png"), scale=4)
+    with open(os.path.join(ASSETS, "props.json")) as f:
+        data = json.load(f)
+    data["meta"]["anims"] = anim_meta
+    with open(os.path.join(ASSETS, "props.json"), "w") as f:
+        json.dump(data, f, indent=1)
+    contact_sheet({k: fr[k] for k in w1_names}, os.path.join(PREVIEWS, "props.png"), scale=4)
+    contact_sheet(fr2, os.path.join(PREVIEWS, "props-w2.png"), scale=3)
     return fr
 
 

@@ -89,7 +89,8 @@ E2E (`tests/e2e`):
   Collection screen from the menu; Frying Pan Spin hits both sides and caps the fall once per jump.
 - `bot.spec.ts` — bot completes the test level with all six characters (damage on); widened
   gap; impassable wall ⇒ stuck report; every existing `LEVELS` map with every character
-  (invulnerable; **warning only**, with screenshot + JSON attachments).
+  (damage on; boss levels invulnerable, plus a damage-on run that must reach the arena) —
+  failures attach a screenshot + the bot JSON.
 - `story.spec.ts` — `?story`: PLAY on a new save plays the opening comic, ENTER advances / ESC skips to
   character select, `seenIntro` persists and PLAY skips it next time; without `?story` automation never
   sees it; tap-through; level intro card texts; boss intro beat (letterbox card, input held, then the HP
@@ -227,36 +228,63 @@ bodies, enemies, tweens, textures, level/time/hp/lives/coins/checkpoint), `0` te
 
 ## Platforming bot
 
-`src/game/debug/PlatformBot.ts`, run via `await __harness.bot({ levelId, character, invulnerable })`.
-Holds right; while grounded it scans the tile layers ahead (ground/oneway/hazards/water) and
-enemies, and jumps when a wall, gap, hazard or enemy is within a lead distance computed from
-the character's speed and jump velocity. On death (revived in place, the scene isn't
-restarted) or no progress for 4 s it rewinds to an earlier safe ground position (further back
-on each attempt) and retries with the next jump-timing variant (run/walk, earlier/later jump,
-short/long hold). After `maxAttemptsPerSection` (10) it gives up and reports `stuckAt`.
+`src/game/debug/PlatformBot.ts`, run via `await __harness.bot({ levelId, character, invulnerable })`
+(`T` in the `?debug` overlay runs it in real time).
 
-Result: `{ completed, progress, maxX, goalX, deaths, rewinds, failures[], stuckAt, simSeconds }`.
+1. **Navigation graph** (built at the start of a run for that character, ~0.3-0.6 s): every
+   tile surface the character can stand on is a node; edges are walking steps and jump /
+   walk-off arcs simulated with the real motor (`PlayerMotor`) and the character's stats —
+   jumping up through one-way platforms, moving-platform paths (ride them), bounce pads,
+   blocks. A reverse Dijkstra from the goal (boss levels: the boss arena) gives every node a
+   cost-to-go in frames. If the goal isn't in the graph the bot heads for the explored node
+   closest to it (and then reports `stuck`).
+2. **Receding-horizon control**, every frame: candidate inputs (run / walk / brake / wait and
+   ~25 jumps with different hold times and air-steering on the ground; steer + hold/release
+   in the air) are simulated from the player's exact state with an emulation of Arcade's
+   tile separation (`SeparateTile`, tileBias 20), predicted moving / falling platforms,
+   steam-vent phases, hazard-train schedules, kill zones, enemies (linear, ≤ 0.9 s) and enemy
+   shots. Score = frames + cost-to-go where the sim ends + damage / death penalties + a
+   "can I stand here ~1 s" check + a small penalty for toe-hold landings. The cheapest
+   candidate's first input is applied. This climbs one-way staircases, waits for platforms,
+   trains and steam, runs up for long jumps (backs off when a jump needs more speed),
+   stomps or avoids enemies. Boss arenas: keep away from the boss, stomp it while it can be
+   damaged.
+3. **Recovery**: on death (revived in place) or no cost-to-go progress for `stuckFrames`
+   (900) it rewinds to an earlier safe spot and retries with some randomness; after
+   `maxAttemptsPerSection` (10) failures in one place it gives up.
 
+Options: `invulnerable`, `maxFrames`, `stuckFrames`, `maxAttemptsPerSection`, `seed`,
+`stopAtBossArena` (damage-on reachability of a boss level), `sloppy` (0..1, human-like
+reaction lag + noisy choices — used for death heatmaps), `trace` / `traceDetail`
+(per-frame decisions, candidate scores and one-step mispredictions, for debugging the bot).
+
+Result: `{ completed, reachedBossArena, progress, maxX, goalX, deaths, rewinds, failures[],
+stuckAt, simSeconds, incidents[] (every hurt / death with x, y, kind), graph, perf }`.
+`bot.spec.ts` requires every registered level to be finished by every character (damage on;
+boss levels invulnerable + a damage-on run that must reach the arena). A failure is still a
+lead for a human first: check the attached screenshot / JSON before blaming the level.
+
+**Death heatmaps:** run the bot with `sloppy: 0.5` over several seeds with damage on and
+bin `incidents` by x (the level design notes in `tools/levels/README.md` quote the numbers).
 ### Medal times
 
 Time-trial targets live in `src/game/systems/Rewards.ts` (`MEDAL_TIMES`). Par = the bot's
 cleanest invulnerable run (`h.startLevel(id, ch, { manual: true }); h.bot({ noRestart: true,
 invulnerable: true })`, sim seconds), measured 2026-10 on the shipped maps:
 
-| level | bot par (clean runs) | gold | silver | bronze |
+| level | bot par (clean invulnerable runs, 6 characters) | gold | silver | bronze |
 |---|---|---|---|---|
-| 1-1 loop-1 | 22.5 s Lupin, 27.7 s Mom, 28.9 s Grandma | 0:35 | 0:55 | 1:30 |
-| 1-2 loop-2 | bot can't clear (moving trains) — scaled from length | 0:45 | 1:10 | 1:50 |
-| 1-3 loop-3 | 26.8 s Lupin, 30.5 s Bro1, 32.1 s Dad | 0:40 | 1:00 | 1:40 |
-| 1-4 boss | bot doesn't fight — walk ≈ 30 s + 12-HP boss | 1:15 | 1:50 | 2:40 |
-| 2-1..2-3 | **TODO-measure** — placeholder maps (≈96 tiles) | 0:30–0:32 | 0:50–0:52 | 1:25–1:30 |
-| 2-4 boss | **TODO-measure** — short approach + 9-HP Overseer | 1:10 | 1:45 | 2:30 |
+| 1-1 loop-1 | 22-24 s | 0:32 | 0:50 | 1:20 |
+| 1-2 loop-2 | 31-33 s | 0:45 | 1:10 | 1:50 |
+| 1-3 loop-3 | 27-31 s | 0:40 | 1:05 | 1:40 |
+| 1-4 boss | 73-76 s (≈ 30 s run + the fight) | 1:45 | 2:30 | 3:30 |
+
+Gold ≈ 1.4 × par, silver ≈ 2.2 ×, bronze ≈ 3.5 × (boss: a little tighter — the fight's
+length is set by the boss). Measure with the bot runner in `bot.spec.ts` / `h.bot({ levelId,
+character, invulnerable: true })` → `simSeconds`.
 
 Re-measure after a level layout change. `h.setSave(data)` replaces the save (sanitised like
 a loaded one, retroactive unlocks applied) to set up progress in tests.
-A failure is a lead for a human, not proof of an impossible level — the bot doesn't plan
-routes, climb via one-way platforms above it, use abilities, wait for moving platforms, or
-backtrack left.
 
 ## Known defects / flaky areas
 
@@ -264,10 +292,6 @@ backtrack left.
   toggled every frame on flat ground (vy = 0 with gravity off → no floor contact on the next
   step): `onLand` fired every other frame (dust trail, `land` sfx, squash tween resizing the
   body). Now a regression test in `gameplay.spec.ts`.
-- **Bot limits on the real levels** (warnings, not failures): it doesn't climb one-way
-  platform staircases to get over tall walls (loop-2 ≈ x 1547, the TTTT wall at column 98),
-  and it can walk into the pocket under the loop-3 overhang (≈ x 1578, columns 96–100) instead
-  of taking the bridge above. Characters with better jumps get through some of these.
 - **FPS in CI / containers** is software WebGL (SwiftShader): expect 25–40 fps; the perf spec only warns.
 - **Real-time specs** (pause, death respawn, touch) depend on wall-clock timers; they use
   generous `waitForFunction` timeouts. If they flake under heavy load, run with `--workers=1`.
