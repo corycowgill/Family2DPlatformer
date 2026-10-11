@@ -19,6 +19,8 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from artlib import (OUT, PREVIEW, components, contact_sheet, dilate, erode, fg_mask, flip, keep_largest, load,  # noqa: E402
                     outline, place, quantize_set, remove_specks, downscale, trim, write_atlas)
+import animate_characters  # noqa: E402
+import rig  # noqa: E402
 
 FRAME = 48
 
@@ -175,7 +177,8 @@ def nod(sp: np.ndarray, frac: float = 0.45, dy: int = 1) -> np.ndarray:
     return out
 
 
-def build_character(rgb: np.ndarray, cid: str):
+def raw_sprites(rgb: np.ndarray, cid: str):
+    """All sheet poses of one character at game scale: ({pose: [rgba, ...]}, poses, scale)."""
     poses = extract_poses(rgb, cid)
     # scale from the first idle pose height
     _, m0 = poses['idle'][0]
@@ -185,13 +188,20 @@ def build_character(rgb: np.ndarray, cid: str):
     for pose, lst in poses.items():
         raw[pose] = []
         for reg, cm in lst:
-            sp = downscale(reg, cm, scale, cover=0.5)
+            # feature-preserving: glasses / eyes / mouths survive the ~2.5x reduction
+            sp = downscale(reg, cm, scale, cover=0.5, dark_frac=0.45)
             sp = keep_largest(remove_specks(sp, 4), 0.25)
             raw[pose].append(sp)
     names = [(p, i) for p in raw for i in range(len(raw[p]))]
     q = quantize_set([raw[p][i] for p, i in names], colors=28)
     for (p, i), f in zip(names, q):
         raw[p][i] = trim(outline(f, color=(22, 16, 30), thresh=60))
+    return raw, poses, scale
+
+
+def build_character_sheet(raw, cid: str) -> dict[str, np.ndarray]:
+    """Legacy assembly straight from the sheet poses (padded with squash/offset
+    variants). Kept as the fallback for any anim the rig does not provide."""
     S = raw
     I, W, R = S['idle'], S['walk'], S['run']
     J, Fa, C, A, H, D = S['jump'][0], S['fall'][0], S['crouch'][0], S['attack'], S['hurt'][0], S['die'][0]
@@ -241,7 +251,21 @@ def build_character(rgb: np.ndarray, cid: str):
     else:  # lupin sniff
         ab = [C, nod(C, 0.45, 1), nod(C, 0.45, 2), nod(C, 0.45, 1)]
     add('ability', ab)
-    return fr, poses, scale
+    return fr
+
+
+def build_character(rgb: np.ndarray, cid: str):
+    raw, poses, scale = raw_sprites(rgb, cid)
+    legacy = build_character_sheet(raw, cid)
+    rigged = animate_characters.build(cid, raw)
+    fr: dict[str, np.ndarray] = {}
+    for name in legacy:
+        anim, _, n = name.rpartition('_')
+        if anim in rigged:
+            fr[name] = rigged[anim][int(n)]
+        else:
+            fr[name] = legacy[name]
+    return fr, poses, scale, rigged
 
 
 PORTRAIT_FRAC = {'dad': 0.46, 'mom': 0.46, 'brennan': 0.5, 'parker': 0.5, 'lupin': 0.62}
@@ -282,8 +306,17 @@ def main():
     rows = []
     ports = []
     for cid in CHARS:
-        fr, poses, scale = build_character(rgb, cid)
-        write_atlas(OUT / 'characters' / cid, fr, cols=12)
+        fr, poses, scale, rigged = build_character(rgb, cid)
+        raw = raw_sprites(rgb, cid)[0]
+        meta = animate_characters.anim_meta(cid, raw)
+        write_atlas(OUT / 'characters' / cid, fr, cols=12, meta_extra={'anims': meta})
+        PREVIEW.mkdir(parents=True, exist_ok=True)
+        rig.anim_gif(PREVIEW / f'anim-{cid}.gif', animate_characters.preview_cells(fr, meta), zoom=4, cols=4,
+                     seconds=2.0)
+        groups: dict[str, list] = {}
+        for name, f in fr.items():
+            groups.setdefault(name.rpartition('_')[0], []).append(f)
+        rig.strip_png(PREVIEW / f'anim-{cid}.png', list(groups.items()), zoom=4)
         p = portrait(rgb, poses, cid)
         (OUT / 'ui').mkdir(parents=True, exist_ok=True)
         Image.fromarray(p, 'RGBA').save(OUT / 'ui' / f'portrait-{cid}.png')

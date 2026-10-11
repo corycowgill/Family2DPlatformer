@@ -48,7 +48,7 @@
     "y": 1.0
    }
   },
-  "move_0": {
+  "idle_2": {
    "frame": {
     "x": 88,
     "y": 0,
@@ -72,7 +72,7 @@
     "y": 1.0
    }
   },
-  "move_1": {
+  "idle_3": {
    "frame": {
     "x": 132,
     "y": 0,
@@ -96,9 +96,105 @@
     "y": 1.0
    }
   },
-  "move_2": {
+  "idle_4": {
+   "frame": {
+    "x": 176,
+    "y": 0,
+    "w": 44,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 44,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 44,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "idle_5": {
    "frame": {
     "x": 0,
+    "y": 40,
+    "w": 44,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 44,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 44,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_0": {
+   "frame": {
+    "x": 44,
+    "y": 40,
+    "w": 44,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 44,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 44,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_1": {
+   "frame": {
+    "x": 88,
+    "y": 40,
+    "w": 44,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 44,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 44,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_2": {
+   "frame": {
+    "x": 132,
     "y": 40,
     "w": 44,
     "h": 40
@@ -122,8 +218,56 @@
   },
   "move_3": {
    "frame": {
-    "x": 44,
+    "x": 176,
     "y": 40,
+    "w": 44,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 44,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 44,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_4": {
+   "frame": {
+    "x": 0,
+    "y": 80,
+    "w": 44,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 44,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 44,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "move_5": {
+   "frame": {
+    "x": 44,
+    "y": 80,
     "w": 44,
     "h": 40
    },
@@ -147,7 +291,7 @@
   "attack_0": {
    "frame": {
     "x": 88,
-    "y": 40,
+    "y": 80,
     "w": 44,
     "h": 40
    },
@@ -171,7 +315,7 @@
   "attack_1": {
    "frame": {
     "x": 132,
-    "y": 40,
+    "y": 80,
     "w": 44,
     "h": 40
    },
@@ -194,8 +338,32 @@
   },
   "attack_2": {
    "frame": {
-    "x": 0,
+    "x": 176,
     "y": 80,
+    "w": 44,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 44,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 44,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 1.0
+   }
+  },
+  "attack_3": {
+   "frame": {
+    "x": 0,
+    "y": 120,
     "w": 44,
     "h": 40
    },
@@ -219,7 +387,7 @@
   "hit_0": {
    "frame": {
     "x": 44,
-    "y": 80,
+    "y": 120,
     "w": 44,
     "h": 40
    },
@@ -243,7 +411,7 @@
   "hit_1": {
    "frame": {
     "x": 88,
-    "y": 80,
+    "y": 120,
     "w": 44,
     "h": 40
    },
@@ -267,7 +435,7 @@
   "die_0": {
    "frame": {
     "x": 132,
-    "y": 80,
+    "y": 120,
     "w": 44,
     "h": 40
    },
@@ -290,7 +458,7 @@
   },
   "die_1": {
    "frame": {
-    "x": 0,
+    "x": 176,
     "y": 120,
     "w": 44,
     "h": 40
@@ -314,8 +482,8 @@
   },
   "die_2": {
    "frame": {
-    "x": 44,
-    "y": 120,
+    "x": 0,
+    "y": 160,
     "w": 44,
     "h": 40
    },
@@ -338,8 +506,8 @@
   },
   "die_3": {
    "frame": {
-    "x": 88,
-    "y": 120,
+    "x": 44,
+    "y": 160,
     "w": 44,
     "h": 40
    },
@@ -366,9 +534,20 @@
   "image": "windowWasher.png",
   "format": "RGBA8888",
   "size": {
-   "w": 176,
-   "h": 160
+   "w": 220,
+   "h": 200
   },
-  "scale": "1"
+  "scale": "1",
+  "anims": {
+   "idle": {
+    "fps": 8
+   },
+   "move": {
+    "fps": 8
+   },
+   "attack": {
+    "fps": 12
+   }
+  }
  }
 }

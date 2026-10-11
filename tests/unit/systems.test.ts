@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 // under test are pure, so stub Phaser out.
 vi.mock('phaser', () => ({ default: {} }));
 
-const { groupFrames, animKey } = await import('../../src/game/systems/AnimationSystem');
+const { groupFrames, animKey, strideTimeScale, STRIDE_SCALE_MAX, STRIDE_SCALE_MIN } = await import(
+  '../../src/game/systems/AnimationSystem'
+);
 const { edge } = await import('../../src/game/systems/InputSystem');
 const { isStomp } = await import('../../src/game/systems/CombatSystem');
 
@@ -29,6 +31,14 @@ describe('AnimationSystem.groupFrames', () => {
   });
   it('animKey joins atlas and anim', () => {
     expect(animKey('dad', 'walk')).toBe('dad:walk');
+  });
+  it('strideTimeScale keeps planted feet in step with ground speed', () => {
+    // 4 px/frame at 14 fps = 56 px/s nominal
+    expect(strideTimeScale(56, 4, 14)).toBeCloseTo(1);
+    expect(strideTimeScale(-84, 4, 14)).toBeCloseTo(1.5); // direction does not matter
+    expect(strideTimeScale(500, 4, 14)).toBe(STRIDE_SCALE_MAX);
+    expect(strideTimeScale(0, 4, 14)).toBe(STRIDE_SCALE_MIN);
+    expect(strideTimeScale(100, 0, 14)).toBe(1); // no stride metadata: plain playback
   });
 });
 
