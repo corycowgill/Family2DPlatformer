@@ -41,13 +41,12 @@ export const MEDAL_TIMES: Record<string, MedalTimes> = {
   'loop-2': { gold: 45_000, silver: 70_000, bronze: 110_000 },
   'loop-3': { gold: 40_000, silver: 65_000, bronze: 100_000 },
   'loop-boss': { gold: 105_000, silver: 150_000, bronze: 210_000 },
-  // TODO-measure (re-run when the real 2-x maps replace the placeholders): bot par on the
-  // short placeholder maps, 2026-10 — 2-1 ≈ 9.5 s, 2-2 ≈ 13 s, 2-3 ≈ 10 s, 2-4 ≈ 92 s
-  // (approach + the 9-hp Overseer). Gold ≈ 1.4×, silver ≈ 2.2×, bronze ≈ 3.5× par.
-  'north-1': { gold: 13_000, silver: 21_000, bronze: 33_000 },
-  'north-2': { gold: 18_000, silver: 29_000, bronze: 46_000 },
-  'north-3': { gold: 14_000, silver: 22_000, bronze: 35_000 },
-  'north-4': { gold: 130_000, silver: 200_000, bronze: 320_000 },
+  // World 2 (the full 2-x maps, 2026-10): bot par 2-1 23-25 s, 2-2 25-32 s, 2-3 34-35 s,
+  // 2-4 103-106 s (≈ 20 s approach + the 9-hp Overseer). Same ratios as World 1.
+  'north-1': { gold: 34_000, silver: 53_000, bronze: 85_000 },
+  'north-2': { gold: 40_000, silver: 62_000, bronze: 98_000 },
+  'north-3': { gold: 48_000, silver: 75_000, bronze: 120_000 },
+  'north-4': { gold: 150_000, silver: 210_000, bronze: 300_000 },
 };
 
 export function medalTimes(levelId: string): MedalTimes | undefined {
