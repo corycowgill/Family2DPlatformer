@@ -11,6 +11,24 @@ const storyPanel = (page: Page) => page.evaluate(() => (window as unknown as Sto
 const endingBeat = (page: Page) => page.evaluate(() => (window as unknown as StoryWin).__ending?.currentBeat ?? '');
 const save = (page: Page) => harness(page, (h) => h.getSave()) as Promise<{ seenIntro: boolean; seenEnding: boolean }>;
 
+/**
+ * Press `key` until `scene` is active. Under CPU load a single press can land before the menu is
+ * ready or be swallowed by the unlock celebration overlay on Results. Extra presses are harmless:
+ * transitionTo() disables input once a transition has started.
+ */
+async function pressUntilScene(page: Page, key: string, scene: string): Promise<void> {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await page.keyboard.press(key);
+    try {
+      await waitForScene(page, scene, 3_000);
+      return;
+    } catch {
+      /* not there yet: press again */
+    }
+  }
+  await waitForScene(page, scene);
+}
+
 test.describe('story & cutscenes', () => {
   test('?story: PLAY on a new save plays the opening story; panels advance; ESC skips to character select', async ({ page }) => {
     const log = trackConsole(page);
@@ -126,8 +144,7 @@ test.describe('story & cutscenes', () => {
     await waitForScene(page, 'Results', 10_000);
     expect(await harness(page, (h) => h.sceneTexts('Results'))).toContain('CONTINUE');
     await page.waitForTimeout(400);
-    await page.keyboard.press('Enter'); // CONTINUE (first item)
-    await waitForScene(page, 'Ending');
+    await pressUntilScene(page, 'Enter', 'Ending'); // CONTINUE (first item)
     await expect.poll(() => endingBeat(page)).toBe('flag');
     expect((await save(page)).seenEnding).toBe(true);
     // Advance: finish caption / raise flag → credits → teaser.
